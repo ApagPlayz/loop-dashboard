@@ -1,14 +1,16 @@
 import PageHeader from "@/components/page-header";
-import UnderConstruction from "@/components/under-construction";
+import BuildsView from "@/components/queues/builds-view";
+
+export const dynamic = "force-dynamic";
 
 export default function BuildsPage() {
   return (
     <>
       <PageHeader
         title="Builds & Evidence"
-        description="Builder pull requests, Auditor reviews, and the evidence behind each change."
+        description="Review each build, watch the demo proof, then approve and merge — or send it back."
       />
-      <UnderConstruction note="The Builds agent will show open PRs, audit status, and artifacts here." />
+      <BuildsView />
     </>
   );
 }
