@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { dispatchWorkflow } from "@/lib/github";
-import { getAgent } from "@/lib/map-agents";
+import { resolveProjectFromUrl, findProjectAgent, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
- * POST /api/map/agent/[id]/dispatch
+ * POST /api/map/agent/[id]/dispatch?project=<key>
  * Manually trigger a workflow (workflow_dispatch on main).
  *
  * Body: { input?: string }  — the idea/PR number, when the workflow needs one.
@@ -13,19 +14,22 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const meta = getAgent(id);
+  let project, repo;
+  try {
+    ({ project, repo } = await resolveProjectFromUrl(req.url));
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
+    throw err;
+  }
+  const meta = await findProjectAgent(project, id);
   if (!meta) return NextResponse.json({ error: "Unknown agent." }, { status: 404 });
 
   if (!meta.canDispatch) {
     return NextResponse.json(
       { error: "This workflow can't be started by hand." },
       { status: 400 },
-    );
-  }
-  if (!meta.onMain) {
-    return NextResponse.json(
-      { error: "This workflow isn't on the main branch yet (waiting for PR #44 to merge)." },
-      { status: 409 },
     );
   }
 
@@ -53,7 +57,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   try {
-    await dispatchWorkflow(meta.file, "main", inputs);
+    await dispatchWorkflow(meta.file, "main", inputs, repo);
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     const status = (err as { status?: number })?.status;

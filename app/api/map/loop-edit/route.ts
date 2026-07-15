@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { snapshotWorkflows } from "@/lib/map-history";
 import { aiStructuredCall, aiEnabled, AiError, AI_DISABLED_MESSAGE } from "@/lib/map-ai";
 import { startJob } from "@/lib/map-ai-jobs";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
+import type { RepoConfig } from "@/lib/github";
 import type { FileChange } from "@/lib/map-types";
 
 export const dynamic = "force-dynamic";
@@ -36,13 +38,13 @@ function looksBroad(request: string): boolean {
  * The actual drafting work, run inside a background job.
  * Returns { summary, changes: FileChange[] }.
  */
-async function runLoopEditDraft(request: string): Promise<{
+async function runLoopEditDraft(request: string, repo: RepoConfig): Promise<{
   summary: string;
   changes: FileChange[];
 }> {
   let current: Map<string, string>;
   try {
-    current = await snapshotWorkflows("main");
+    current = await snapshotWorkflows("main", repo);
   } catch (err) {
     console.error("loop-edit: snapshot failed", err);
     throw new AiError("Couldn't load the current workflows from GitHub. Try again.");
@@ -148,6 +150,16 @@ The owner's request: ${request}`;
  * Returns: { jobId } immediately — poll GET /api/map/ai-job/[jobId].
  */
 export async function POST(req: Request) {
+  let project, repo;
+  try {
+    ({ project, repo } = await resolveProjectFromUrl(req.url));
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
+    throw err;
+  }
+
   let body: { request?: string };
   try {
     body = await req.json();
@@ -162,6 +174,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: AI_DISABLED_MESSAGE }, { status: 503 });
   }
 
-  const job = startJob("loop-edit", { request }, () => runLoopEditDraft(request));
+  const job = startJob("loop-edit", { request, project: project.key }, () =>
+    runLoopEditDraft(request, repo),
+  );
   return NextResponse.json({ jobId: job.id });
 }

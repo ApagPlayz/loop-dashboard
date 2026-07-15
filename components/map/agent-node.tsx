@@ -23,9 +23,16 @@ export type AgentNodeData = {
 function AgentNode({ data }: { data: AgentNodeData }) {
   const { label, tagline, Icon, status, loading, onMain } = data;
   const tone = runTone(status?.status ?? null, status?.conclusion ?? null);
+  const disabled = status ? status.enabled === false : false;
 
   return (
-    <div className="w-52 cursor-pointer rounded-xl border border-zinc-700 bg-zinc-900 p-3 shadow-lg transition hover:border-emerald-500/60 hover:bg-zinc-800/80">
+    <div
+      className={`w-52 cursor-pointer rounded-xl border p-3 shadow-lg transition hover:border-emerald-500/60 hover:bg-zinc-800/80 ${
+        disabled
+          ? "border-zinc-800 bg-zinc-900/50 opacity-50 saturate-0"
+          : "border-zinc-700 bg-zinc-900"
+      }`}
+    >
       <NodeHandles />
       <div className="flex items-start gap-2.5">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400 ring-1 ring-inset ring-emerald-500/30">
@@ -38,7 +45,11 @@ function AgentNode({ data }: { data: AgentNodeData }) {
       </div>
 
       <div className="mt-2.5 flex items-center gap-1.5 border-t border-zinc-800 pt-2 text-[11px]">
-        {!onMain ? (
+        {disabled ? (
+          <span className="rounded bg-zinc-700/60 px-1.5 py-0.5 font-medium text-zinc-300">
+            Switched off
+          </span>
+        ) : !onMain ? (
           <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-medium text-amber-400">
             Coming with PR #44
           </span>

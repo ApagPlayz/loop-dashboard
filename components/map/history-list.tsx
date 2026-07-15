@@ -23,10 +23,13 @@ type Patch = { filename: string; status: string; patch: string | null };
  */
 export default function HistoryList({
   file,
+  project,
   onRestored,
 }: {
   /** Workflow filename to scope to; omit for the whole workflows folder. */
   file?: string;
+  /** Project registry key. */
+  project: string;
   onRestored?: () => void;
 }) {
   const [commits, setCommits] = useState<HistoryCommit[] | null>(null);
@@ -36,15 +39,16 @@ export default function HistoryList({
     setError(null);
     setCommits(null);
     try {
-      const qs = file ? `file=${encodeURIComponent(file)}` : "scope=loop";
-      const res = await fetch(`/api/map/history?${qs}`);
+      const params = new URLSearchParams(file ? { file } : { scope: "loop" });
+      params.set("project", project);
+      const res = await fetch(`/api/map/history?${params}`);
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Couldn't load the history.");
       setCommits(j.commits ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't load the history.");
     }
-  }, [file]);
+  }, [file, project]);
 
   useEffect(() => {
     // Fetch history from GitHub (an external system) on mount / file change.
@@ -89,6 +93,7 @@ export default function HistoryList({
             key={c.sha}
             commit={c}
             file={file}
+            project={project}
             isCurrent={idx === 0}
             onRestored={() => {
               load();
@@ -104,11 +109,13 @@ export default function HistoryList({
 function CommitRow({
   commit,
   file,
+  project,
   isCurrent,
   onRestored,
 }: {
   commit: HistoryCommit;
   file?: string;
+  project: string;
   isCurrent: boolean;
   onRestored: () => void;
 }) {
@@ -125,8 +132,9 @@ function CommitRow({
     setOpen(next);
     if (next && patches === null && !diffError) {
       try {
-        const qs = file ? `?file=${encodeURIComponent(file)}` : "";
-        const res = await fetch(`/api/map/history/${commit.sha}${qs}`);
+        const params = new URLSearchParams({ project });
+        if (file) params.set("file", file);
+        const res = await fetch(`/api/map/history/${commit.sha}?${params}`);
         const j = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(j.error ?? "Couldn't load the change.");
         setPatches(j.patches ?? []);
@@ -140,7 +148,7 @@ function CommitRow({
     setRestoring(true);
     setRestoreError(null);
     try {
-      const res = await fetch("/api/map/history/restore", {
+      const res = await fetch(`/api/map/history/restore?project=${encodeURIComponent(project)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(file ? { sha: commit.sha, file } : { sha: commit.sha }),

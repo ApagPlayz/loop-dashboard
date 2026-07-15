@@ -20,7 +20,13 @@ import { useAiJob, formatElapsed } from "./use-ai-job";
  * "Improve the loop with AI" + "Loop history", rendered below the map.
  * Two collapsible cards so the map stays the hero on a phone screen.
  */
-export default function LoopEditPanel({ aiEnabled }: { aiEnabled: boolean | null }) {
+export default function LoopEditPanel({
+  project,
+  aiEnabled,
+}: {
+  project: string;
+  aiEnabled: boolean | null;
+}) {
   return (
     <div className="mt-4 space-y-3">
       <CollapsibleCard
@@ -28,7 +34,7 @@ export default function LoopEditPanel({ aiEnabled }: { aiEnabled: boolean | null
         title="Improve the loop with AI"
         subtitle="Describe a change to how the whole loop works — AI drafts it for your review."
       >
-        <LoopEditForm aiEnabled={aiEnabled} />
+        <LoopEditForm project={project} aiEnabled={aiEnabled} />
       </CollapsibleCard>
 
       <CollapsibleCard
@@ -36,7 +42,7 @@ export default function LoopEditPanel({ aiEnabled }: { aiEnabled: boolean | null
         title="Loop history"
         subtitle="Every change ever made to the loop's workflows, with one-tap restore."
       >
-        <HistoryList />
+        <HistoryList project={project} />
       </CollapsibleCard>
     </div>
   );
@@ -86,7 +92,7 @@ function fileLabel(file: string): string {
   return AGENTS.find((a) => a.file === file)?.label ?? file;
 }
 
-function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
+function LoopEditForm({ project, aiEnabled }: { project: string; aiEnabled: boolean | null }) {
   const [request, setRequest] = useState("");
   const [applyError, setApplyError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
@@ -95,6 +101,7 @@ function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
   // Background drafting job: submit, poll, and restore across page visits.
   const { job, submitting, submitError, elapsedSec, start, consume } = useAiJob({
     kind: "loop-edit",
+    project,
   });
 
   if (aiEnabled === false) {
@@ -117,7 +124,7 @@ function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
   function draft() {
     setApplyError(null);
     setAppliedUrl(null);
-    start("/api/map/loop-edit", { request });
+    start(`/api/map/loop-edit?project=${encodeURIComponent(project)}`, { request });
   }
 
   async function apply() {
@@ -125,7 +132,7 @@ function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
     setApplying(true);
     setApplyError(null);
     try {
-      const res = await fetch("/api/map/loop-edit/apply", {
+      const res = await fetch(`/api/map/loop-edit/apply?project=${encodeURIComponent(project)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

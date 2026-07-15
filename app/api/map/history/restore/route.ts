@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getOctokit, REPOS, getFileContent, commitFile } from "@/lib/github";
+import { getOctokit, getFileContent, commitFile } from "@/lib/github";
 import { AGENTS } from "@/lib/map-agents";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 import {
   atomicCommit,
   snapshotWorkflows,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/map-history";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const FILE_RE = /^[A-Za-z0-9._-]+\.ya?ml$/;
 
@@ -34,6 +36,16 @@ function friendlyDate(iso: string | null): string {
  * Returns: { commitUrl }
  */
 export async function POST(req: Request) {
+  let repo;
+  try {
+    ({ repo } = await resolveProjectFromUrl(req.url));
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
+    throw err;
+  }
+
   let body: { sha?: string; file?: string };
   try {
     body = await req.json();
@@ -48,8 +60,11 @@ export async function POST(req: Request) {
   // Date of the source commit, for the commit message.
   let dateIso: string | null = null;
   try {
-    const { owner, repo } = REPOS.primary;
-    const c = await getOctokit().rest.repos.getCommit({ owner, repo, ref: sha });
+    const c = await getOctokit().rest.repos.getCommit({
+      owner: repo.owner,
+      repo: repo.repo,
+      ref: sha,
+    });
     dateIso = c.data.commit.committer?.date ?? c.data.commit.author?.date ?? null;
   } catch {
     return NextResponse.json({ error: "That version couldn't be found on GitHub." }, { status: 404 });
@@ -64,14 +79,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Invalid file name." }, { status: 400 });
       }
       const path = `${WORKFLOWS_DIR}/${file}`;
-      const oldContent = await getFileContent(path, sha);
+      const oldContent = await getFileContent(path, sha, repo);
       if (oldContent === null) {
         return NextResponse.json(
           { error: "That file didn't exist yet at that version, so there's nothing to restore." },
           { status: 404 },
         );
       }
-      const currentContent = await getFileContent(path, "main");
+      const currentContent = await getFileContent(path, "main", repo);
       if (currentContent === oldContent) {
         return NextResponse.json(
           { error: "The current version is already identical to that one." },
@@ -83,17 +98,18 @@ export async function POST(req: Request) {
         path,
         oldContent,
         `dashboard: restore ${label} instructions to version from ${when}`,
+        { repo },
       );
       const commitUrl =
         (res as { commit?: { html_url?: string } }).commit?.html_url ??
-        `https://github.com/${REPOS.primary.owner}/${REPOS.primary.repo}/commits/main/${path}`;
+        `https://github.com/${repo.owner}/${repo.repo}/commits/main/${path}`;
       return NextResponse.json({ ok: true, commitUrl });
     }
 
     /* ---------------- whole loop ---------------- */
     const [then, now] = await Promise.all([
-      snapshotWorkflows(sha),
-      snapshotWorkflows("main"),
+      snapshotWorkflows(sha, repo),
+      snapshotWorkflows("main", repo),
     ]);
 
     const changes: TreeChange[] = [];
@@ -119,6 +135,7 @@ export async function POST(req: Request) {
     const res = await atomicCommit(
       changes,
       `dashboard: restore all loop workflows to version from ${when}`,
+      repo,
     );
     return NextResponse.json({ ok: true, commitUrl: res.url });
   } catch (err: unknown) {

@@ -1,57 +1,48 @@
 import { NextResponse } from "next/server";
 import { getFileContent, getWorkflowRuns } from "@/lib/github";
-import { getAgent, TARGET_REPO, FALLBACK_REF } from "@/lib/map-agents";
 import { parseCapabilities } from "@/lib/map-capabilities";
 import { extractPrompt } from "@/lib/map-yaml";
 import { aiEnabled } from "@/lib/map-ai";
+import { resolveProjectFromUrl, findProjectAgent, ProjectError } from "@/lib/projects";
 import type { AgentDetail, RunSummary } from "@/lib/map-types";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
- * GET /api/map/agent/[id]
+ * GET /api/map/agent/[id]?project=<key>
  * Everything the drawer needs in one shot: description + triggers (from meta),
  * last 5 runs, capabilities, and the workflow YAML with a friendly prompt
- * extracted when possible.
+ * extracted when possible. Works for baseline agents and per-project custom
+ * (generic) agents alike.
  */
-export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const meta = getAgent(id);
-  if (!meta) {
-    return NextResponse.json({ error: "Unknown agent." }, { status: 404 });
-  }
-
-  const path = `.github/workflows/${meta.file}`;
-
   try {
-    // Prefer main; fall back to the PR #44 branch for workflows not merged yet.
-    let ref = meta.onMain ? "main" : FALLBACK_REF;
-    let rawYaml = await getFileContent(path, ref);
-    if (rawYaml === null && meta.onMain) {
-      // Not on main after all — try the fallback branch so we can at least show it.
-      const fromBranch = await getFileContent(path, FALLBACK_REF);
-      if (fromBranch !== null) {
-        rawYaml = fromBranch;
-        ref = FALLBACK_REF;
-      }
+    const { project, repo } = await resolveProjectFromUrl(req.url);
+    const meta = await findProjectAgent(project, id);
+    if (!meta) {
+      return NextResponse.json({ error: "Unknown agent." }, { status: 404 });
     }
 
-    const mcpJson = await getFileContent(".mcp.json", "main").catch(() => null);
+    const path = `.github/workflows/${meta.file}`;
+    const ref = "main";
+    const rawYaml = await getFileContent(path, ref, repo);
+    const mcpJson = await getFileContent(".mcp.json", "main", repo).catch(() => null);
 
     let runs: RunSummary[] = [];
     try {
-      const raw = await getWorkflowRuns({ workflowId: meta.file, per_page: 5 });
+      const raw = await getWorkflowRuns({ workflowId: meta.file, per_page: 5, repo });
       runs = raw.map(toRunSummary);
     } catch {
-      // Workflow may not be registered yet (PR #44) — leave runs empty.
-      runs = [];
+      runs = []; // Workflow may not be registered on GitHub yet.
     }
 
-    const extraction = rawYaml ? extractPrompt(rawYaml) : ({ ok: false, reason: "File not found." } as const);
+    const extraction = rawYaml
+      ? extractPrompt(rawYaml)
+      : ({ ok: false, reason: "File not found." } as const);
     const capabilities = parseCapabilities(rawYaml, mcpJson);
-
-    // Editing writes to main, so only files already on main are editable here.
-    const editable = ref === "main" && rawYaml !== null;
+    const editable = rawYaml !== null;
 
     const detail: AgentDetail = {
       meta,
@@ -64,11 +55,14 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       promptExtractable: extraction.ok,
       extractionNote: extraction.ok ? undefined : extraction.reason,
       editable,
-      historyUrl: `https://github.com/${TARGET_REPO.owner}/${TARGET_REPO.repo}/commits/${ref}/${path}`,
+      historyUrl: `https://github.com/${repo.owner}/${repo.repo}/commits/${ref}/${path}`,
       aiEnabled: aiEnabled(),
     };
     return NextResponse.json(detail);
   } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     console.error(`agent[${id}]: fatal`, err);
     return NextResponse.json(
       { error: "Couldn't load this agent from GitHub. Try again in a moment." },

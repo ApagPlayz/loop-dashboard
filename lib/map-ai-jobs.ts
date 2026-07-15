@@ -196,10 +196,11 @@ export function latestJob(
 
 /** Public (wire) view of a job — small metadata only, never big blobs. */
 export function toPublicJob(job: AiJob) {
-  const { request, agentId, mode } = job.input as {
+  const { request, agentId, mode, project } = job.input as {
     request?: string;
     agentId?: string;
     mode?: string;
+    project?: string;
   };
   return {
     id: job.id,
@@ -210,6 +211,7 @@ export function toPublicJob(job: AiJob) {
       request: typeof request === "string" ? request.slice(0, 2000) : undefined,
       agentId,
       mode,
+      project,
     },
     result: job.result,
     error: job.error,

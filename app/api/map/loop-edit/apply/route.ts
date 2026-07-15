@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { atomicCommit, WORKFLOWS_DIR, type TreeChange } from "@/lib/map-history";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
  * POST /api/map/loop-edit/apply
@@ -11,6 +13,16 @@ export const dynamic = "force-dynamic";
  * Returns: { commitUrl }
  */
 export async function POST(req: Request) {
+  let repo;
+  try {
+    ({ repo } = await resolveProjectFromUrl(req.url));
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
+    throw err;
+  }
+
   let body: { summary?: string; changes?: { file?: string; newContent?: string }[] };
   try {
     body = await req.json();
@@ -38,7 +50,7 @@ export async function POST(req: Request) {
   const short = firstLine.length > 60 ? firstLine.slice(0, 57) + "..." : firstLine;
 
   try {
-    const res = await atomicCommit(changes, `dashboard: AI loop edit — ${short}`);
+    const res = await atomicCommit(changes, `dashboard: AI loop edit — ${short}`, repo);
     return NextResponse.json({ ok: true, commitUrl: res.url });
   } catch (err: unknown) {
     const status = (err as { status?: number })?.status;

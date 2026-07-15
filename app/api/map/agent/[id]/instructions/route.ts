@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import { getFileContent, commitFile } from "@/lib/github";
-import { getAgent, TARGET_REPO } from "@/lib/map-agents";
 import { extractPrompt, replacePrompt } from "@/lib/map-yaml";
+import { resolveProjectFromUrl, findProjectAgent, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
- * POST /api/map/agent/[id]/instructions
- * Save edited instructions straight to the target repo's main branch.
+ * POST /api/map/agent/[id]/instructions?project=<key>
+ * Save edited instructions straight to the project repo's main branch.
  *
  * Body: { mode: "prompt", prompt: string }  — splice friendly text back in
  *   or   { mode: "raw", rawYaml: string }    — overwrite the whole file
@@ -16,15 +17,17 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const meta = getAgent(id);
-  if (!meta) return NextResponse.json({ error: "Unknown agent." }, { status: 404 });
-
-  if (!meta.onMain) {
-    return NextResponse.json(
-      { error: "This workflow isn't on the main branch yet (waiting for PR #44 to merge), so it can't be edited." },
-      { status: 409 },
-    );
+  let project, repo;
+  try {
+    ({ project, repo } = await resolveProjectFromUrl(req.url));
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
+    throw err;
   }
+  const meta = await findProjectAgent(project, id);
+  if (!meta) return NextResponse.json({ error: "Unknown agent." }, { status: 404 });
 
   let body: { mode?: string; prompt?: string; rawYaml?: string };
   try {
@@ -36,7 +39,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const path = `.github/workflows/${meta.file}`;
 
   try {
-    const current = await getFileContent(path, "main");
+    const current = await getFileContent(path, "main", repo);
     if (current === null) {
       return NextResponse.json(
         { error: "Couldn't find the workflow file on main." },
@@ -72,16 +75,18 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     }
 
     const label = meta.label.replace(/^@/, "");
-    const res = await commitFile(path, newYaml, `dashboard: edit ${label} instructions`);
+    const res = await commitFile(path, newYaml, `dashboard: edit ${label} instructions`, {
+      repo,
+    });
 
     const commitUrl =
       (res as { commit?: { html_url?: string } }).commit?.html_url ??
-      `https://github.com/${TARGET_REPO.owner}/${TARGET_REPO.repo}/commits/main/${path}`;
+      `https://github.com/${repo.owner}/${repo.repo}/commits/main/${path}`;
 
     return NextResponse.json({
       ok: true,
       commitUrl,
-      historyUrl: `https://github.com/${TARGET_REPO.owner}/${TARGET_REPO.repo}/commits/main/${path}`,
+      historyUrl: `https://github.com/${repo.owner}/${repo.repo}/commits/main/${path}`,
     });
   } catch (err: unknown) {
     const status = (err as { status?: number })?.status;

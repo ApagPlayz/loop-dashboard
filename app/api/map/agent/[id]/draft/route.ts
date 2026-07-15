@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { getAgent } from "@/lib/map-agents";
 import { aiStructuredCall, aiEnabled, AiError, AI_DISABLED_MESSAGE } from "@/lib/map-ai";
 import { startJob } from "@/lib/map-ai-jobs";
+import { resolveProjectFromUrl, findProjectAgent, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 // The CLI backend spawns a child process — keep this on the Node runtime.
@@ -23,7 +23,16 @@ const DRAFT_TIMEOUT_MS = 5 * 60 * 1000;
  */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const meta = getAgent(id);
+  let project;
+  try {
+    ({ project } = await resolveProjectFromUrl(req.url));
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
+    throw err;
+  }
+  const meta = await findProjectAgent(project, id);
   if (!meta) return NextResponse.json({ error: "Unknown agent." }, { status: 404 });
 
   let body: { request?: string; mode?: string; current?: string };
@@ -69,7 +78,7 @@ ${current}
 The owner's request: ${request}`;
 
   // Kick the drafting off in the background and hand back a job id at once.
-  const job = startJob("draft", { request, agentId: id, mode }, async () => {
+  const job = startJob("draft", { request, agentId: id, mode, project: project.key }, async () => {
     const result = await aiStructuredCall<{ revised: string }>({
       system,
       user,

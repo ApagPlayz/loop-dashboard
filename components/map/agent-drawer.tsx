@@ -32,10 +32,12 @@ const TABS: { id: Tab; label: string }[] = [
 
 export default function AgentDrawer({
   agentId,
+  project,
   onClose,
   onRan,
 }: {
   agentId: string | null;
+  project: string;
   onClose: () => void;
   onRan?: () => void;
 }) {
@@ -49,7 +51,7 @@ export default function AgentDrawer({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/map/agent/${agentId}`);
+      const res = await fetch(`/api/map/agent/${agentId}?project=${encodeURIComponent(project)}`);
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error ?? "Couldn't load this agent.");
@@ -60,7 +62,7 @@ export default function AgentDrawer({
     } finally {
       setLoading(false);
     }
-  }, [agentId]);
+  }, [agentId, project]);
 
   useEffect(() => {
     if (agentId) {
@@ -134,11 +136,14 @@ export default function AgentDrawer({
           ) : detail ? (
             <>
               {tab === "overview" && <OverviewTab detail={detail} />}
-              {tab === "instructions" && <InstructionsTab detail={detail} onSaved={load} />}
+              {tab === "instructions" && (
+                <InstructionsTab detail={detail} project={project} onSaved={load} />
+              )}
               {tab === "capabilities" && <CapabilitiesTab detail={detail} />}
               {tab === "run" && (
                 <RunTab
                   detail={detail}
+                  project={project}
                   onRan={() => {
                     load();
                     onRan?.();
@@ -146,7 +151,7 @@ export default function AgentDrawer({
                 />
               )}
               {tab === "history" && (
-                <HistoryList file={detail.meta.file} onRestored={load} />
+                <HistoryList file={detail.meta.file} project={project} onRestored={load} />
               )}
             </>
           ) : null}
@@ -236,7 +241,15 @@ function StatusDot({ tone }: { tone: ReturnType<typeof runTone> }) {
 /* Instructions                                                        */
 /* ------------------------------------------------------------------ */
 
-function InstructionsTab({ detail, onSaved }: { detail: AgentDetail; onSaved: () => void }) {
+function InstructionsTab({
+  detail,
+  project,
+  onSaved,
+}: {
+  detail: AgentDetail;
+  project: string;
+  onSaved: () => void;
+}) {
   const canFriendly = detail.promptExtractable && detail.prompt !== null;
   // Default to raw when friendly editing isn't available.
   const [rawMode, setRawMode] = useState(!canFriendly);
@@ -255,7 +268,7 @@ function InstructionsTab({ detail, onSaved }: { detail: AgentDetail; onSaved: ()
     elapsedSec,
     start: startDraftJob,
     consume: consumeDraftJob,
-  } = useAiJob({ kind: "draft", agentId: detail.meta.id });
+  } = useAiJob({ kind: "draft", agentId: detail.meta.id, project });
 
   const draftRunning = draftJob?.status === "running";
   const draft =
@@ -277,7 +290,7 @@ function InstructionsTab({ detail, onSaved }: { detail: AgentDetail; onSaved: ()
   const currentText = rawMode ? rawText : promptText;
 
   function draftWithAi() {
-    startDraftJob(`/api/map/agent/${detail.meta.id}/draft`, {
+    startDraftJob(`/api/map/agent/${detail.meta.id}/draft?project=${encodeURIComponent(project)}`, {
       request: aiRequest,
       mode: rawMode ? "raw" : "prompt",
       current: currentText,
@@ -300,11 +313,14 @@ function InstructionsTab({ detail, onSaved }: { detail: AgentDetail; onSaved: ()
       const bodyObj = rawMode
         ? { mode: "raw", rawYaml: rawText }
         : { mode: "prompt", prompt: promptText };
-      const res = await fetch(`/api/map/agent/${detail.meta.id}/instructions`, {
+      const res = await fetch(
+        `/api/map/agent/${detail.meta.id}/instructions?project=${encodeURIComponent(project)}`,
+        {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(bodyObj),
-      });
+        },
+      );
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Couldn't save.");
       setSaved({ commitUrl: j.commitUrl, historyUrl: j.historyUrl });
@@ -565,7 +581,15 @@ function ChipGroup({
 /* Run now                                                             */
 /* ------------------------------------------------------------------ */
 
-function RunTab({ detail, onRan }: { detail: AgentDetail; onRan: () => void }) {
+function RunTab({
+  detail,
+  project,
+  onRan,
+}: {
+  detail: AgentDetail;
+  project: string;
+  onRan: () => void;
+}) {
   const [input, setInput] = useState("");
   const [running, setRunning] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
@@ -601,7 +625,7 @@ function RunTab({ detail, onRan }: { detail: AgentDetail; onRan: () => void }) {
     setRunError(null);
     setStarted(false);
     try {
-      const res = await fetch(`/api/map/agent/${meta.id}/dispatch`, {
+      const res = await fetch(`/api/map/agent/${meta.id}/dispatch?project=${encodeURIComponent(project)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(needsInput ? { input } : {}),

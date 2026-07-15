@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCommitPatches, WORKFLOWS_DIR } from "@/lib/map-history";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
  * GET /api/map/history/[sha]?file=claude-scout.yml (file optional)
@@ -17,9 +19,13 @@ export async function GET(req: Request, ctx: { params: Promise<{ sha: string }> 
   const prefix = file ? `${WORKFLOWS_DIR}/${file}` : `${WORKFLOWS_DIR}/`;
 
   try {
-    const { patches, url } = await getCommitPatches(sha, prefix);
+    const { repo } = await resolveProjectFromUrl(req.url);
+    const { patches, url } = await getCommitPatches(sha, prefix, repo);
     return NextResponse.json({ url, patches });
   } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     console.error(`history[${sha}]: diff failed`, err);
     return NextResponse.json(
       { error: "Couldn't load that change from GitHub. Try again." },

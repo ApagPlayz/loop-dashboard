@@ -16,11 +16,17 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const kind = url.searchParams.get("kind");
   const agentId = url.searchParams.get("agentId");
+  const project = url.searchParams.get("project");
 
   if (kind !== "draft" && kind !== "loop-edit") {
     return NextResponse.json({ error: "Missing or invalid kind." }, { status: 400 });
   }
 
-  const job = latestJob(kind, agentId ? (input) => input.agentId === agentId : undefined);
+  const job = latestJob(kind, (input) => {
+    if (agentId && input.agentId !== agentId) return false;
+    // Jobs created before projects existed have no project field — treat as pilot.
+    if (project && (input.project ?? "content-generation-platform") !== project) return false;
+    return true;
+  });
   return NextResponse.json({ job: job ? toPublicJob(job) : null });
 }

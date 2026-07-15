@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { listCommitsForPath, WORKFLOWS_DIR } from "@/lib/map-history";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 const FILE_RE = /^[A-Za-z0-9._-]+\.ya?ml$/;
 
@@ -28,9 +30,13 @@ export async function GET(req: Request) {
   }
 
   try {
-    const commits = await listCommitsForPath(path, { per_page: 30 });
+    const { repo } = await resolveProjectFromUrl(req.url);
+    const commits = await listCommitsForPath(path, { per_page: 30, repo });
     return NextResponse.json({ commits });
   } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     console.error("history: list failed", err);
     return NextResponse.json(
       { error: "Couldn't load the history from GitHub. Try again." },

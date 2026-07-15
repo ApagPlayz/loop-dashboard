@@ -21,8 +21,13 @@ export type PublicAiJob = {
 
 const POLL_MS = 2500;
 
-export function useAiJob(opts: { kind: "draft" | "loop-edit"; agentId?: string }) {
-  const { kind, agentId } = opts;
+export function useAiJob(opts: {
+  kind: "draft" | "loop-edit";
+  agentId?: string;
+  /** Project registry key — scopes job restore to the selected project. */
+  project?: string;
+}) {
+  const { kind, agentId, project } = opts;
   const [job, setJob] = useState<PublicAiJob | null>(null);
   /** Errors from submitting (validation, AI off) — not job failures. */
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -72,8 +77,13 @@ export function useAiJob(opts: { kind: "draft" | "loop-edit"; agentId?: string }
     let cancelled = false;
     (async () => {
       try {
-        const qs = agentId ? `kind=${kind}&agentId=${encodeURIComponent(agentId)}` : `kind=${kind}`;
-        const res = await fetch(`/api/map/ai-job/latest?${qs}`);
+        // Scope change (e.g. project switch): drop whatever was showing.
+        setJob(null);
+        stopTimers();
+        const params = new URLSearchParams({ kind });
+        if (agentId) params.set("agentId", agentId);
+        if (project) params.set("project", project);
+        const res = await fetch(`/api/map/ai-job/latest?${params}`);
         const j = await res.json().catch(() => ({}));
         if (cancelled || !j.job) return;
         setJob(j.job);
@@ -86,7 +96,7 @@ export function useAiJob(opts: { kind: "draft" | "loop-edit"; agentId?: string }
       cancelled = true;
       stopTimers();
     };
-  }, [kind, agentId, beginPolling, stopTimers]);
+  }, [kind, agentId, project, beginPolling, stopTimers]);
 
   /** POST to a drafting route that returns { jobId }; start polling it. */
   const start = useCallback(

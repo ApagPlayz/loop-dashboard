@@ -23,6 +23,10 @@ import {
   BarChart3,
   AtSign,
   PackagePlus,
+  Bot,
+  PauseCircle,
+  Wrench,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { MAP_NODES, MAP_EDGES, getAgent } from "@/lib/map-agents";
@@ -31,6 +35,11 @@ import AgentNode from "./agent-node";
 import StageNode from "./stage-node";
 import AgentDrawer from "./agent-drawer";
 import LoopEditPanel from "./loop-edit-panel";
+import ProjectSwitcher, { ProjectChecklist } from "./project-switcher";
+import PowerMenu from "./power-menu";
+
+const PILOT_KEY = "content-generation-platform";
+const PROJECT_LS_KEY = "loop-dashboard.project";
 
 const ICONS: Record<string, LucideIcon> = {
   scout: Telescope,
@@ -52,30 +61,41 @@ const BADGE_LABEL: Record<string, string> = {
   openPRs: "open",
 };
 
+/** Where custom (non-baseline) agents render: a clearly separate bottom row. */
+const CUSTOM_ROW_Y = 560;
+const CUSTOM_ROW_STEP = 230;
+
 function buildNodes(status: MapStatus | null, loading: boolean): Node[] {
-  return MAP_NODES.map((n) => {
+  // Until the first status arrives, show the full baseline (as before).
+  const presentIds = status ? new Set(status.agents.map((a) => a.id)) : null;
+
+  const nodes: Node[] = [];
+  for (const n of MAP_NODES) {
     if (n.kind === "agent") {
       const meta = getAgent(n.agentId)!;
+      // A baseline agent whose file is missing from this project stays hidden.
+      if (presentIds && !presentIds.has(meta.id)) continue;
       const s = status?.agents.find((a) => a.id === meta.id) ?? null;
-      return {
+      nodes.push({
         id: n.id,
         type: "agent",
         position: { x: n.x, y: n.y },
         data: {
           agentId: meta.id,
-          label: meta.label,
-          tagline: meta.tagline,
+          label: s?.label ?? meta.label,
+          tagline: s?.tagline ?? meta.tagline,
           Icon: ICONS[meta.id],
           onMain: meta.onMain,
           status: s,
           loading,
         },
         draggable: false,
-      } as Node;
+      } as Node);
+      continue;
     }
     const badgeValue =
       n.badge && status ? (status[n.badge] as number) : n.badge ? null : undefined;
-    return {
+    nodes.push({
       id: n.id,
       type: "stage",
       position: { x: n.x, y: n.y },
@@ -88,12 +108,35 @@ function buildNodes(status: MapStatus | null, loading: boolean): Node[] {
         loading,
       },
       draggable: false,
-    } as Node;
+    } as Node);
+  }
+
+  // Custom agents (any other claude-*.yml in the project) — extra bottom row.
+  const customs = status?.agents.filter((a) => a.generic) ?? [];
+  customs.forEach((a, i) => {
+    nodes.push({
+      id: `n-custom-${a.id}`,
+      type: "agent",
+      position: { x: i * CUSTOM_ROW_STEP, y: CUSTOM_ROW_Y },
+      data: {
+        agentId: a.id,
+        label: a.label,
+        tagline: a.tagline,
+        Icon: Bot,
+        onMain: true,
+        status: a,
+        loading,
+      },
+      draggable: false,
+    } as Node);
   });
+
+  return nodes;
 }
 
-function buildEdges(): Edge[] {
-  return MAP_EDGES.map((e) => {
+function buildEdges(nodes: Node[]): Edge[] {
+  const ids = new Set(nodes.map((n) => n.id));
+  return MAP_EDGES.filter((e) => ids.has(e.source) && ids.has(e.target)).map((e) => {
     const flow = e.variant === "flow";
     const capability = e.variant === "capability";
     const color = flow ? "#34d399" : capability ? "#38bdf8" : "#a1a1aa";
@@ -121,25 +164,59 @@ function buildEdges(): Edge[] {
 }
 
 export default function ProcessMap() {
+  const [project, setProject] = useState(PILOT_KEY);
   const [status, setStatus] = useState<MapStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [openAgent, setOpenAgent] = useState<string | null>(null);
+  const [setupNeeded, setSetupNeeded] = useState(false);
+  const [checklistOpen, setChecklistOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Restore the selected project from the URL (?project=) or localStorage.
+  useEffect(() => {
+    const fromUrl = new URLSearchParams(window.location.search).get("project");
+    const saved = fromUrl || window.localStorage.getItem(PROJECT_LS_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (saved && saved !== PILOT_KEY) setProject(saved);
+  }, []);
+
+  const selectProject = useCallback((key: string) => {
+    setProject(key);
+    setStatus(null);
+    setLoading(true);
+    setStatusError(null);
+    setOpenAgent(null);
+    try {
+      window.localStorage.setItem(PROJECT_LS_KEY, key);
+      const url = new URL(window.location.href);
+      url.searchParams.set("project", key);
+      window.history.replaceState(null, "", url.toString());
+    } catch {
+      /* cosmetic only */
+    }
+  }, []);
 
   const fetchStatus = useCallback(async () => {
     try {
-      const res = await fetch("/api/map/status");
-      if (!res.ok) throw new Error("bad status");
+      const res = await fetch(`/api/map/status?project=${encodeURIComponent(project)}`);
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error ?? "bad status");
+      }
       const data: MapStatus = await res.json();
       setStatus(data);
       setStatusError(data.warning ?? null);
-    } catch {
-      setStatusError("Couldn't refresh live status. Showing what we have.");
+    } catch (e) {
+      setStatusError(
+        e instanceof Error && e.message !== "bad status"
+          ? e.message
+          : "Couldn't refresh live status. Showing what we have.",
+      );
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [project]);
 
   useEffect(() => {
     // Poll GitHub for live status: a subscription to an external system. All
@@ -152,8 +229,28 @@ export default function ProcessMap() {
     };
   }, [fetchStatus]);
 
-  const edges = useMemo(() => buildEdges(), []);
+  // One setup check per selected project (not on every poll).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setSetupNeeded(false);
+        const res = await fetch(
+          `/api/map/projects/checklist?project=${encodeURIComponent(project)}`,
+        );
+        const j = await res.json().catch(() => ({}));
+        if (!cancelled && res.ok) setSetupNeeded(j.secret === false);
+      } catch {
+        /* no chip on failure */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [project]);
+
   const nodes = useMemo(() => buildNodes(status, loading), [status, loading]);
+  const edges = useMemo(() => buildEdges(nodes), [nodes]);
 
   const onNodeClick: NodeMouseHandler = useCallback((_evt, node) => {
     if (node.type === "agent") {
@@ -165,6 +262,29 @@ export default function ProcessMap() {
 
   return (
     <>
+      {/* Toolbar: project switcher + loop power (deliberately separate controls) */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <ProjectSwitcher selected={project} onSelect={selectProject} />
+        <PowerMenu
+          project={project}
+          loopPaused={!!status?.loopPaused}
+          onChanged={fetchStatus}
+        />
+        {status?.loopPaused && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
+            <PauseCircle className="h-3.5 w-3.5" /> Loop paused
+          </span>
+        )}
+        {setupNeeded && (
+          <button
+            onClick={() => setChecklistOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300 hover:bg-amber-500/20"
+          >
+            <Wrench className="h-3.5 w-3.5" /> Setup needed
+          </button>
+        )}
+      </div>
+
       {statusError && (
         <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
           {statusError}
@@ -216,9 +336,37 @@ export default function ProcessMap() {
       </div>
 
       {/* Improve-with-AI + loop history, below the map */}
-      <LoopEditPanel aiEnabled={status ? status.aiEnabled : null} />
+      <LoopEditPanel project={project} aiEnabled={status ? status.aiEnabled : null} />
 
-      <AgentDrawer agentId={openAgent} onClose={() => setOpenAgent(null)} onRan={fetchStatus} />
+      <AgentDrawer
+        agentId={openAgent}
+        project={project}
+        onClose={() => setOpenAgent(null)}
+        onRan={fetchStatus}
+      />
+
+      {checklistOpen && (
+        <div className="fixed inset-0 z-50 flex">
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setChecklistOpen(false)}
+            aria-hidden
+          />
+          <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-zinc-800 bg-zinc-950 p-5 shadow-2xl md:inset-x-auto md:left-1/2 md:top-24 md:w-[480px] md:-translate-x-1/2 md:rounded-2xl md:border">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-zinc-100">Finish the setup</h2>
+              <button
+                onClick={() => setChecklistOpen(false)}
+                className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <ProjectChecklist project={project} />
+          </div>
+        </div>
+      )}
     </>
   );
 }

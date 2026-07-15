@@ -28,6 +28,8 @@ export type AgentMeta = {
   canDispatch: boolean;
   /** Shape of the input the manual run needs, when it needs one. */
   dispatch: DispatchKind;
+  /** True for non-baseline (custom, per-project) agents built at runtime. */
+  generic?: boolean;
   /** Label + help text for the dispatch input, when dispatch !== "none". */
   dispatchInputLabel?: string;
   dispatchInputHelp?: string;
@@ -49,6 +51,13 @@ export type RunSummary = {
 export type AgentStatus = {
   id: string;
   file: string;
+  /** Display name (baseline label, or the YAML `name:` for custom agents). */
+  label: string;
+  tagline: string;
+  /** True for non-baseline claude-*.yml workflows found in the repo. */
+  generic: boolean;
+  /** False when the workflow is switched off on GitHub (disabled). */
+  enabled: boolean;
   status: string | null; // queued | in_progress | completed | null (never run)
   conclusion: string | null; // success | failure | cancelled | ...
   createdAt: string | null;
@@ -61,7 +70,11 @@ export type MapStatus = {
   approved: number;
   openPRs: number;
   agents: AgentStatus[];
-  /** True when an Anthropic API key is configured (AI drafting available). */
+  /** Which project this status is for (registry key). */
+  project: string;
+  /** True when every loop workflow except @mention is switched off. */
+  loopPaused: boolean;
+  /** True when an AI drafting backend is available. */
   aiEnabled: boolean;
   /** Non-fatal warning (e.g. a partial failure) to surface in the UI. */
   warning?: string;
