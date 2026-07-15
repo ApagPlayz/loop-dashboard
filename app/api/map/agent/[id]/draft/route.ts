@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server";
 import { getAgent } from "@/lib/map-agents";
-import { aiStructuredCall, AiError } from "@/lib/map-ai";
+import { aiStructuredCall, aiEnabled, AiError, AI_DISABLED_MESSAGE } from "@/lib/map-ai";
+import { startJob } from "@/lib/map-ai-jobs";
 
 export const dynamic = "force-dynamic";
 // The CLI backend spawns a child process — keep this on the Node runtime.
 export const runtime = "nodejs";
 
+/** Single-agent drafts get 5 minutes (background job). */
+const DRAFT_TIMEOUT_MS = 5 * 60 * 1000;
+
 /**
  * POST /api/map/agent/[id]/draft
- * Ask the AI to revise this agent's instructions.
+ * Start a background job that revises this agent's instructions.
  *
  * Body: {
  *   request: string,           — what the owner wants changed
  *   mode: "prompt" | "raw",    — friendly instructions text vs. full YAML
  *   current: string,           — the text currently in the editor
  * }
- * Returns: { draft: string }
+ * Returns: { jobId } immediately — poll GET /api/map/ai-job/[jobId].
  */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
@@ -36,6 +40,9 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
   if (!current.trim()) {
     return NextResponse.json({ error: "There's nothing to revise yet." }, { status: 400 });
+  }
+  if (!aiEnabled()) {
+    return NextResponse.json({ error: AI_DISABLED_MESSAGE }, { status: 503 });
   }
 
   const system =
@@ -61,12 +68,14 @@ ${current}
 
 The owner's request: ${request}`;
 
-  try {
+  // Kick the drafting off in the background and hand back a job id at once.
+  const job = startJob("draft", { request, agentId: id, mode }, async () => {
     const result = await aiStructuredCall<{ revised: string }>({
       system,
       user,
       toolName: "submit_revision",
       toolDescription: "Submit the complete revised text.",
+      timeoutMs: DRAFT_TIMEOUT_MS,
       schema: {
         type: "object",
         properties: {
@@ -81,14 +90,10 @@ The owner's request: ${request}`;
     });
     const draft = result.revised ?? "";
     if (!draft.trim()) {
-      return NextResponse.json({ error: "The AI returned an empty draft. Try again." }, { status: 502 });
+      throw new AiError("The AI returned an empty draft. Try again.");
     }
-    return NextResponse.json({ draft });
-  } catch (err) {
-    if (err instanceof AiError) {
-      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
-    }
-    console.error(`draft[${id}]: failed`, err);
-    return NextResponse.json({ error: "Couldn't draft the change. Try again." }, { status: 502 });
-  }
+    return { draft };
+  });
+
+  return NextResponse.json({ jobId: job.id });
 }

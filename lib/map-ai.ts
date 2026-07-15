@@ -118,6 +118,10 @@ export type StructuredCallOpts = {
   toolName: string;
   toolDescription: string;
   schema: JsonSchema;
+  /** CLI backend: how long the local Claude app may run (default 120s). */
+  timeoutMs?: number;
+  /** API backend: output token cap (default 16000). */
+  maxTokens?: number;
 };
 
 /**
@@ -155,14 +159,14 @@ type CliEnvelope = {
   structured_output?: unknown;
 };
 
-function runCli(cliPath: string, args: string[]): Promise<string> {
+function runCli(cliPath: string, args: string[], timeoutMs: number): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
       cliPath,
       args,
       {
         cwd: sandboxDir(),
-        timeout: CLI_TIMEOUT_MS,
+        timeout: timeoutMs,
         maxBuffer: 32 * 1024 * 1024,
         env: {
           ...process.env,
@@ -175,9 +179,10 @@ function runCli(cliPath: string, args: string[]): Promise<string> {
           const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string };
           console.error("map-ai(cli): exec failed", e.message, stderr?.slice(0, 500));
           if (e.killed || e.signal === "SIGTERM") {
+            const mins = Math.round(timeoutMs / 60_000);
             reject(
               new AiError(
-                "The AI took too long to answer (over 2 minutes). Try a smaller, more focused request.",
+                `The AI ran for over ${mins} minute${mins === 1 ? "" : "s"} without finishing — this change is too big for one request. Ask for it in smaller pieces.`,
                 504,
               ),
             );
@@ -231,7 +236,7 @@ IMPORTANT: your previous reply was not valid JSON matching the schema. This time
     prompt,
   ];
 
-  const stdout = await runCli(cliPath, args);
+  const stdout = await runCli(cliPath, args, opts.timeoutMs ?? CLI_TIMEOUT_MS);
 
   let envelope: CliEnvelope;
   try {
@@ -289,7 +294,7 @@ async function apiStructuredCall<T>(opts: StructuredCallOpts): Promise<T> {
       },
       body: JSON.stringify({
         model: aiModel(),
-        max_tokens: MAX_TOKENS,
+        max_tokens: opts.maxTokens ?? MAX_TOKENS,
         system: opts.system,
         messages: [{ role: "user", content: opts.user }],
         tools: [

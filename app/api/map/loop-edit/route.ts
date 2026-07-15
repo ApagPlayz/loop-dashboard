@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { snapshotWorkflows } from "@/lib/map-history";
 import { aiStructuredCall, aiEnabled, AiError, AI_DISABLED_MESSAGE } from "@/lib/map-ai";
+import { startJob } from "@/lib/map-ai-jobs";
 import type { FileChange } from "@/lib/map-types";
 
 export const dynamic = "force-dynamic";
 // The CLI backend spawns a child process — keep this on the Node runtime.
 export const runtime = "nodejs";
+
+/** Bigger loop edits get more room to run (background job, 10 minutes). */
+const LOOP_EDIT_TIMEOUT_MS = 10 * 60 * 1000;
 
 const LOOP_DESCRIPTION = `The workflows form an autonomous improvement loop on a software product's GitHub repo:
 - claude-scout.yml (Scout): hourly; researches and files 'proposal' issues. Never writes code.
@@ -21,37 +25,27 @@ const LOOP_DESCRIPTION = `The workflows form an autonomous improvement loop on a
 
 The owner is non-technical and reviews everything from a phone.`;
 
-/**
- * POST /api/map/loop-edit
- * Draft a change to the overall loop from a plain-English request.
- *
- * Body: { request: string }
- * Returns: { summary: string, changes: FileChange[] }  (changes may be empty)
- */
-export async function POST(req: Request) {
-  let body: { request?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "Bad request." }, { status: 400 });
-  }
-  const request = (body.request ?? "").trim();
-  if (!request) {
-    return NextResponse.json({ error: "Describe what you want changed." }, { status: 400 });
-  }
-  if (!aiEnabled()) {
-    return NextResponse.json({ error: AI_DISABLED_MESSAGE }, { status: 503 });
-  }
+/** Rough signal that the request touches many agents at once. */
+function looksBroad(request: string): boolean {
+  return /\b(all|every|everything|each)\b.*\b(agent|workflow|file)s?\b|\bwhole loop\b/i.test(
+    request,
+  );
+}
 
+/**
+ * The actual drafting work, run inside a background job.
+ * Returns { summary, changes: FileChange[] }.
+ */
+async function runLoopEditDraft(request: string): Promise<{
+  summary: string;
+  changes: FileChange[];
+}> {
   let current: Map<string, string>;
   try {
     current = await snapshotWorkflows("main");
   } catch (err) {
     console.error("loop-edit: snapshot failed", err);
-    return NextResponse.json(
-      { error: "Couldn't load the current workflows from GitHub. Try again." },
-      { status: 502 },
-    );
+    throw new AiError("Couldn't load the current workflows from GitHub. Try again.");
   }
 
   const filesBlock = [...current.entries()]
@@ -76,75 +70,98 @@ ${filesBlock}
 
 The owner's request: ${request}`;
 
-  try {
-    const result = await aiStructuredCall<{
-      summary: string;
-      changes?: { file: string; newContent: string }[];
-    }>({
-      system,
-      user,
-      toolName: "propose_loop_change",
-      toolDescription:
-        "Propose the workflow changes: a plain-English summary and the complete new content of each changed file.",
-      schema: {
-        type: "object",
-        properties: {
-          summary: {
-            type: "string",
-            description:
-              "Plain-English explanation of what will change and why, for a non-technical owner.",
-          },
-          changes: {
-            type: "array",
-            description:
-              "One entry per changed file. Empty if nothing should change.",
-            items: {
-              type: "object",
-              properties: {
-                file: {
-                  type: "string",
-                  description: "Workflow filename only, e.g. claude-scout.yml",
-                },
-                newContent: {
-                  type: "string",
-                  description: "The complete new file content.",
-                },
+  // Broad requests (or a big YAML context) get a larger API-output budget;
+  // runtime headroom comes from the 10-minute job timeout either way.
+  const broad = looksBroad(request) || filesBlock.length > 60_000;
+
+  const result = await aiStructuredCall<{
+    summary: string;
+    changes?: { file: string; newContent: string }[];
+  }>({
+    system,
+    user,
+    toolName: "propose_loop_change",
+    toolDescription:
+      "Propose the workflow changes: a plain-English summary and the complete new content of each changed file.",
+    timeoutMs: LOOP_EDIT_TIMEOUT_MS,
+    maxTokens: broad ? 32000 : 16000,
+    schema: {
+      type: "object",
+      properties: {
+        summary: {
+          type: "string",
+          description:
+            "Plain-English explanation of what will change and why, for a non-technical owner.",
+        },
+        changes: {
+          type: "array",
+          description: "One entry per changed file. Empty if nothing should change.",
+          items: {
+            type: "object",
+            properties: {
+              file: {
+                type: "string",
+                description: "Workflow filename only, e.g. claude-scout.yml",
               },
-              required: ["file", "newContent"],
-              additionalProperties: false,
+              newContent: {
+                type: "string",
+                description: "The complete new file content.",
+              },
             },
+            required: ["file", "newContent"],
+            additionalProperties: false,
           },
         },
-        required: ["summary", "changes"],
-        additionalProperties: false,
       },
-    });
+      required: ["summary", "changes"],
+      additionalProperties: false,
+    },
+  });
 
-    // Validate: only existing files, only real differences.
-    const changes: FileChange[] = [];
-    const rejected: string[] = [];
-    for (const c of result.changes ?? []) {
-      const name = (c.file ?? "").replace(/^\.github\/workflows\//, "").trim();
-      const old = current.get(name);
-      if (old === undefined) {
-        rejected.push(name || "(unnamed file)");
-        continue;
-      }
-      if (typeof c.newContent !== "string" || c.newContent === old) continue;
-      changes.push({ file: name, oldContent: old, newContent: c.newContent });
+  // Validate: only existing files, only real differences.
+  const changes: FileChange[] = [];
+  const rejected: string[] = [];
+  for (const c of result.changes ?? []) {
+    const name = (c.file ?? "").replace(/^\.github\/workflows\//, "").trim();
+    const old = current.get(name);
+    if (old === undefined) {
+      rejected.push(name || "(unnamed file)");
+      continue;
     }
-
-    let summary = result.summary ?? "";
-    if (rejected.length) {
-      summary += `\n\nNote: the draft tried to create or edit files that don't exist (${rejected.join(", ")}). Those were dropped — to add brand-new agents, ask Claude in the chat session.`;
-    }
-
-    return NextResponse.json({ summary, changes });
-  } catch (err) {
-    if (err instanceof AiError) {
-      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
-    }
-    console.error("loop-edit: failed", err);
-    return NextResponse.json({ error: "Couldn't draft the change. Try again." }, { status: 502 });
+    if (typeof c.newContent !== "string" || c.newContent === old) continue;
+    changes.push({ file: name, oldContent: old, newContent: c.newContent });
   }
+
+  let summary = result.summary ?? "";
+  if (rejected.length) {
+    summary += `\n\nNote: the draft tried to create or edit files that don't exist (${rejected.join(", ")}). Those were dropped — to add brand-new agents, ask Claude in the chat session.`;
+  }
+
+  return { summary, changes };
+}
+
+/**
+ * POST /api/map/loop-edit
+ * Start a background drafting job for a change to the overall loop.
+ *
+ * Body: { request: string }
+ * Returns: { jobId } immediately — poll GET /api/map/ai-job/[jobId].
+ */
+export async function POST(req: Request) {
+  let body: { request?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Bad request." }, { status: 400 });
+  }
+  const request = (body.request ?? "").trim();
+  if (!request) {
+    return NextResponse.json({ error: "Describe what you want changed." }, { status: 400 });
+  }
+  if (!aiEnabled()) {
+    return NextResponse.json({ error: AI_DISABLED_MESSAGE }, { status: 503 });
+  }
+
+  const job = startJob("loop-edit", { request }, () => runLoopEditDraft(request));
+  return NextResponse.json({ jobId: job.id });
 }

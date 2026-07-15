@@ -14,6 +14,7 @@ import type { FileChange } from "@/lib/map-types";
 import { InlineDiff } from "./diff";
 import HistoryList from "./history-list";
 import { AGENTS } from "@/lib/map-agents";
+import { useAiJob, formatElapsed } from "./use-ai-job";
 
 /**
  * "Improve the loop with AI" + "Loop history", rendered below the map.
@@ -87,11 +88,14 @@ function fileLabel(file: string): string {
 
 function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
   const [request, setRequest] = useState("");
-  const [drafting, setDrafting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ summary: string; changes: FileChange[] } | null>(null);
+  const [applyError, setApplyError] = useState<string | null>(null);
   const [applying, setApplying] = useState(false);
   const [appliedUrl, setAppliedUrl] = useState<string | null>(null);
+
+  // Background drafting job: submit, poll, and restore across page visits.
+  const { job, submitting, submitError, elapsedSec, start, consume } = useAiJob({
+    kind: "loop-edit",
+  });
 
   if (aiEnabled === false) {
     return (
@@ -103,31 +107,23 @@ function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
     );
   }
 
-  async function draft() {
-    setDrafting(true);
-    setError(null);
-    setResult(null);
+  const running = job?.status === "running";
+  const result =
+    job?.status === "done"
+      ? (job.result as { summary: string; changes: FileChange[] })
+      : null;
+  const error = submitError ?? applyError ?? (job?.status === "error" ? job.error : null);
+
+  function draft() {
+    setApplyError(null);
     setAppliedUrl(null);
-    try {
-      const res = await fetch("/api/map/loop-edit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "Couldn't draft the change.");
-      setResult({ summary: j.summary ?? "", changes: j.changes ?? [] });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't draft the change.");
-    } finally {
-      setDrafting(false);
-    }
+    start("/api/map/loop-edit", { request });
   }
 
   async function apply() {
     if (!result) return;
     setApplying(true);
-    setError(null);
+    setApplyError(null);
     try {
       const res = await fetch("/api/map/loop-edit/apply", {
         method: "POST",
@@ -140,13 +136,18 @@ function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Couldn't apply the change.");
       setAppliedUrl(j.commitUrl ?? null);
-      setResult(null);
       setRequest("");
+      consume();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't apply the change.");
+      setApplyError(e instanceof Error ? e.message : "Couldn't apply the change.");
     } finally {
       setApplying(false);
     }
+  }
+
+  function discard() {
+    setApplyError(null);
+    consume();
   }
 
   return (
@@ -159,18 +160,41 @@ function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
         className="w-full resize-y rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-emerald-500/50"
       />
       <button
-        disabled={drafting || applying || !request.trim()}
+        disabled={submitting || running || applying || !request.trim()}
         onClick={draft}
         className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3.5 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
       >
-        {drafting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-        {drafting ? "Drafting… this can take a minute or two" : "Draft the change"}
+        {submitting || running ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Sparkles className="h-4 w-4" />
+        )}
+        Draft the change
       </button>
+
+      {running && (
+        <div className="flex items-start gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200">
+          <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+          <span>
+            Claude is drafting… {formatElapsed(elapsedSec)}.
+            {job?.input.request ? ` ("${job.input.request.slice(0, 80)}")` : ""} Bigger requests
+            can take a few minutes — you can leave this page; the draft will be here when you come
+            back.
+          </span>
+        </div>
+      )}
 
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          {error}
+          <span>
+            {error}
+            {job?.status === "error" && (
+              <button onClick={discard} className="ml-2 underline">
+                Dismiss
+              </button>
+            )}
+          </span>
         </div>
       )}
 
@@ -221,7 +245,7 @@ function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
             )}
             <button
               disabled={applying}
-              onClick={() => setResult(null)}
+              onClick={discard}
               className="rounded-lg border border-zinc-700 px-3.5 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
             >
               Discard

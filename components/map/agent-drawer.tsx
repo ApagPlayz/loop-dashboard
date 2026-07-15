@@ -18,6 +18,7 @@ import type { AgentDetail } from "@/lib/map-types";
 import { relativeTime, duration, runTone } from "./format";
 import { InlineDiff } from "./diff";
 import HistoryList from "./history-list";
+import { useAiJob, formatElapsed } from "./use-ai-job";
 
 type Tab = "overview" | "instructions" | "capabilities" | "run" | "history";
 
@@ -245,45 +246,50 @@ function InstructionsTab({ detail, onSaved }: { detail: AgentDetail; onSaved: ()
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState<{ commitUrl: string; historyUrl: string } | null>(null);
 
-  // AI drafting
+  // AI drafting — background job (submit, poll, restore across visits).
   const [aiRequest, setAiRequest] = useState("");
-  const [drafting, setDrafting] = useState(false);
-  const [draftError, setDraftError] = useState<string | null>(null);
-  const [draft, setDraft] = useState<string | null>(null);
+  const {
+    job: draftJob,
+    submitting: drafting,
+    submitError,
+    elapsedSec,
+    start: startDraftJob,
+    consume: consumeDraftJob,
+  } = useAiJob({ kind: "draft", agentId: detail.meta.id });
+
+  const draftRunning = draftJob?.status === "running";
+  const draft =
+    draftJob?.status === "done" ? ((draftJob.result as { draft?: string }).draft ?? null) : null;
+  const draftError = submitError ?? (draftJob?.status === "error" ? (draftJob.error ?? null) : null);
+  /** Which editor the draft belongs to (a restored job remembers its mode). */
+  const draftMode: "prompt" | "raw" = draftJob?.input.mode === "raw" ? "raw" : "prompt";
+
+  // A draft restored from an earlier visit may target the other editor mode —
+  // switch to it so the preview diff compares like with like.
+  useEffect(() => {
+    if (draft !== null && canFriendly) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRawMode(draftMode === "raw");
+    }
+  }, [draft, draftMode, canFriendly]);
 
   const readOnly = !detail.editable;
   const currentText = rawMode ? rawText : promptText;
 
-  async function draftWithAi() {
-    setDrafting(true);
-    setDraftError(null);
-    setDraft(null);
-    try {
-      const res = await fetch(`/api/map/agent/${detail.meta.id}/draft`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          request: aiRequest,
-          mode: rawMode ? "raw" : "prompt",
-          current: currentText,
-        }),
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "Couldn't draft the change.");
-      setDraft(j.draft);
-    } catch (e) {
-      setDraftError(e instanceof Error ? e.message : "Couldn't draft the change.");
-    } finally {
-      setDrafting(false);
-    }
+  function draftWithAi() {
+    startDraftJob(`/api/map/agent/${detail.meta.id}/draft`, {
+      request: aiRequest,
+      mode: rawMode ? "raw" : "prompt",
+      current: currentText,
+    });
   }
 
   function useDraft() {
     if (draft === null) return;
-    if (rawMode) setRawText(draft);
+    if (draftMode === "raw") setRawText(draft);
     else setPromptText(draft);
-    setDraft(null);
     setAiRequest("");
+    consumeDraftJob();
   }
 
   async function save() {
@@ -392,18 +398,39 @@ function InstructionsTab({ detail, onSaved }: { detail: AgentDetail; onSaved: ()
                 className="w-full resize-y rounded-lg border border-zinc-800 bg-zinc-950 p-2.5 text-sm text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-emerald-500/50"
               />
               <button
-                disabled={drafting || !aiRequest.trim()}
+                disabled={drafting || draftRunning || !aiRequest.trim()}
                 onClick={draftWithAi}
                 className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-300 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {drafting ? (
+                {drafting || draftRunning ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
                   <Sparkles className="h-3.5 w-3.5" />
                 )}
-                {drafting ? "Drafting… this can take a minute" : "Draft the change"}
+                Draft the change
               </button>
-              {draftError && <div className="mt-2"><Banner tone="red">{draftError}</Banner></div>}
+              {draftRunning && (
+                <div className="mt-2 flex items-start gap-2 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-200">
+                  <Loader2 className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" />
+                  <span>
+                    Claude is drafting… {formatElapsed(elapsedSec)}. Bigger requests can take a
+                    few minutes — you can close this panel; the draft will be here when you come
+                    back.
+                  </span>
+                </div>
+              )}
+              {draftError && (
+                <div className="mt-2">
+                  <Banner tone="red">
+                    {draftError}{" "}
+                    {draftJob?.status === "error" && (
+                      <button onClick={() => consumeDraftJob()} className="underline">
+                        Dismiss
+                      </button>
+                    )}
+                  </Banner>
+                </div>
+              )}
               {draft !== null && (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-zinc-400">
@@ -418,7 +445,7 @@ function InstructionsTab({ detail, onSaved }: { detail: AgentDetail; onSaved: ()
                       Use this draft
                     </button>
                     <button
-                      onClick={() => setDraft(null)}
+                      onClick={() => consumeDraftJob()}
                       className="rounded-lg border border-zinc-700 px-3 py-1.5 text-xs text-zinc-300 hover:bg-zinc-800"
                     >
                       Discard
