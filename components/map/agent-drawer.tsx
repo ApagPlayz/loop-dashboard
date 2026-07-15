@@ -378,7 +378,8 @@ function InstructionsTab({ detail, onSaved }: { detail: AgentDetail; onSaved: ()
           </p>
           {!detail.aiEnabled ? (
             <p className="text-xs text-zinc-500">
-              Add an Anthropic API key to turn on AI drafting — the History and manual editing
+              AI drafting runs free through your Claude subscription when the dashboard runs on
+              your Mac. In the cloud it needs an Anthropic API key. History and manual editing
               still work.
             </p>
           ) : (

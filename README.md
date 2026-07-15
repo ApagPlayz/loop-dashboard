@@ -27,17 +27,21 @@ Sections: **Process Map**, **Ideas**, **Builds & Evidence**, **Testing**,
 4. Generate it and copy the `github_pat_...` value somewhere safe — GitHub only
    shows it once.
 
-### Optional: an Anthropic API key (AI drafting)
+### AI drafting (free on your Mac)
 
 The Process Map has "Draft with AI" boxes — describe a change in plain English
 ("make Scout run twice a week") and Claude drafts it for you to review before
-anything is saved. To turn that on, add a third secret:
+anything is saved.
 
-- `ANTHROPIC_API_KEY` — create one at <https://console.anthropic.com/>.
-- `DASHBOARD_AI_MODEL` — optional; which Claude model to use (leave unset for
-  the default).
+**On your Mac this is free and needs no setup**: the dashboard talks to the
+Claude app you're already logged into (your Claude subscription).
 
-Without the key, the dashboard still works fully — the AI boxes just show a
+**Only if you run the dashboard in the cloud** (e.g. Vercel), where there's no
+Claude app, you'd need a paid `ANTHROPIC_API_KEY` from
+<https://console.anthropic.com/>. Optional knobs: `DASHBOARD_AI_BACKEND`
+(`auto` / `cli` / `api`) and `DASHBOARD_AI_MODEL` — leave both unset normally.
+
+Without either, the dashboard still works fully — the AI boxes just show a
 note, and History / manual editing keep working.
 
 ---
@@ -63,7 +67,8 @@ Open <http://localhost:3000>, enter your dashboard password, and you're in.
    values from your `.env.local`:
    - `DASHBOARD_PASSWORD` → your chosen password
    - `GITHUB_TOKEN` → your `github_pat_...` token
-   - `ANTHROPIC_API_KEY` → optional, turns on AI drafting (see above)
+   - `ANTHROPIC_API_KEY` → optional; only needed in the cloud, where AI
+     drafting can't use your Mac's Claude app (see above)
 4. Click **Deploy**. After ~1 minute you get a URL like
    `https://loop-dashboard.vercel.app`.
 5. Open that URL on your phone, log in once, and add it to your home screen.

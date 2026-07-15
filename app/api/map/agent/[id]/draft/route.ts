@@ -3,6 +3,8 @@ import { getAgent } from "@/lib/map-agents";
 import { aiStructuredCall, AiError } from "@/lib/map-ai";
 
 export const dynamic = "force-dynamic";
+// The CLI backend spawns a child process — keep this on the Node runtime.
+export const runtime = "nodejs";
 
 /**
  * POST /api/map/agent/[id]/draft

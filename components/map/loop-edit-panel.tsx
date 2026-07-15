@@ -96,8 +96,9 @@ function LoopEditForm({ aiEnabled }: { aiEnabled: boolean | null }) {
   if (aiEnabled === false) {
     return (
       <p className="text-sm text-zinc-500">
-        Add an Anthropic API key to turn on AI drafting — the History and manual editing still
-        work. (Set ANTHROPIC_API_KEY where the dashboard runs.)
+        AI drafting runs free through your Claude subscription when the dashboard runs on your
+        Mac. In the cloud it needs an Anthropic API key. Either way, Loop history and manual
+        editing keep working.
       </p>
     );
   }

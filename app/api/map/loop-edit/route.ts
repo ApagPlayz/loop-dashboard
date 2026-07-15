@@ -4,6 +4,8 @@ import { aiStructuredCall, aiEnabled, AiError, AI_DISABLED_MESSAGE } from "@/lib
 import type { FileChange } from "@/lib/map-types";
 
 export const dynamic = "force-dynamic";
+// The CLI backend spawns a child process — keep this on the Node runtime.
+export const runtime = "nodejs";
 
 const LOOP_DESCRIPTION = `The workflows form an autonomous improvement loop on a software product's GitHub repo:
 - claude-scout.yml (Scout): hourly; researches and files 'proposal' issues. Never writes code.
