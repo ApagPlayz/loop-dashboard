@@ -1,14 +1,16 @@
 import PageHeader from "@/components/page-header";
-import UnderConstruction from "@/components/under-construction";
+import ProcessMap from "@/components/map/process-map";
+
+export const dynamic = "force-dynamic";
 
 export default function MapPage() {
   return (
     <>
       <PageHeader
         title="Process Map"
-        description="Visual map of the autonomous loop — Scout, Builder, Auditor, Retro, Metrics."
+        description="The whole loop at a glance — tap any agent to see what it does, edit its instructions, or run it now."
       />
-      <UnderConstruction note="The Process Map agent will build an interactive React Flow diagram here." />
+      <ProcessMap />
     </>
   );
 }
