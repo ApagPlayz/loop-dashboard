@@ -20,9 +20,8 @@ export type AgentMeta = {
   /** Plain-English list of when it runs. */
   triggers: string[];
   /**
-   * True if the workflow already lives on the target repo's main branch. The
-   * PR #44 workflows (demo, redraft, tool-install) are false until it merges —
-   * editing and "Run now" are disabled for those with an explanatory note.
+   * True if the workflow lives on the target repo's main branch (all do since
+   * PR #44 merged). When false, editing and "Run now" are disabled with a note.
    */
   onMain: boolean;
   /** True if the workflow declares workflow_dispatch (a "Run now" is possible). */
@@ -62,8 +61,26 @@ export type MapStatus = {
   approved: number;
   openPRs: number;
   agents: AgentStatus[];
+  /** True when an Anthropic API key is configured (AI drafting available). */
+  aiEnabled: boolean;
   /** Non-fatal warning (e.g. a partial failure) to surface in the UI. */
   warning?: string;
+};
+
+/** One commit in a history list. */
+export type HistoryCommit = {
+  sha: string;
+  message: string;
+  date: string | null;
+  url: string;
+};
+
+/** A proposed change to one workflow file (AI draft or restore preview). */
+export type FileChange = {
+  /** Filename only, e.g. "claude-scout.yml". */
+  file: string;
+  oldContent: string | null;
+  newContent: string;
 };
 
 /** Capability chips parsed from a workflow's YAML + .mcp.json. */
@@ -94,4 +111,6 @@ export type AgentDetail = {
   editable: boolean;
   /** GitHub link to the file's commit history. */
   historyUrl: string;
+  /** True when an Anthropic API key is configured (AI drafting available). */
+  aiEnabled: boolean;
 };

@@ -30,6 +30,7 @@ import type { MapStatus } from "@/lib/map-types";
 import AgentNode from "./agent-node";
 import StageNode from "./stage-node";
 import AgentDrawer from "./agent-drawer";
+import LoopEditPanel from "./loop-edit-panel";
 
 const ICONS: Record<string, LucideIcon> = {
   scout: Telescope,
@@ -213,6 +214,9 @@ export default function ProcessMap() {
           </Panel>
         </ReactFlow>
       </div>
+
+      {/* Improve-with-AI + loop history, below the map */}
+      <LoopEditPanel aiEnabled={status ? status.aiEnabled : null} />
 
       <AgentDrawer agentId={openAgent} onClose={() => setOpenAgent(null)} onRan={fetchStatus} />
     </>

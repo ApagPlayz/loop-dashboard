@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { listIssues, listPRs, getWorkflowRuns } from "@/lib/github";
+import { aiEnabled } from "@/lib/map-ai";
 import { AGENTS } from "@/lib/map-agents";
 import type { AgentStatus, MapStatus } from "@/lib/map-types";
 
@@ -58,6 +59,7 @@ export async function GET() {
       approved: approved.length,
       openPRs,
       agents,
+      aiEnabled: aiEnabled(),
       warning: warnings.length ? warnings.join(" ") : undefined,
     };
     return NextResponse.json(body);

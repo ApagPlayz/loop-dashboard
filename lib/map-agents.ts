@@ -12,7 +12,10 @@ import type { AgentMeta } from "./map-types";
 
 export const TARGET_REPO = { owner: "ApagPlayz", repo: "content-generation-platform" };
 
-/** Branch to read the PR #44 workflows from until they land on main. */
+/**
+ * Legacy fallback branch (PR #44). All workflows now live on main; this ref is
+ * only consulted if a file unexpectedly disappears from main.
+ */
 export const FALLBACK_REF = "claude/dashboard-support-workflows";
 
 /* ------------------------------------------------------------------ */
@@ -43,7 +46,7 @@ export const AGENTS: AgentMeta[] = [
       "When you add the 'redraft' label to an idea",
       "Can be run on demand for a specific idea",
     ],
-    onMain: false,
+    onMain: true,
     canDispatch: true,
     dispatch: "issue",
     dispatchInputLabel: "Idea number",
@@ -88,7 +91,7 @@ export const AGENTS: AgentMeta[] = [
       "Automatically on 'claude/' pull requests",
       "Can be run on demand for a specific pull request",
     ],
-    onMain: false,
+    onMain: true,
     canDispatch: true,
     dispatch: "pr",
     dispatchInputLabel: "Pull request number",
@@ -145,7 +148,7 @@ export const AGENTS: AgentMeta[] = [
     description:
       "When you ask for a new capability (a tool, skill, or connected service) from the Tools section, this agent wires it into the right workflow so the loop's agents can use it. It's triggered behind the scenes by the Tools section.",
     triggers: ["Triggered from the Tools section (a 'tool-install' event)"],
-    onMain: false,
+    onMain: true,
     canDispatch: false,
     dispatch: "none",
   },

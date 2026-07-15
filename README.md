@@ -27,6 +27,19 @@ Sections: **Process Map**, **Ideas**, **Builds & Evidence**, **Testing**,
 4. Generate it and copy the `github_pat_...` value somewhere safe — GitHub only
    shows it once.
 
+### Optional: an Anthropic API key (AI drafting)
+
+The Process Map has "Draft with AI" boxes — describe a change in plain English
+("make Scout run twice a week") and Claude drafts it for you to review before
+anything is saved. To turn that on, add a third secret:
+
+- `ANTHROPIC_API_KEY` — create one at <https://console.anthropic.com/>.
+- `DASHBOARD_AI_MODEL` — optional; which Claude model to use (leave unset for
+  the default).
+
+Without the key, the dashboard still works fully — the AI boxes just show a
+note, and History / manual editing keep working.
+
 ---
 
 ## Run it on your own computer
@@ -50,6 +63,7 @@ Open <http://localhost:3000>, enter your dashboard password, and you're in.
    values from your `.env.local`:
    - `DASHBOARD_PASSWORD` → your chosen password
    - `GITHUB_TOKEN` → your `github_pat_...` token
+   - `ANTHROPIC_API_KEY` → optional, turns on AI drafting (see above)
 4. Click **Deploy**. After ~1 minute you get a URL like
    `https://loop-dashboard.vercel.app`.
 5. Open that URL on your phone, log in once, and add it to your home screen.

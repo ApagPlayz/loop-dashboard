@@ -3,6 +3,7 @@ import { getFileContent, getWorkflowRuns } from "@/lib/github";
 import { getAgent, TARGET_REPO, FALLBACK_REF } from "@/lib/map-agents";
 import { parseCapabilities } from "@/lib/map-capabilities";
 import { extractPrompt } from "@/lib/map-yaml";
+import { aiEnabled } from "@/lib/map-ai";
 import type { AgentDetail, RunSummary } from "@/lib/map-types";
 
 export const dynamic = "force-dynamic";
@@ -64,6 +65,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       extractionNote: extraction.ok ? undefined : extraction.reason,
       editable,
       historyUrl: `https://github.com/${TARGET_REPO.owner}/${TARGET_REPO.repo}/commits/${ref}/${path}`,
+      aiEnabled: aiEnabled(),
     };
     return NextResponse.json(detail);
   } catch (err) {
