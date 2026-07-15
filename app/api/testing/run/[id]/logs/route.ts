@@ -1,0 +1,30 @@
+import { NextResponse } from "next/server";
+import { getJobLogTail } from "@/lib/testing";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * Tail of a job's logs. Query: ?job=<jobId>&lines=200
+ * GitHub only serves logs once a job has finished; while running this returns
+ * { available: false } and the UI shows step progress instead.
+ */
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const jobId = Number(url.searchParams.get("job"));
+  const lines = Number(url.searchParams.get("lines") ?? "200");
+  if (!Number.isFinite(jobId)) {
+    return NextResponse.json({ error: "Missing job id" }, { status: 400 });
+  }
+  try {
+    const result = await getJobLogTail(
+      jobId,
+      Number.isFinite(lines) ? lines : 200,
+    );
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json(
+      { error: "Could not load logs." },
+      { status: 500 },
+    );
+  }
+}

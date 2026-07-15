@@ -1,14 +1,14 @@
 import PageHeader from "@/components/page-header";
-import UnderConstruction from "@/components/under-construction";
+import TestingView from "@/components/testing/testing-view";
 
 export default function TestingPage() {
   return (
     <>
       <PageHeader
         title="Testing"
-        description="Run checks against the loop and review test results."
+        description="Run any agent by hand, watch it live, check the test suite, and see whether your instruction changes are helping."
       />
-      <UnderConstruction note="The Testing agent will add test triggers and result views here." />
+      <TestingView />
     </>
   );
 }
