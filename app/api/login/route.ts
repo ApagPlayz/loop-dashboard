@@ -21,9 +21,13 @@ export async function POST(req: Request) {
 
   const token = await createAuthCookie();
   const res = NextResponse.json({ ok: true });
+  // Secure must follow the actual connection, not NODE_ENV: the production
+  // build also runs locally over plain http, where Safari drops Secure cookies.
+  const proto =
+    req.headers.get("x-forwarded-proto") ?? new URL(req.url).protocol.slice(0, -1);
   res.cookies.set(AUTH_COOKIE, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: proto === "https",
     sameSite: "lax",
     path: "/",
     maxAge: COOKIE_MAX_AGE,
