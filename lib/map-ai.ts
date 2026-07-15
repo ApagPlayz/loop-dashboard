@@ -276,6 +276,96 @@ IMPORTANT: your previous reply was not valid JSON matching the schema. This time
 }
 
 /* ------------------------------------------------------------------ */
+/* CLI backend — plain-text chat (help assistant)                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Shown when the help assistant is asked to answer but no local `claude` CLI
+ * exists (e.g. the dashboard is running in the cloud on Vercel). The assistant
+ * is intentionally CLI-only: it bills to the owner's Claude subscription and
+ * has no API-key fallback.
+ */
+export const ASSISTANT_CLI_UNAVAILABLE_MESSAGE =
+  "The help assistant only works when the dashboard is running on your laptop (it talks to the Claude app you're logged into). It looks like the dashboard is running in the cloud right now, so the assistant is unavailable — everything else still works.";
+
+export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+export type ChatCallOpts = {
+  /** Full system prompt describing the assistant's job. */
+  system: string;
+  /** The conversation so far, oldest first; the last item must be the user. */
+  messages: ChatMessage[];
+  /** How long the local Claude app may run (default 60s). */
+  timeoutMs?: number;
+};
+
+/** True when a plain-text CLI chat call can actually run right now. */
+export function assistantAvailable(): boolean {
+  return findCli() !== null;
+}
+
+/**
+ * Ask the local `claude` CLI for a plain-text reply to a multi-turn
+ * conversation. Reuses the same hardened invocation as the structured backend
+ * (no tools, throwaway cwd, JSON envelope) but returns the free-form `result`
+ * text instead of a schema-validated object. Always forces the Sonnet model so
+ * the help assistant stays cheap. CLI-only — there is no API fallback.
+ */
+export async function aiChatCall(opts: ChatCallOpts): Promise<string> {
+  const cliPath = findCli();
+  if (!cliPath) throw new AiError(ASSISTANT_CLI_UNAVAILABLE_MESSAGE, 503);
+
+  // The CLI takes a single prompt (session persistence is off), so flatten the
+  // conversation into a transcript and ask it to reply to the latest turn.
+  const transcript = opts.messages
+    .map((m) => `${m.role === "user" ? "Owner" : "Assistant"}: ${m.content}`)
+    .join("\n\n");
+  const prompt = `Conversation so far between you (the assistant) and the dashboard owner:
+
+${transcript}
+
+Write your next reply to the owner's most recent message. Reply with plain text only — no JSON, no preamble.`;
+
+  const args = [
+    "-p",
+    "--output-format",
+    "json",
+    "--model",
+    "sonnet", // forced: keep the help assistant cheap
+    "--tools",
+    "", // no tools: the assistant may only answer, never act
+    "--no-session-persistence",
+    "--append-system-prompt",
+    opts.system,
+    prompt,
+  ];
+
+  const stdout = await runCli(cliPath, args, opts.timeoutMs ?? 60_000);
+
+  let envelope: CliEnvelope;
+  try {
+    envelope = JSON.parse(stdout) as CliEnvelope;
+  } catch {
+    console.error("map-ai(chat): non-JSON envelope", stdout.slice(0, 500));
+    throw new AiError("The local Claude app returned an unexpected answer. Try again.");
+  }
+
+  if (envelope.is_error || envelope.subtype !== "success") {
+    console.error("map-ai(chat): error envelope", JSON.stringify(envelope).slice(0, 500));
+    const hint = typeof envelope.result === "string" ? envelope.result.slice(0, 200) : "";
+    throw new AiError(
+      hint
+        ? `The local Claude app reported a problem: ${hint}`
+        : "The local Claude app reported a problem. Try again.",
+    );
+  }
+
+  const reply = (envelope.result ?? "").trim();
+  if (!reply) throw new AiError("The assistant came back empty. Try asking again.");
+  return reply;
+}
+
+/* ------------------------------------------------------------------ */
 /* API backend (raw fetch + forced tool use)                           */
 /* ------------------------------------------------------------------ */
 
