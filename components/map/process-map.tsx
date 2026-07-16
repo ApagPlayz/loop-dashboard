@@ -37,6 +37,7 @@ import AgentDrawer from "./agent-drawer";
 import LoopEditPanel from "./loop-edit-panel";
 import ProjectSwitcher, { ProjectChecklist } from "./project-switcher";
 import PowerMenu from "./power-menu";
+import Modal from "./modal";
 
 const PILOT_KEY = "content-generation-platform";
 const PROJECT_LS_KEY = "loop-dashboard.project";
@@ -346,13 +347,11 @@ export default function ProcessMap() {
       />
 
       {checklistOpen && (
-        <div className="fixed inset-0 z-50 flex">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setChecklistOpen(false)}
-            aria-hidden
-          />
-          <div className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-zinc-800 bg-zinc-950 p-5 shadow-2xl md:inset-x-auto md:left-1/2 md:top-24 md:w-[480px] md:-translate-x-1/2 md:rounded-2xl md:border">
+        <Modal
+          onClose={() => setChecklistOpen(false)}
+          className="h-[95vh] w-[95vw] sm:h-auto sm:max-h-[85vh] sm:w-[90vw] sm:max-w-[560px]"
+        >
+          <div className="flex-1 overflow-y-auto p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold text-zinc-100">Finish the setup</h2>
               <button
@@ -365,7 +364,7 @@ export default function ProcessMap() {
             </div>
             <ProjectChecklist project={project} />
           </div>
-        </div>
+        </Modal>
       )}
     </>
   );

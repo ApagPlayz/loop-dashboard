@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Power, Loader2, X, AlertTriangle } from "lucide-react";
+import Modal from "./modal";
 
 type WorkflowPower = {
   file: string;
@@ -101,24 +102,22 @@ function PowerSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="absolute inset-x-0 bottom-0 flex max-h-[85vh] flex-col rounded-t-2xl border-t border-zinc-800 bg-zinc-950 shadow-2xl md:inset-auto md:right-8 md:top-24 md:w-[420px] md:rounded-2xl md:border">
-        <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
-          <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-100">
-            <Power className="h-4 w-4 text-emerald-400" /> Loop power
-          </h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Modal onClose={onClose} className="h-[95vh] w-[95vw] sm:h-auto sm:max-h-[85vh] sm:w-[90vw] sm:max-w-[560px]">
+      <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-4">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-100">
+          <Power className="h-4 w-4 text-emerald-400" /> Loop power
+        </h2>
+        <button
+          onClick={onClose}
+          className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
-          {error && (
+      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">
+        {error && (
             <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
             </div>
@@ -234,7 +233,6 @@ function PowerSheet({
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -19,6 +19,7 @@ import { relativeTime, duration, runTone } from "./format";
 import { InlineDiff } from "./diff";
 import HistoryList from "./history-list";
 import { useAiJob, formatElapsed } from "./use-ai-job";
+import Modal from "./modal";
 
 type Tab = "overview" | "instructions" | "capabilities" | "run" | "history";
 
@@ -77,87 +78,78 @@ export default function AgentDrawer({
   if (!agentId) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden
-      />
-      {/* Panel: bottom sheet on mobile, right rail on desktop */}
-      <div className="absolute inset-x-0 bottom-0 flex max-h-[88vh] flex-col rounded-t-2xl border-t border-zinc-800 bg-zinc-950 shadow-2xl md:inset-y-0 md:right-0 md:left-auto md:max-h-none md:w-[480px] md:rounded-none md:border-l md:border-t-0">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4">
-          <div className="min-w-0">
-            <h2 className="truncate text-base font-semibold text-zinc-100">
-              {detail?.meta.label ?? "Loading…"}
-            </h2>
-            {detail && (
-              <p className="mt-0.5 text-xs text-zinc-500">{detail.meta.tagline}</p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="shrink-0 rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
-            aria-label="Close"
-          >
-            <X className="h-5 w-5" />
-          </button>
+    <Modal onClose={onClose} className="h-[95vh] w-[95vw] sm:h-[85vh] sm:w-[85vw] sm:max-w-[1100px]">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3 border-b border-zinc-800 px-5 py-4">
+        <div className="min-w-0">
+          <h2 className="truncate text-base font-semibold text-zinc-100">
+            {detail?.meta.label ?? "Loading…"}
+          </h2>
+          {detail && (
+            <p className="mt-0.5 text-xs text-zinc-500">{detail.meta.tagline}</p>
+          )}
         </div>
-
-        {/* Tabs (scrollable on narrow phones) */}
-        <div className="flex gap-1 overflow-x-auto border-b border-zinc-800 px-3">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`relative shrink-0 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition ${
-                tab === t.id
-                  ? "text-emerald-400"
-                  : "text-zinc-500 hover:text-zinc-200"
-              }`}
-            >
-              {t.label}
-              {tab === t.id && (
-                <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-emerald-400" />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {loading && !detail ? (
-            <div className="flex items-center gap-2 py-10 text-sm text-zinc-500">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading…
-            </div>
-          ) : error && !detail ? (
-            <ErrorBox message={error} onRetry={load} />
-          ) : detail ? (
-            <>
-              {tab === "overview" && <OverviewTab detail={detail} />}
-              {tab === "instructions" && (
-                <InstructionsTab detail={detail} project={project} onSaved={load} />
-              )}
-              {tab === "capabilities" && <CapabilitiesTab detail={detail} />}
-              {tab === "run" && (
-                <RunTab
-                  detail={detail}
-                  project={project}
-                  onRan={() => {
-                    load();
-                    onRan?.();
-                  }}
-                />
-              )}
-              {tab === "history" && (
-                <HistoryList file={detail.meta.file} project={project} onRestored={load} />
-              )}
-            </>
-          ) : null}
-        </div>
+        <button
+          onClick={onClose}
+          className="shrink-0 rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+          aria-label="Close"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
-    </div>
+
+      {/* Tabs (scrollable on narrow phones) */}
+      <div className="flex gap-1 overflow-x-auto border-b border-zinc-800 px-3">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`relative shrink-0 whitespace-nowrap px-3 py-2.5 text-sm font-medium transition ${
+              tab === t.id
+                ? "text-emerald-400"
+                : "text-zinc-500 hover:text-zinc-200"
+            }`}
+          >
+            {t.label}
+            {tab === t.id && (
+              <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-emerald-400" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto px-5 py-4">
+        {loading && !detail ? (
+          <div className="flex items-center gap-2 py-10 text-sm text-zinc-500">
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading…
+          </div>
+        ) : error && !detail ? (
+          <ErrorBox message={error} onRetry={load} />
+        ) : detail ? (
+          <>
+            {tab === "overview" && <OverviewTab detail={detail} />}
+            {tab === "instructions" && (
+              <InstructionsTab detail={detail} project={project} onSaved={load} />
+            )}
+            {tab === "capabilities" && <CapabilitiesTab detail={detail} />}
+            {tab === "run" && (
+              <RunTab
+                detail={detail}
+                project={project}
+                onRan={() => {
+                  load();
+                  onRan?.();
+                }}
+              />
+            )}
+            {tab === "history" && (
+              <HistoryList file={detail.meta.file} project={project} onRestored={load} />
+            )}
+          </>
+        ) : null}
+      </div>
+    </Modal>
   );
 }
 
