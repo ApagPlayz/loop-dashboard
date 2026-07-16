@@ -101,6 +101,64 @@ export async function removeLabel(
   return res.data;
 }
 
+/** Default colors for labels this app may need to create on the fly. */
+const LABEL_COLORS: Record<string, string> = {
+  proposal: "0E8A16",
+  approved: "1D76DB",
+  redraft: "D93F0B",
+};
+
+/**
+ * Create a new issue. Returns the created issue.
+ *
+ * Resilient to a missing label: if the create fails because one of the
+ * requested labels doesn't exist on the repo, the label is created (with a
+ * sensible color) and the create is retried once.
+ */
+export async function createIssue(
+  title: string,
+  body: string,
+  labels: string[] = [],
+  repo: RepoConfig = REPOS.primary,
+) {
+  const octokit = getOctokit();
+  try {
+    const res = await octokit.rest.issues.create({
+      owner: repo.owner,
+      repo: repo.repo,
+      title,
+      body,
+      labels,
+    });
+    return res.data;
+  } catch (err: unknown) {
+    // A missing label surfaces as a 422 validation error. Create any labels
+    // the repo is missing, then retry the create exactly once.
+    const status = (err as { status?: number })?.status;
+    if (status !== 422 || labels.length === 0) throw err;
+    for (const name of labels) {
+      try {
+        await octokit.rest.issues.createLabel({
+          owner: repo.owner,
+          repo: repo.repo,
+          name,
+          color: LABEL_COLORS[name] ?? "ededed",
+        });
+      } catch {
+        /* already exists or not the problem — ignore and let the retry decide */
+      }
+    }
+    const res = await octokit.rest.issues.create({
+      owner: repo.owner,
+      repo: repo.repo,
+      title,
+      body,
+      labels,
+    });
+    return res.data;
+  }
+}
+
 /** Create a comment on an issue or PR. */
 export async function createComment(
   issueNumber: number,

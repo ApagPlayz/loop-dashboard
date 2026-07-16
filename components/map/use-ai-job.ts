@@ -10,10 +10,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type PublicAiJob = {
   id: string;
-  kind: "draft" | "loop-edit" | "process-chat";
+  kind: "draft" | "loop-edit" | "process-chat" | "custom-idea";
   status: "running" | "done" | "error";
   createdAt: number;
-  input: { request?: string; agentId?: string; mode?: string };
+  input: { request?: string; agentId?: string; mode?: string; project?: string };
   result?: unknown;
   error?: string;
   consumed: boolean;
@@ -22,7 +22,7 @@ export type PublicAiJob = {
 const POLL_MS = 2500;
 
 export function useAiJob(opts: {
-  kind: "draft" | "loop-edit" | "process-chat";
+  kind: "draft" | "loop-edit" | "process-chat" | "custom-idea";
   agentId?: string;
   /** Project registry key (or "template") — scopes job restore to one target. */
   project?: string;

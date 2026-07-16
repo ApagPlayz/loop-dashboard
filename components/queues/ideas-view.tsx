@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { PenLine } from "lucide-react";
 import type { IdeasPayload, IdeaSummary } from "@/lib/queues";
 import { TabBar, ErrorPanel, EmptyState, Spinner } from "./ui";
 import { ToastProvider } from "./toast";
 import IdeaCard from "./idea-card";
+import CustomIdea from "./custom-idea";
 
 type TabKey = "waiting" | "approved" | "redraft" | "closed";
 
@@ -35,6 +37,7 @@ function IdeasInner() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("waiting");
+  const [showCustom, setShowCustom] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -86,7 +89,19 @@ function IdeasInner() {
 
   return (
     <div>
+      <div className="mb-3 flex justify-end">
+        <button
+          onClick={() => setShowCustom(true)}
+          className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500"
+        >
+          <PenLine className="h-4 w-4" />
+          Custom idea
+        </button>
+      </div>
       <TabBar tabs={tabs} active={tab} onChange={setTab} />
+      {showCustom && (
+        <CustomIdea onClose={() => setShowCustom(false)} onRefreshPilot={load} />
+      )}
       {current.length === 0 ? (
         <EmptyState message={EMPTY_COPY[tab]} />
       ) : (
