@@ -20,16 +20,21 @@ import { InlineDiff } from "./diff";
 import HistoryList from "./history-list";
 import { useAiJob, formatElapsed } from "./use-ai-job";
 import Modal from "./modal";
+import CatalogBrowser from "@/components/tools/catalog-browser";
 
-type Tab = "overview" | "instructions" | "capabilities" | "run" | "history";
+type Tab = "overview" | "instructions" | "capabilities" | "run" | "install" | "history";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "instructions", label: "Instructions" },
   { id: "capabilities", label: "Abilities" },
   { id: "run", label: "Run now" },
+  { id: "install", label: "Install tools" },
   { id: "history", label: "History" },
 ];
+
+/** Agents that can actually receive an installed tool (mirrors TARGET_AGENTS). */
+const TOOL_TARGET_AGENTS = new Set(["scout", "builder", "audit", "retro", "mention", "demo"]);
 
 export default function AgentDrawer({
   agentId,
@@ -143,6 +148,7 @@ export default function AgentDrawer({
                 }}
               />
             )}
+            {tab === "install" && <InstallToolsTab detail={detail} project={project} />}
             {tab === "history" && (
               <HistoryList file={detail.meta.file} project={project} onRestored={load} />
             )}
@@ -566,6 +572,61 @@ function ChipGroup({
         ))}
       </div>
     </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Install tools                                                       */
+/* ------------------------------------------------------------------ */
+
+function InstallToolsTab({ detail, project }: { detail: AgentDetail; project: string }) {
+  const isTarget = TOOL_TARGET_AGENTS.has(detail.meta.id);
+  const [available, setAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!isTarget) return;
+    let alive = true;
+    fetch(`/api/tools/install?project=${encodeURIComponent(project)}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive) setAvailable(d.available !== false);
+      })
+      .catch(() => {
+        if (alive) setAvailable(true);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [isTarget, project]);
+
+  if (!isTarget) {
+    return (
+      <Banner tone="zinc">
+        <Info className="mr-1 inline h-3.5 w-3.5" />
+        This one runs a plain script (or isn&apos;t a tool-using agent), so it can&apos;t take extra
+        tools. Install tools into Scout, Builder, Auditor, Retro, Demo, or @mention instead.
+      </Banner>
+    );
+  }
+
+  if (available === null) {
+    return (
+      <div className="flex items-center gap-2 py-6 text-sm text-zinc-500">
+        <Loader2 className="h-4 w-4 animate-spin" /> Checking…
+      </div>
+    );
+  }
+
+  return (
+    <CatalogBrowser
+      install={{
+        mode: "agent",
+        agentId: detail.meta.id,
+        agentLabel: detail.meta.label,
+        project,
+        available,
+      }}
+    />
   );
 }
 

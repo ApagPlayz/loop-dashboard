@@ -1,8 +1,9 @@
 import { Suspense } from "react";
-import { KeyRound, Activity, LayoutGrid, Store } from "lucide-react";
+import { KeyRound, Activity, LayoutGrid, Compass } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import AddToolForm from "@/components/tools/add-tool-form";
-import ToolCatalog from "@/components/tools/tool-catalog";
+import FitScan from "@/components/tools/fit-scan";
+import ToolCatalogModal from "@/components/tools/tool-catalog-modal";
 import NeedsYou from "@/components/tools/needs-you";
 import InstallActivity from "@/components/tools/install-activity";
 import CapabilityInventory from "@/components/tools/capability-inventory";
@@ -19,16 +20,20 @@ export default function ToolsPage() {
       />
 
       <div className="space-y-10">
-        {/* Add a tool */}
-        <AddToolForm />
+        {/* Give ALL agents a tool by pasting a link. To target a single agent,
+            open it on the Process Map → Install tools tab. */}
+        <AddToolForm allMode />
 
-        {/* Tool marketplace / catalog */}
+        {/* Discover + browse tools */}
         <section>
           <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-zinc-300">
-            <Store className="h-4 w-4 text-zinc-500" />
-            Tool marketplace
+            <Compass className="h-4 w-4 text-zinc-500" />
+            Find &amp; browse tools
           </h2>
-          <ToolCatalog />
+          <div className="space-y-3">
+            <FitScan />
+            <ToolCatalogModal />
+          </div>
         </section>
 
         {/* Needs you */}
@@ -58,11 +63,7 @@ export default function ToolsPage() {
           <p className="mb-3 text-xs text-zinc-500">
             The tools each agent is allowed to use, read straight from its setup.
           </p>
-          <Suspense
-            fallback={
-              <p className="text-sm text-zinc-500">Reading agent setup…</p>
-            }
-          >
+          <Suspense fallback={<p className="text-sm text-zinc-500">Reading agent setup…</p>}>
             <CapabilityInventory />
           </Suspense>
         </section>

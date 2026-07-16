@@ -102,7 +102,8 @@ export default function AddToolForm({ allMode = false }: { allMode?: boolean }) 
       </div>
       {allMode && (
         <p className="mb-3 text-xs text-zinc-400">
-          Every agent gets this one. It arrives as a single build to approve.
+          Every agent gets this one. It arrives as a single build to approve. Want it on just one
+          agent? Open that agent on the Process Map → Install tools tab.
         </p>
       )}
 

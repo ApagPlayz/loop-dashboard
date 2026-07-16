@@ -11,7 +11,6 @@ import {
   CheckCircle2,
   ExternalLink,
   Wrench,
-  Store,
   AlertTriangle,
   Star,
   ShieldCheck,
@@ -19,6 +18,17 @@ import {
   Users,
   HelpCircle,
 } from "lucide-react";
+
+/**
+ * The one tool-catalog browser, used by two hosts:
+ *  - the Tools tab's "Browse the marketplace" modal  → install context {mode:"all"}
+ *  - a Process-Map agent modal's "Install tools" tab → {mode:"agent", ...}
+ *
+ * Search + type/category filters + trust badges/safety flags + detail view are
+ * identical in both places. Only the install action differs: the Tools tab
+ * always installs for ALL agents (with a hint pointing to the map for a single
+ * agent); the map tab installs for THAT one agent and is project-aware.
+ */
 
 /* ---------- types (mirror lib/tool-catalog.ts) ---------- */
 
@@ -49,71 +59,35 @@ type CatalogEntry = {
   recommended?: boolean;
 };
 
-/* ---------- target agents (same list as the install form) ---------- */
+/** Where an install from this browser should go. */
+export type InstallContext =
+  | { mode: "all" }
+  | {
+      mode: "agent";
+      agentId: string;
+      agentLabel: string;
+      project: string;
+      /** Whether this project's repo has the tool-installer workflow. */
+      available: boolean;
+    };
 
-const AGENTS: { value: string; label: string; blurb: string }[] = [
-  { value: "all", label: "All agents", blurb: "Every agent gets it" },
-  { value: "scout", label: "Scout", blurb: "Finds work, files proposals" },
-  { value: "builder", label: "Builder", blurb: "Writes code, opens PRs" },
-  { value: "audit", label: "Auditor", blurb: "Reviews every PR" },
-  { value: "retro", label: "Retro", blurb: "Reviews how the loop is doing" },
-  { value: "mention", label: "Mention", blurb: "Replies when you write @claude" },
-  { value: "demo", label: "Demo", blurb: "Captures screenshots / video" },
-];
+const MAP_HINT = "Want it on just one agent? Open that agent on the Process Map → Install tools tab.";
 
 /* ---------- type styling ---------- */
 
-const TYPE_META: Record<
-  ToolType,
-  { label: string; chip: string; icon: React.ReactNode }
-> = {
-  mcp: {
-    label: "MCP server",
-    chip: "border-sky-500/30 bg-sky-500/10 text-sky-300",
-    icon: <Server className="h-3.5 w-3.5" />,
-  },
-  skill: {
-    label: "Skill",
-    chip: "border-violet-500/30 bg-violet-500/10 text-violet-300",
-    icon: <Sparkles className="h-3.5 w-3.5" />,
-  },
-  plugin: {
-    label: "Plugin",
-    chip: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-    icon: <Puzzle className="h-3.5 w-3.5" />,
-  },
+const TYPE_META: Record<ToolType, { label: string; chip: string; icon: React.ReactNode }> = {
+  mcp: { label: "MCP server", chip: "border-sky-500/30 bg-sky-500/10 text-sky-300", icon: <Server className="h-3.5 w-3.5" /> },
+  skill: { label: "Skill", chip: "border-violet-500/30 bg-violet-500/10 text-violet-300", icon: <Sparkles className="h-3.5 w-3.5" /> },
+  plugin: { label: "Plugin", chip: "border-amber-500/30 bg-amber-500/10 text-amber-300", icon: <Puzzle className="h-3.5 w-3.5" /> },
 };
 
 /* ---------- trust tiers (plain English) ---------- */
 
-const TIER_META: Record<
-  TrustTier,
-  { label: string; help: string; chip: string; icon: React.ReactNode }
-> = {
-  official: {
-    label: "Official",
-    help: "Made by Anthropic or listed in the official registry.",
-    chip: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
-    icon: <ShieldCheck className="h-3 w-3" />,
-  },
-  verified: {
-    label: "Verified vendor",
-    help: "An established, popular tool from a known publisher.",
-    chip: "border-sky-500/40 bg-sky-500/10 text-sky-300",
-    icon: <BadgeCheck className="h-3 w-3" />,
-  },
-  community: {
-    label: "Community",
-    help: "Open-source community tool with decent usage signals.",
-    chip: "border-zinc-600 bg-zinc-800/60 text-zinc-300",
-    icon: <Users className="h-3 w-3" />,
-  },
-  unreviewed: {
-    label: "New · unreviewed",
-    help: "Found automatically — nobody has checked it yet.",
-    chip: "border-amber-500/40 bg-amber-500/10 text-amber-300",
-    icon: <HelpCircle className="h-3 w-3" />,
-  },
+const TIER_META: Record<TrustTier, { label: string; help: string; chip: string; icon: React.ReactNode }> = {
+  official: { label: "Official", help: "Made by Anthropic or listed in the official registry.", chip: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300", icon: <ShieldCheck className="h-3 w-3" /> },
+  verified: { label: "Verified vendor", help: "An established, popular tool from a known publisher.", chip: "border-sky-500/40 bg-sky-500/10 text-sky-300", icon: <BadgeCheck className="h-3 w-3" /> },
+  community: { label: "Community", help: "Open-source community tool with decent usage signals.", chip: "border-zinc-600 bg-zinc-800/60 text-zinc-300", icon: <Users className="h-3 w-3" /> },
+  unreviewed: { label: "New · unreviewed", help: "Found automatically — nobody has checked it yet.", chip: "border-amber-500/40 bg-amber-500/10 text-amber-300", icon: <HelpCircle className="h-3 w-3" /> },
 };
 
 function tierOf(e: CatalogEntry): TrustTier {
@@ -132,7 +106,7 @@ const PAGE_SIZE = 24;
 
 /* ================================================================== */
 
-export default function ToolCatalog() {
+export default function CatalogBrowser({ install = { mode: "all" } }: { install?: InstallContext }) {
   const [entries, setEntries] = useState<CatalogEntry[]>([]);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
@@ -187,11 +161,9 @@ export default function ToolCatalog() {
     }
   }
 
-  // all categories present, sorted by how many tools each has
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const e of entries)
-      for (const c of e.categories ?? []) counts.set(c, (counts.get(c) ?? 0) + 1);
+    for (const e of entries) for (const c of e.categories ?? []) counts.set(c, (counts.get(c) ?? 0) + 1);
     return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
   }, [entries]);
 
@@ -214,7 +186,6 @@ export default function ToolCatalog() {
     });
   }, [entries, query, filter, category, showStale]);
 
-  // reset the visible window whenever the filters change
   useEffect(() => {
     setVisible(PAGE_SIZE);
   }, [query, filter, category, showStale]);
@@ -228,21 +199,30 @@ export default function ToolCatalog() {
   const shown = filtered.slice(0, visible);
 
   return (
-    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
-      <div className="mb-1 flex items-center gap-2">
-        <Store className="h-4 w-4 text-emerald-400" />
-        <h2 className="text-sm font-semibold text-zinc-100">Browse the tool catalog</h2>
-      </div>
-      <p className="mb-4 text-xs text-zinc-400">
-        Hundreds of MCP servers, skills, and plugins, ranked by how popular and
-        well-maintained they are. Tap one to see what it does, then install it into
-        any agent.{" "}
-        {entries.length > 0 && (
-          <span className="text-zinc-500">
-            {counts.mcp} MCP · {counts.skill} skills · {counts.plugin} plugins.
-          </span>
-        )}
-      </p>
+    <div>
+      {/* Intro / install-target context */}
+      {install.mode === "agent" ? (
+        <p className="mb-3 text-xs text-zinc-400">
+          Browse the whole tool library and install straight into{" "}
+          <span className="font-medium text-zinc-200">{install.agentLabel}</span>. Tap a tool to see
+          what it does.
+          {entries.length > 0 && (
+            <span className="ml-1 text-zinc-500">
+              {counts.mcp} MCP · {counts.skill} skills · {counts.plugin} plugins.
+            </span>
+          )}
+        </p>
+      ) : (
+        <p className="mb-3 text-xs text-zinc-400">
+          Hundreds of MCP servers, skills, and plugins, ranked by how popular and well-maintained they
+          are. Tap one to see what it does, then install it for all your agents.
+          {entries.length > 0 && (
+            <span className="ml-1 text-zinc-500">
+              {counts.mcp} MCP · {counts.skill} skills · {counts.plugin} plugins.
+            </span>
+          )}
+        </p>
+      )}
 
       {/* Search + scan */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -331,12 +311,7 @@ export default function ToolCatalog() {
             </p>
             <div className="grid gap-2.5 sm:grid-cols-2">
               {shown.map((e) => (
-                <CatalogCard
-                  key={e.id}
-                  entry={e}
-                  requested={requestedIds.has(e.id)}
-                  onOpen={() => setSelected(e)}
-                />
+                <CatalogCard key={e.id} entry={e} requested={requestedIds.has(e.id)} onOpen={() => setSelected(e)} />
               ))}
             </div>
             {visible < filtered.length && (
@@ -357,6 +332,7 @@ export default function ToolCatalog() {
         <DetailModal
           entry={selected}
           requested={requestedIds.has(selected.id)}
+          install={install}
           onClose={() => setSelected(null)}
         />
       )}
@@ -369,10 +345,7 @@ export default function ToolCatalog() {
 function TierBadge({ tier }: { tier: TrustTier }) {
   const m = TIER_META[tier];
   return (
-    <span
-      title={m.help}
-      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${m.chip}`}
-    >
+    <span title={m.help} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${m.chip}`}>
       {m.icon} {m.label}
     </span>
   );
@@ -380,15 +353,7 @@ function TierBadge({ tier }: { tier: TrustTier }) {
 
 /* ---------- list card ---------- */
 
-function CatalogCard({
-  entry,
-  requested,
-  onOpen,
-}: {
-  entry: CatalogEntry;
-  requested: boolean;
-  onOpen: () => void;
-}) {
+function CatalogCard({ entry, requested, onOpen }: { entry: CatalogEntry; requested: boolean; onOpen: () => void }) {
   const meta = TYPE_META[entry.type];
   const tier = tierOf(entry);
   const flags = entry.safetyFlags ?? [];
@@ -400,18 +365,13 @@ function CatalogCard({
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5">
           {entry.recommended && (
-            <span
-              title="Best pick in its category"
-              className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300"
-            >
+            <span title="Best pick in its category" className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
               <Star className="h-3 w-3 fill-emerald-300" /> Recommended
             </span>
           )}
           <h3 className="text-sm font-semibold text-zinc-100">{entry.name}</h3>
         </div>
-        <span
-          className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${meta.chip}`}
-        >
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${meta.chip}`}>
           {meta.icon} {meta.label}
         </span>
       </div>
@@ -420,10 +380,7 @@ function CatalogCard({
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <TierBadge tier={tier} />
         {(entry.categories ?? []).slice(0, 1).map((c) => (
-          <span
-            key={c}
-            className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] text-zinc-400"
-          >
+          <span key={c} className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] text-zinc-400">
             {c}
           </span>
         ))}
@@ -454,35 +411,38 @@ function CatalogCard({
 function DetailModal({
   entry,
   requested,
+  install,
   onClose,
 }: {
   entry: CatalogEntry;
   requested: boolean;
+  install: InstallContext;
   onClose: () => void;
 }) {
   const meta = TYPE_META[entry.type];
   const tier = tierOf(entry);
   const flags = entry.safetyFlags ?? [];
-  const [target, setTarget] = useState("all");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function install() {
+  const targetLabel = install.mode === "agent" ? install.agentLabel : "all agents";
+
+  async function doInstall() {
     setError(null);
     setBusy(true);
     try {
+      const payload: Record<string, unknown> = {
+        url: entry.url,
+        target_agent: install.mode === "agent" ? install.agentId : "all",
+        notes: notes.trim() ? notes.trim() : `From the tool catalog: ${entry.name} (${meta.label}).`,
+      };
+      if (install.mode === "agent") payload.project = install.project;
       const res = await fetch("/api/tools/install", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: entry.url,
-          target_agent: target,
-          notes: notes.trim()
-            ? notes.trim()
-            : `From the tool catalog: ${entry.name} (${meta.label}).`,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok) setDone(true);
@@ -494,15 +454,11 @@ function DetailModal({
     }
   }
 
+  const gated = install.mode === "agent" && !install.available;
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-zinc-800 bg-zinc-900 p-5 sm:rounded-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/60 p-0 sm:items-center sm:p-4" onClick={onClose}>
+      <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-2xl border border-zinc-800 bg-zinc-900 p-5 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
         {/* header */}
         <div className="flex items-start justify-between gap-3">
           <div>
@@ -513,20 +469,14 @@ function DetailModal({
                 </span>
               )}
               <h2 className="text-base font-semibold text-zinc-100">{entry.name}</h2>
-              <span
-                className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${meta.chip}`}
-              >
+              <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${meta.chip}`}>
                 {meta.icon} {meta.label}
               </span>
               <TierBadge tier={tier} />
             </div>
             <p className="mt-1.5 text-sm text-zinc-300">{entry.description}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="shrink-0 rounded-md p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300"
-            aria-label="Close"
-          >
+          <button onClick={onClose} className="shrink-0 rounded-md p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -560,10 +510,7 @@ function DetailModal({
         {tier === "unreviewed" && (
           <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-            <span>
-              Found automatically by a scan — the details below aren&apos;t verified
-              yet. Open the link to check it before installing.
-            </span>
+            <span>Found automatically by a scan — the details below aren&apos;t verified yet. Open the link to check it before installing.</span>
           </div>
         )}
 
@@ -586,10 +533,7 @@ function DetailModal({
           <Section title="Key features">
             <div className="flex flex-wrap gap-1.5">
               {entry.features.map((f, i) => (
-                <span
-                  key={i}
-                  className="rounded-full border border-zinc-700 bg-zinc-950 px-2.5 py-0.5 text-xs text-zinc-300"
-                >
+                <span key={i} className="rounded-full border border-zinc-700 bg-zinc-950 px-2.5 py-0.5 text-xs text-zinc-300">
                   {f}
                 </span>
               ))}
@@ -603,12 +547,7 @@ function DetailModal({
         </Section>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500">
           <span>{entry.popularity}</span>
-          <a
-            href={entry.url}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 text-emerald-400 hover:underline"
-          >
+          <a href={entry.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-emerald-400 hover:underline">
             View source <ExternalLink className="h-3 w-3" />
           </a>
           {entry.lastVerified && <span>Verified {entry.lastVerified}</span>}
@@ -622,46 +561,34 @@ function DetailModal({
               <div className="text-sm text-zinc-200">
                 <p className="font-semibold text-emerald-300">Install started.</p>
                 <p className="mt-1 text-zinc-400">
-                  Claude is wiring{" "}
-                  <strong className="text-zinc-200">{entry.name}</strong> into{" "}
-                  {AGENTS.find((a) => a.value === target)?.label ?? target}. It arrives
-                  as a build to approve, and if it needs a key or account you&apos;ll see
-                  a task in the <strong className="text-zinc-200">Needs you</strong> box.
+                  Claude is wiring <strong className="text-zinc-200">{entry.name}</strong> into {targetLabel}. It arrives as a
+                  build to approve, and if it needs a key or account you&apos;ll see a task in the{" "}
+                  <strong className="text-zinc-200">Needs you</strong> box.
                 </p>
               </div>
             </div>
+          ) : gated ? (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 text-sm text-amber-200">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                This project doesn&apos;t have the tool-installer set up yet, so tools can&apos;t be installed
+                here. Onboard it from the Projects menu first.
+              </span>
+            </div>
           ) : (
             <>
-              <p className="mb-2 text-xs font-medium text-zinc-400">
-                Install this into which agent?
+              <p className="mb-2 text-sm text-zinc-300">
+                {install.mode === "agent" ? (
+                  <>
+                    Install into <strong className="text-zinc-100">{install.agentLabel}</strong>.
+                  </>
+                ) : (
+                  <>Install for <strong className="text-zinc-100">all agents</strong>.</>
+                )}
               </p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {AGENTS.map((a) => {
-                  const active = target === a.value;
-                  return (
-                    <button
-                      key={a.value}
-                      type="button"
-                      onClick={() => setTarget(a.value)}
-                      className={`rounded-lg border px-3 py-2 text-left transition-colors ${
-                        active
-                          ? "border-emerald-500 bg-emerald-500/10"
-                          : "border-zinc-700 bg-zinc-950 hover:bg-zinc-800"
-                      }`}
-                    >
-                      <span className="block text-xs font-semibold text-zinc-100">
-                        {a.label}
-                      </span>
-                      <span className="block text-[11px] text-zinc-500">{a.blurb}</span>
-                    </button>
-                  );
-                })}
-              </div>
 
-              <label className="mt-3 block">
-                <span className="mb-1 block text-xs font-medium text-zinc-400">
-                  Anything Claude should know? (optional)
-                </span>
+              <label className="mt-1 block">
+                <span className="mb-1 block text-xs font-medium text-zinc-400">Anything Claude should know? (optional)</span>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -671,21 +598,19 @@ function DetailModal({
                 />
               </label>
 
-              {requested && (
-                <p className="mt-2 text-xs text-amber-300">
-                  Heads up: an install for this one already looks to be in progress.
-                </p>
-              )}
+              {requested && <p className="mt-2 text-xs text-amber-300">Heads up: an install for this one already looks to be in progress.</p>}
               {error && <p className="mt-2 text-xs text-amber-300">{error}</p>}
 
               <button
-                onClick={install}
+                onClick={doInstall}
                 disabled={busy}
                 className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
               >
                 <Wrench className="h-4 w-4" />
-                {busy ? "Sending…" : `Install ${entry.name}`}
+                {busy ? "Sending…" : install.mode === "agent" ? `Install for ${install.agentLabel}` : `Install for all agents`}
               </button>
+
+              {install.mode === "all" && <p className="mt-2 text-[11px] text-zinc-500">{MAP_HINT}</p>}
             </>
           )}
         </div>
@@ -697,9 +622,7 @@ function DetailModal({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="mt-4">
-      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-        {title}
-      </h3>
+      <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-zinc-500">{title}</h3>
       {children}
     </div>
   );
