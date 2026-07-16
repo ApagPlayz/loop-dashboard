@@ -1,7 +1,8 @@
 import { Suspense } from "react";
-import { KeyRound, Activity, LayoutGrid } from "lucide-react";
+import { KeyRound, Activity, LayoutGrid, Store } from "lucide-react";
 import PageHeader from "@/components/page-header";
 import AddToolForm from "@/components/tools/add-tool-form";
+import ToolCatalog from "@/components/tools/tool-catalog";
 import NeedsYou from "@/components/tools/needs-you";
 import InstallActivity from "@/components/tools/install-activity";
 import CapabilityInventory from "@/components/tools/capability-inventory";
@@ -20,6 +21,15 @@ export default function ToolsPage() {
       <div className="space-y-10">
         {/* Add a tool */}
         <AddToolForm />
+
+        {/* Tool marketplace / catalog */}
+        <section>
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-zinc-300">
+            <Store className="h-4 w-4 text-zinc-500" />
+            Tool marketplace
+          </h2>
+          <ToolCatalog />
+        </section>
 
         {/* Needs you */}
         <section>
