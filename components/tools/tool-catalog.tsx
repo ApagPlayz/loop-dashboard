@@ -13,12 +13,18 @@ import {
   Wrench,
   Store,
   AlertTriangle,
+  Star,
+  ShieldCheck,
+  BadgeCheck,
+  Users,
+  HelpCircle,
 } from "lucide-react";
 
 /* ---------- types (mirror lib/tool-catalog.ts) ---------- */
 
 type ToolType = "mcp" | "skill" | "plugin";
 type ToolStatus = "reviewed" | "unreviewed";
+type TrustTier = "official" | "verified" | "community" | "unreviewed";
 
 type CatalogEntry = {
   id: string;
@@ -33,6 +39,14 @@ type CatalogEntry = {
   popularity: string;
   lastVerified: string;
   discoveredFrom?: string;
+  trustTier?: TrustTier;
+  rankScore?: number;
+  stale?: boolean;
+  staleReason?: string;
+  categories?: string[];
+  safetyFlags?: string[];
+  source?: string;
+  recommended?: boolean;
 };
 
 /* ---------- target agents (same list as the install form) ---------- */
@@ -70,12 +84,51 @@ const TYPE_META: Record<
   },
 };
 
+/* ---------- trust tiers (plain English) ---------- */
+
+const TIER_META: Record<
+  TrustTier,
+  { label: string; help: string; chip: string; icon: React.ReactNode }
+> = {
+  official: {
+    label: "Official",
+    help: "Made by Anthropic or listed in the official registry.",
+    chip: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+    icon: <ShieldCheck className="h-3 w-3" />,
+  },
+  verified: {
+    label: "Verified vendor",
+    help: "An established, popular tool from a known publisher.",
+    chip: "border-sky-500/40 bg-sky-500/10 text-sky-300",
+    icon: <BadgeCheck className="h-3 w-3" />,
+  },
+  community: {
+    label: "Community",
+    help: "Open-source community tool with decent usage signals.",
+    chip: "border-zinc-600 bg-zinc-800/60 text-zinc-300",
+    icon: <Users className="h-3 w-3" />,
+  },
+  unreviewed: {
+    label: "New · unreviewed",
+    help: "Found automatically — nobody has checked it yet.",
+    chip: "border-amber-500/40 bg-amber-500/10 text-amber-300",
+    icon: <HelpCircle className="h-3 w-3" />,
+  },
+};
+
+function tierOf(e: CatalogEntry): TrustTier {
+  if (e.trustTier) return e.trustTier;
+  return e.status === "reviewed" ? "verified" : "unreviewed";
+}
+
 const FILTERS: { value: "all" | ToolType; label: string }[] = [
   { value: "all", label: "All" },
   { value: "mcp", label: "MCP servers" },
   { value: "skill", label: "Skills" },
   { value: "plugin", label: "Plugins" },
 ];
+
+const PAGE_SIZE = 24;
 
 /* ================================================================== */
 
@@ -85,6 +138,9 @@ export default function ToolCatalog() {
   const [loaded, setLoaded] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<"all" | ToolType>("all");
+  const [category, setCategory] = useState<string>("all");
+  const [showStale, setShowStale] = useState(false);
+  const [visible, setVisible] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
 
   const [scanning, setScanning] = useState(false);
@@ -131,25 +187,45 @@ export default function ToolCatalog() {
     }
   }
 
+  // all categories present, sorted by how many tools each has
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const e of entries)
+      for (const c of e.categories ?? []) counts.set(c, (counts.get(c) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([c]) => c);
+  }, [entries]);
+
+  const staleCount = useMemo(() => entries.filter((e) => e.stale).length, [entries]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return entries.filter((e) => {
+      if (!showStale && e.stale) return false;
       if (filter !== "all" && e.type !== filter) return false;
+      if (category !== "all" && !(e.categories ?? []).includes(category)) return false;
       if (!q) return true;
       return (
         e.name.toLowerCase().includes(q) ||
         e.description.toLowerCase().includes(q) ||
+        (e.categories ?? []).some((c) => c.toLowerCase().includes(q)) ||
         e.goodFor.some((g) => g.toLowerCase().includes(q)) ||
         e.features.some((f) => f.toLowerCase().includes(q))
       );
     });
-  }, [entries, query, filter]);
+  }, [entries, query, filter, category, showStale]);
+
+  // reset the visible window whenever the filters change
+  useEffect(() => {
+    setVisible(PAGE_SIZE);
+  }, [query, filter, category, showStale]);
 
   const counts = useMemo(() => {
     const c = { mcp: 0, skill: 0, plugin: 0 };
-    for (const e of entries) c[e.type]++;
+    for (const e of entries) if (!e.stale) c[e.type]++;
     return c;
   }, [entries]);
+
+  const shown = filtered.slice(0, visible);
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-5">
@@ -158,10 +234,11 @@ export default function ToolCatalog() {
         <h2 className="text-sm font-semibold text-zinc-100">Browse the tool catalog</h2>
       </div>
       <p className="mb-4 text-xs text-zinc-400">
-        Popular MCP servers, skills, and plugins. Tap one to see what it does, then
-        install it into any agent. {entries.length > 0 && (
+        Hundreds of MCP servers, skills, and plugins, ranked by how popular and
+        well-maintained they are. Tap one to see what it does, then install it into
+        any agent.{" "}
+        {entries.length > 0 && (
           <span className="text-zinc-500">
-            {" "}
             {counts.mcp} MCP · {counts.skill} skills · {counts.plugin} plugins.
           </span>
         )}
@@ -211,6 +288,36 @@ export default function ToolCatalog() {
         })}
       </div>
 
+      {/* Category filter + stale toggle */}
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-zinc-500">Category</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs text-zinc-200 focus:border-emerald-500 focus:outline-none"
+          >
+            <option value="all">All categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        {staleCount > 0 && (
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-zinc-400">
+            <input
+              type="checkbox"
+              checked={showStale}
+              onChange={(e) => setShowStale(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-zinc-600 bg-zinc-950 accent-emerald-500"
+            />
+            Show unmaintained tools ({staleCount})
+          </label>
+        )}
+      </div>
+
       {/* List */}
       <div className="mt-4">
         {!loaded ? (
@@ -218,16 +325,31 @@ export default function ToolCatalog() {
         ) : filtered.length === 0 ? (
           <p className="text-sm text-zinc-500">No tools match your search.</p>
         ) : (
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            {filtered.map((e) => (
-              <CatalogCard
-                key={e.id}
-                entry={e}
-                requested={requestedIds.has(e.id)}
-                onOpen={() => setSelected(e)}
-              />
-            ))}
-          </div>
+          <>
+            <p className="mb-2.5 text-xs text-zinc-500">
+              Showing {shown.length} of {filtered.length}
+            </p>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {shown.map((e) => (
+                <CatalogCard
+                  key={e.id}
+                  entry={e}
+                  requested={requestedIds.has(e.id)}
+                  onOpen={() => setSelected(e)}
+                />
+              ))}
+            </div>
+            {visible < filtered.length && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => setVisible((v) => v + PAGE_SIZE)}
+                  className="rounded-lg border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800"
+                >
+                  Show more ({filtered.length - visible} left)
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -239,6 +361,20 @@ export default function ToolCatalog() {
         />
       )}
     </div>
+  );
+}
+
+/* ---------- tier badge ---------- */
+
+function TierBadge({ tier }: { tier: TrustTier }) {
+  const m = TIER_META[tier];
+  return (
+    <span
+      title={m.help}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${m.chip}`}
+    >
+      {m.icon} {m.label}
+    </span>
   );
 }
 
@@ -254,13 +390,25 @@ function CatalogCard({
   onOpen: () => void;
 }) {
   const meta = TYPE_META[entry.type];
+  const tier = tierOf(entry);
+  const flags = entry.safetyFlags ?? [];
   return (
     <button
       onClick={onOpen}
       className="flex flex-col rounded-lg border border-zinc-800 bg-zinc-950 p-3.5 text-left transition-colors hover:border-zinc-700 hover:bg-zinc-800/40"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="text-sm font-semibold text-zinc-100">{entry.name}</h3>
+        <div className="flex items-center gap-1.5">
+          {entry.recommended && (
+            <span
+              title="Best pick in its category"
+              className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300"
+            >
+              <Star className="h-3 w-3 fill-emerald-300" /> Recommended
+            </span>
+          )}
+          <h3 className="text-sm font-semibold text-zinc-100">{entry.name}</h3>
+        </div>
         <span
           className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${meta.chip}`}
         >
@@ -268,10 +416,20 @@ function CatalogCard({
         </span>
       </div>
       <p className="mt-1.5 line-clamp-2 text-xs text-zinc-400">{entry.description}</p>
+
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
-        {entry.status === "unreviewed" && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300">
-            <AlertTriangle className="h-3 w-3" /> New · unreviewed
+        <TierBadge tier={tier} />
+        {(entry.categories ?? []).slice(0, 1).map((c) => (
+          <span
+            key={c}
+            className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[10px] text-zinc-400"
+          >
+            {c}
+          </span>
+        ))}
+        {entry.stale && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-orange-500/30 bg-orange-500/10 px-2 py-0.5 text-[10px] font-medium text-orange-300">
+            <AlertTriangle className="h-3 w-3" /> Unmaintained
           </span>
         )}
         {requested && (
@@ -280,6 +438,13 @@ function CatalogCard({
           </span>
         )}
       </div>
+
+      {flags.length > 0 && (
+        <p className="mt-2 flex items-start gap-1 text-[11px] text-red-400">
+          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span className="line-clamp-1">{flags[0]}</span>
+        </p>
+      )}
     </button>
   );
 }
@@ -296,6 +461,8 @@ function DetailModal({
   onClose: () => void;
 }) {
   const meta = TYPE_META[entry.type];
+  const tier = tierOf(entry);
+  const flags = entry.safetyFlags ?? [];
   const [target, setTarget] = useState("all");
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
@@ -339,13 +506,19 @@ function DetailModal({
         {/* header */}
         <div className="flex items-start justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              {entry.recommended && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                  <Star className="h-3 w-3 fill-emerald-300" /> Recommended
+                </span>
+              )}
               <h2 className="text-base font-semibold text-zinc-100">{entry.name}</h2>
               <span
                 className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${meta.chip}`}
               >
                 {meta.icon} {meta.label}
               </span>
+              <TierBadge tier={tier} />
             </div>
             <p className="mt-1.5 text-sm text-zinc-300">{entry.description}</p>
           </div>
@@ -358,7 +531,33 @@ function DetailModal({
           </button>
         </div>
 
-        {entry.status === "unreviewed" && (
+        {/* safety warnings (red) */}
+        {flags.length > 0 && (
+          <div className="mt-3 rounded-lg border border-red-500/40 bg-red-500/5 p-3">
+            <p className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-red-300">
+              <AlertTriangle className="h-4 w-4" /> Heads up before you install
+            </p>
+            <ul className="space-y-1">
+              {flags.map((f, i) => (
+                <li key={i} className="flex gap-2 text-xs text-red-200">
+                  <span>•</span>
+                  <span>{f}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* unmaintained note */}
+        {entry.stale && (
+          <div className="mt-3 flex items-start gap-2 rounded-lg border border-orange-500/30 bg-orange-500/5 p-3 text-xs text-orange-200">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-400" />
+            <span>{entry.staleReason ?? "This tool hasn't been updated in a while — it may be unmaintained."}</span>
+          </div>
+        )}
+
+        {/* unreviewed note */}
+        {tier === "unreviewed" && (
           <div className="mt-3 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-200">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
             <span>

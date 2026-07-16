@@ -23,6 +23,15 @@ import seed from "@/config/tool-catalog.json";
 export type ToolType = "mcp" | "skill" | "plugin";
 export type ToolStatus = "reviewed" | "unreviewed";
 
+/**
+ * Trust tier shown as a badge on every card:
+ *  - official   → made by Anthropic or listed in the official MCP registry
+ *  - verified   → an established published vendor tool with real traction
+ *  - community  → open-source community tool (auto-scanned, decent signals)
+ *  - unreviewed → freshly auto-discovered, nobody's looked at it yet
+ */
+export type TrustTier = "official" | "verified" | "community" | "unreviewed";
+
 export type CatalogEntry = {
   id: string;
   name: string;
@@ -37,6 +46,25 @@ export type CatalogEntry = {
   lastVerified: string;
   /** Where an auto-discovered entry came from (set by the refresh scan). */
   discoveredFrom?: string;
+
+  /* ---- fields added by the rebuilt ingestion pipeline (all optional so old
+     entries and the hand-reviewed seed keep working unchanged) ---- */
+  /** Trust badge shown on the card. */
+  trustTier?: TrustTier;
+  /** 0–1 ranking score = normalized(stars)*0.4 + normalized(downloads)*0.4 + (official/verified?0.2:0). */
+  rankScore?: number;
+  /** True when the source repo hasn't been updated in >9 months (hidden by default). */
+  stale?: boolean;
+  /** Plain-English reason the entry is flagged stale. */
+  staleReason?: string;
+  /** One or more plain-English category labels for the category filter. */
+  categories?: string[];
+  /** Plain-English red safety warnings (needs keys / can spend money / can delete). */
+  safetyFlags?: string[];
+  /** Which ingestion source produced this entry. */
+  source?: string;
+  /** The single best pick in its category. */
+  recommended?: boolean;
 };
 
 type CatalogFile = {

@@ -1,51 +1,65 @@
 import { NextResponse } from "next/server";
-import { getOctokit } from "@/lib/github";
 import {
   loadCatalog,
   mergeCandidates,
   persistCatalog,
-  titleize,
   type CatalogEntry,
 } from "@/lib/tool-catalog";
+// The pipeline is a pure ESM module shared with scripts/build-catalog.mjs so the
+// live scan and the committed build use exactly the same ingestion + filters.
+// Types come from the companion declaration file (lib/catalog-pipeline.d.ts).
+import { runPipeline } from "@/lib/catalog-pipeline.mjs";
 
 export const dynamic = "force-dynamic";
+// The scan hits several external APIs with retries; give it room.
+export const maxDuration = 60;
 
 /**
- * Refresh / scan the catalog for new candidates.
+ * Live "Scan for new tools" — runs the same ingestion pipeline the committed
+ * catalog is built with (PulseMCP, davila7 aggregate, Anthropic official plugins
+ * & skills, the official MCP registry, joined to GitHub for popularity/staleness),
+ * but LIGHTER so it fits in a single request: fewer PulseMCP pages and a small
+ * GitHub-join budget.
  *
- * Pulls fresh candidates from two keyless / already-authorized sources, merges
- * anything new into the catalog (marked "unreviewed"), best-effort persists the
- * result, and reports exactly what changed. No new secrets, no new packages.
- *
- *   1. GitHub API against modelcontextprotocol/servers `src/` (uses the existing
- *      GITHUB_TOKEN via the shared Octokit client).
- *   2. The public MCP registry API (no key). Parsed defensively; skipped on any
- *      hiccup so a registry change never breaks the scan.
+ * Anything genuinely new (not already in the catalog by id or repo/package URL)
+ * is appended and forced into the "unreviewed" trust tier + status, so the UI
+ * flags it as "New — nobody's checked this yet". Existing hand-reviewed and
+ * previously-scanned entries are never clobbered. Best-effort persist to disk;
+ * on a read-only runtime it still returns the merged result for the session.
  */
 export async function POST() {
   const catalog = await loadCatalog();
-  const candidates: CatalogEntry[] = [];
+
+  let candidates: CatalogEntry[] = [];
   const sources: { name: string; found: number; ok: boolean }[] = [];
-
-  // ---- Source 1: official MCP reference servers repo -------------------------
   try {
-    const found = await scanServersRepo();
-    candidates.push(...found);
-    sources.push({ name: "modelcontextprotocol/servers", found: found.length, ok: true });
+    const token = process.env.GITHUB_TOKEN;
+    const { candidates: raw, stats } = await runPipeline({
+      token,
+      pulsePages: 3, // ~300 servers pre-filter — plenty for a live scan
+      registryPages: 2,
+      githubMax: 40, // keep the staleness join cheap in-request
+      davilaMinDownloads: 20, // slightly stricter for the quick scan
+      log: () => {},
+    });
+    candidates = raw as CatalogEntry[];
+    const s = stats.sources as Record<string, number>;
+    for (const [name, found] of Object.entries(s)) {
+      sources.push({ name, found, ok: found > 0 });
+    }
   } catch {
-    sources.push({ name: "modelcontextprotocol/servers", found: 0, ok: false });
+    // Whole pipeline failed → report nothing found, don't break the button.
+    sources.push({ name: "ingestion pipeline", found: 0, ok: false });
   }
 
-  // ---- Source 2: public MCP registry (no key) --------------------------------
-  try {
-    const found = await scanMcpRegistry();
-    candidates.push(...found);
-    sources.push({ name: "MCP registry", found: found.length, ok: true });
-  } catch {
-    sources.push({ name: "MCP registry", found: 0, ok: false });
-  }
+  // New scan-discovered entries always enter as "unreviewed" (tier + status).
+  const marked = candidates.map((c) => ({
+    ...c,
+    status: "unreviewed" as const,
+    trustTier: "unreviewed" as const,
+  }));
 
-  const { merged, added } = mergeCandidates(catalog.entries, candidates);
+  const { merged, added } = mergeCandidates(catalog.entries, marked);
 
   let persisted = false;
   if (added.length > 0) {
@@ -63,97 +77,4 @@ export async function POST() {
     persisted,
     sources,
   });
-}
-
-/* ------------------------------------------------------------------ */
-/* Source 1: GitHub — modelcontextprotocol/servers                     */
-/* ------------------------------------------------------------------ */
-
-async function scanServersRepo(): Promise<CatalogEntry[]> {
-  const res = await getOctokit().rest.repos.getContent({
-    owner: "modelcontextprotocol",
-    repo: "servers",
-    path: "src",
-  });
-  if (!Array.isArray(res.data)) return [];
-
-  return res.data
-    .filter((item) => item.type === "dir")
-    .map((item) => {
-      const dir = item.name;
-      return {
-        id: `mcp-${dir.toLowerCase()}`,
-        name: titleize(dir),
-        type: "mcp",
-        status: "unreviewed",
-        url: `https://github.com/modelcontextprotocol/servers/tree/main/src/${dir}`,
-        description: `Official MCP reference server "${titleize(dir)}" — auto-discovered from the servers repo. Not yet reviewed.`,
-        goodFor: ["Newly discovered — open the link to see what it does"],
-        features: ["Auto-discovered from the official MCP servers repo"],
-        requirements: "Details not verified yet — review before installing.",
-        popularity: "Found in the official modelcontextprotocol/servers repo.",
-        lastVerified: "",
-        discoveredFrom: "modelcontextprotocol/servers",
-      } satisfies CatalogEntry;
-    });
-}
-
-/* ------------------------------------------------------------------ */
-/* Source 2: public MCP registry (no auth)                             */
-/* ------------------------------------------------------------------ */
-
-type RegistryServer = {
-  name?: string;
-  description?: string;
-  repository?: { url?: string } | null;
-};
-
-async function scanMcpRegistry(): Promise<CatalogEntry[]> {
-  const resp = await fetch("https://registry.modelcontextprotocol.io/v0/servers?limit=30", {
-    headers: { accept: "application/json" },
-    // Don't let a slow registry hang the whole scan.
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!resp.ok) return [];
-
-  const data = (await resp.json()) as { servers?: RegistryServer[] };
-  const servers = Array.isArray(data.servers) ? data.servers : [];
-
-  const out: CatalogEntry[] = [];
-  for (const s of servers) {
-    const url = s.repository?.url?.trim();
-    const rawName = s.name?.trim();
-    if (!url || !rawName) continue;
-    try {
-      new URL(url);
-    } catch {
-      continue;
-    }
-    // Registry names look like "io.github.owner/name" — take the last segment.
-    const shortName = rawName.split("/").pop() ?? rawName;
-    out.push({
-      id: `registry-${slugify(rawName)}`,
-      name: titleize(shortName),
-      type: "mcp",
-      status: "unreviewed",
-      url,
-      description:
-        (s.description?.trim() || `MCP server "${shortName}" from the public registry.`) +
-        " Auto-discovered — not yet reviewed.",
-      goodFor: ["Newly discovered — open the link to see what it does"],
-      features: ["Listed in the public MCP registry"],
-      requirements: "Details not verified yet — review before installing.",
-      popularity: "Listed in the public MCP registry.",
-      lastVerified: "",
-      discoveredFrom: "registry.modelcontextprotocol.io",
-    });
-  }
-  return out;
-}
-
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
