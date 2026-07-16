@@ -12,6 +12,7 @@ import {
   FlaskConical,
   Wrench,
   BarChart3,
+  Newspaper,
   type LucideIcon,
 } from "lucide-react";
 
@@ -28,4 +29,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/testing", label: "Testing", icon: FlaskConical },
   { href: "/tools", label: "Tools", icon: Wrench },
   { href: "/metrics", label: "Metrics", icon: BarChart3 },
+  { href: "/reporter", label: "News", icon: Newspaper },
 ];
