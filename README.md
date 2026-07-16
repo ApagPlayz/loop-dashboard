@@ -44,6 +44,21 @@ Claude app, you'd need a paid `ANTHROPIC_API_KEY` from
 Without either, the dashboard still works fully — the AI boxes just show a
 note, and History / manual editing keep working.
 
+### One-click product launchers (Mac only)
+
+Each project on the map can get a **Launch** button. The first time, press
+"Create launcher" and Claude looks at the project's folder on your Mac
+(read-only) to work out how to start it, then writes a small launcher file.
+After that, **Launch** opens a Terminal window that starts the product, opens
+it in your browser, and closes itself — if anything goes wrong the window
+stays open so you can read the error.
+
+Everything machine-specific stays on your Mac, never in git: the launcher
+files live in `~/Library/Application Support/Loop Dashboard/launchers/` and
+their settings in `~/.loop-dashboard/launchers.json`. Launchers never run git
+or change a project's code — they only install dependencies and start the
+product. (This feature does nothing when the dashboard runs in the cloud.)
+
 ---
 
 ## Run it on your own computer
