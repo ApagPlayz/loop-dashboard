@@ -7,6 +7,26 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 /**
+ * GET /api/launch/analyze?project=<key>
+ * The newest analysis job for a project (running or finished) — lets the
+ * launch chip re-attach to an analysis the owner walked away from.
+ */
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const key = url.searchParams.get("project");
+  try {
+    const { project } = await resolveProject(key ?? undefined);
+    return NextResponse.json({ job: latestLaunchJobForProject(project.key) });
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
+    console.error("launch/analyze: latest lookup failed", err);
+    return NextResponse.json({ error: "Couldn't check for a running analysis." }, { status: 502 });
+  }
+}
+
+/**
  * POST /api/launch/analyze  Body: { project }
  * Start a background job in which Claude analyzes the project's local folder
  * and creates its launcher. Returns { jobId } to poll.

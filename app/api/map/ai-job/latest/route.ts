@@ -22,7 +22,10 @@ export async function GET(req: Request) {
     kind !== "draft" &&
     kind !== "loop-edit" &&
     kind !== "process-chat" &&
-    kind !== "custom-idea"
+    kind !== "custom-idea" &&
+    kind !== "reporter-summary" &&
+    kind !== "reporter-refresh" &&
+    kind !== "catalog-scan"
   ) {
     return NextResponse.json({ error: "Missing or invalid kind." }, { status: 400 });
   }

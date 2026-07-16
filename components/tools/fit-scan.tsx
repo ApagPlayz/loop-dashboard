@@ -46,6 +46,8 @@ type Progress = { phase: "profiling" | "ranking" | "scoring" | "done"; done: num
 
 type FitJob = {
   id: string;
+  owner: string;
+  repo: string;
   status: "running" | "done" | "error";
   progress: Progress;
   result?: ScanResult;
@@ -150,6 +152,8 @@ export default function FitScan() {
   const [view, setView] = useState<number>(20);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // The job currently shown, so closing/replacing it can mark it consumed.
+  const jobIdRef = useRef<string | null>(null);
 
   // Load the project dropdown once the panel is opened.
   useEffect(() => {
@@ -168,6 +172,13 @@ export default function FitScan() {
   }, []);
 
   useEffect(() => () => stopPoll(), [stopPoll]);
+
+  /** Tell the server the owner is done with this scan (best-effort). */
+  const consumeJob = useCallback(() => {
+    const id = jobIdRef.current;
+    jobIdRef.current = null;
+    if (id) fetch(`/api/tools/fit/${id}`, { method: "POST" }).catch(() => {});
+  }, []);
 
   const pollJob = useCallback(
     (jobId: string) => {
@@ -202,6 +213,8 @@ export default function FitScan() {
 
   const startScan = useCallback(
     async (owner: string, repo: string, rescan = false) => {
+      // A new scan replaces whatever was showing — mark the old one done with.
+      consumeJob();
       setSelected({ owner, repo });
       setError(null);
       setResult(null);
@@ -220,6 +233,7 @@ export default function FitScan() {
           setScanning(false);
           setProgress(null);
         } else if (d.jobId) {
+          jobIdRef.current = d.jobId;
           pollJob(d.jobId);
         } else {
           throw new Error("Couldn't start the scan.");
@@ -230,8 +244,42 @@ export default function FitScan() {
         setProgress(null);
       }
     },
-    [pollJob],
+    [pollJob, consumeJob],
   );
+
+  // On mount: re-attach to a scan the owner walked away from (running, or
+  // finished while he was on another page and not yet closed).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/tools/fit", { cache: "no-store" });
+        const d = await res.json().catch(() => ({}));
+        const job = d.job as FitJob | null;
+        if (cancelled || !job) return;
+        jobIdRef.current = job.id;
+        setOpen(true);
+        setSelected({ owner: job.owner, repo: job.repo });
+        setFreeText(`${job.owner}/${job.repo}`);
+        if (job.status === "running") {
+          setScanning(true);
+          setProgress(job.progress);
+          pollJob(job.id);
+        } else if (job.status === "done" && job.result) {
+          setResult(job.result);
+        } else if (job.status === "error") {
+          setError(job.error ?? "The scan failed. Try again.");
+        }
+      } catch {
+        // Nothing to restore — not fatal.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Run once on mount only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onScanClicked = useCallback(() => {
     // Prefer a selected project's exact owner/repo; otherwise parse the free text.
@@ -276,7 +324,15 @@ export default function FitScan() {
           <Telescope className="h-4 w-4 text-emerald-400" />
           Find tools for a project
         </h3>
-        <button onClick={() => setOpen(false)} className="text-xs text-zinc-500 hover:text-zinc-300">
+        <button
+          onClick={() => {
+            // Closing after a finished scan means "done with this result".
+            // A still-running scan stays restorable when the panel reopens.
+            if (!scanning) consumeJob();
+            setOpen(false);
+          }}
+          className="text-xs text-zinc-500 hover:text-zinc-300"
+        >
           Close
         </button>
       </div>

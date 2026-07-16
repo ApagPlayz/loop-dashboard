@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useAiJob } from "@/components/map/use-ai-job";
 import {
   Search,
   RefreshCw,
@@ -117,8 +118,16 @@ export default function CatalogBrowser({ install = { mode: "all" } }: { install?
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [selected, setSelected] = useState<CatalogEntry | null>(null);
 
-  const [scanning, setScanning] = useState(false);
-  const [scanMsg, setScanMsg] = useState<string | null>(null);
+  // The live scan runs as a background job on the server — leaving this page
+  // mid-scan and coming back re-attaches to it (restored via /latest on mount).
+  const {
+    job: scanJob,
+    submitting: scanSubmitting,
+    submitError: scanSubmitError,
+    start: startScan,
+    consume: consumeScan,
+  } = useAiJob({ kind: "catalog-scan" });
+  const reloadedScanId = useRef<string | null>(null);
 
   async function load() {
     try {
@@ -138,28 +147,32 @@ export default function CatalogBrowser({ install = { mode: "all" } }: { install?
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function scan() {
-    setScanning(true);
-    setScanMsg(null);
-    try {
-      const r = await fetch("/api/tools/catalog/refresh", { method: "POST" });
-      const d = await r.json();
-      if (r.ok) {
-        setScanMsg(
-          d.addedCount > 0
-            ? `Found ${d.addedCount} new tool${d.addedCount === 1 ? "" : "s"} — added below and marked "new, unreviewed".`
-            : "Scan finished — nothing new since last time.",
-        );
-        await load();
-      } else {
-        setScanMsg("Scan didn't complete. Please try again.");
-      }
-    } catch {
-      setScanMsg("Scan didn't complete. Please try again.");
-    } finally {
-      setScanning(false);
-    }
+  function scan() {
+    startScan("/api/tools/catalog/refresh", {});
   }
+
+  // A finished scan (including one that finished while the owner was away):
+  // reload the list once so anything new shows up below.
+  useEffect(() => {
+    if (!scanJob || scanJob.status !== "done" || reloadedScanId.current === scanJob.id) return;
+    reloadedScanId.current = scanJob.id;
+    load();
+  }, [scanJob]);
+
+  const scanning = scanSubmitting || scanJob?.status === "running";
+  const scanResult =
+    scanJob?.status === "done"
+      ? (scanJob.result as { addedCount?: number } | undefined)
+      : undefined;
+  const scanMsg =
+    scanSubmitError ??
+    (scanJob?.status === "error"
+      ? "Scan didn't complete. Please try again."
+      : scanResult
+        ? (scanResult.addedCount ?? 0) > 0
+          ? `Found ${scanResult.addedCount} new tool${scanResult.addedCount === 1 ? "" : "s"} — added below and marked "new, unreviewed".`
+          : "Scan finished — nothing new since last time."
+        : null);
 
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
@@ -246,7 +259,25 @@ export default function CatalogBrowser({ install = { mode: "all" } }: { install?
         </button>
       </div>
 
-      {scanMsg && <p className="mt-2 text-xs text-emerald-300">{scanMsg}</p>}
+      {scanning && (
+        <p className="mt-2 text-xs text-zinc-500">
+          Scanning the tool sources… Keeps running if you leave this page.
+        </p>
+      )}
+
+      {scanMsg && (
+        <p className="mt-2 flex items-center gap-2 text-xs text-emerald-300">
+          <span>{scanMsg}</span>
+          <button
+            onClick={() => consumeScan()}
+            aria-label="Dismiss this scan message"
+            title="Dismiss"
+            className="rounded p-0.5 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </p>
+      )}
 
       {/* Type filters */}
       <div className="mt-3 flex flex-wrap gap-1.5">

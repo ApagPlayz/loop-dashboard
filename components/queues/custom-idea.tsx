@@ -9,7 +9,7 @@
  * Rendered inside the Ideas page's ToastProvider, so useToast() works here.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Sparkles, Mic, ExternalLink, X, RotateCcw, ArrowLeft } from "lucide-react";
 import Modal from "@/components/map/modal";
 import { Spinner, Markdown } from "./ui";
@@ -44,8 +44,8 @@ const EMPTY_DRAFT: Draft = {
   draftBody: "",
 };
 
-/** POST the AI route, then poll the shared job endpoint until it settles. */
-async function runAiJob<T>(body: unknown): Promise<T> {
+/** POST the AI route; returns the background job's id. */
+async function startAiJob(body: unknown): Promise<string> {
   const res = await fetch("/api/ideas/custom/ai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -53,10 +53,18 @@ async function runAiJob<T>(body: unknown): Promise<T> {
   });
   const started = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(started.error ?? "Couldn't start. Try again.");
-  const jobId = started.jobId as string;
+  return started.jobId as string;
+}
 
+/**
+ * Poll the shared job endpoint until the job settles. Returns null when the
+ * caller reports it no longer cares (the modal closed) — the job itself keeps
+ * running server-side and is restored the next time the modal opens.
+ */
+async function pollAiJob<T>(jobId: string, cancelled?: () => boolean): Promise<T | null> {
   while (true) {
     await new Promise((r) => setTimeout(r, POLL_MS));
+    if (cancelled?.()) return null;
     let r: Response;
     try {
       r = await fetch(`/api/map/ai-job/${jobId}`);
@@ -70,6 +78,11 @@ async function runAiJob<T>(body: unknown): Promise<T> {
     if (job.status === "done") return job.result as T;
     if (job.status === "error") throw new Error(job.error ?? "Something went wrong. Try again.");
   }
+}
+
+/** Tell the server the result was applied (best-effort). */
+function consumeAiJob(jobId: string) {
+  fetch(`/api/map/ai-job/${jobId}`, { method: "POST" }).catch(() => {});
 }
 
 export default function CustomIdea({
@@ -103,6 +116,85 @@ export default function CustomIdea({
   const { projectKey, prompt, stage, questions, answers, draftTitle, draftBody } = draft;
 
   const patch = useCallback((p: Partial<Draft>) => setDraft((d) => ({ ...d, ...p })), []);
+
+  // Closing the modal must stop our polling loops WITHOUT consuming the job —
+  // it keeps running server-side and is picked back up on the next open.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
+  /** Fold a finished clarify/compose job into the draft (persisted above). */
+  const applyJobResult = useCallback(
+    (mode: "clarify" | "compose", result: unknown) => {
+      if (mode === "clarify") {
+        const qs = (result as { questions?: string[] } | undefined)?.questions ?? [];
+        patch({ stage: "questions", questions: qs, answers: qs.map(() => "") });
+      } else {
+        const r = result as { title?: string; body?: string } | undefined;
+        patch({ stage: "review", draftTitle: r?.title ?? "", draftBody: r?.body ?? "" });
+      }
+    },
+    [patch],
+  );
+
+  // On open: re-attach to a clarify/compose job the owner walked away from.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const params = new URLSearchParams({ kind: "custom-idea" });
+        // draft.projectKey was restored from sessionStorage during state init.
+        params.set("project", projectKey);
+        const res = await fetch(`/api/map/ai-job/latest?${params}`);
+        const j = await res.json().catch(() => ({}));
+        if (cancelled || !j.job) return;
+        const job = j.job as {
+          id: string;
+          status: "running" | "done" | "error";
+          input?: { mode?: string };
+          result?: unknown;
+          error?: string;
+        };
+        const mode = job.input?.mode === "compose" ? "compose" : "clarify";
+        if (job.status === "done") {
+          applyJobResult(mode, job.result);
+          consumeAiJob(job.id);
+          return;
+        }
+        if (job.status === "error") {
+          toast.error(job.error ?? "Something went wrong. Try again.");
+          consumeAiJob(job.id);
+          return;
+        }
+        // Still running — show the spinner and keep waiting for it.
+        setElapsed(0);
+        setBusy(mode);
+        try {
+          const result = await pollAiJob<unknown>(job.id, () => !mountedRef.current);
+          if (result === null || cancelled) return;
+          applyJobResult(mode, result);
+          consumeAiJob(job.id);
+        } catch (err) {
+          if (!cancelled && mountedRef.current) {
+            toast.error(err instanceof Error ? err.message : "Something went wrong. Try again.");
+          }
+        } finally {
+          if (!cancelled && mountedRef.current) setBusy(null);
+        }
+      } catch {
+        // Nothing to restore — not fatal.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // Run once when the modal opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ----- persist the draft as it changes ------------------------------
   useEffect(() => {
@@ -172,17 +264,20 @@ export default function CustomIdea({
     setElapsed(0);
     setBusy("clarify");
     try {
-      const result = await runAiJob<{ questions: string[] }>({
+      const jobId = await startAiJob({
         mode: "clarify",
         project: projectKey,
         prompt: prompt.trim(),
       });
-      const qs = result.questions ?? [];
-      patch({ stage: "questions", questions: qs, answers: qs.map(() => "") });
+      const result = await pollAiJob<{ questions: string[] }>(jobId, () => !mountedRef.current);
+      if (result === null) return; // modal closed — restored on next open
+      applyJobResult("clarify", result);
+      consumeAiJob(jobId);
     } catch (err) {
+      if (!mountedRef.current) return;
       toast.error(err instanceof Error ? err.message : "Couldn't get questions. Try again.");
     } finally {
-      setBusy(null);
+      if (mountedRef.current) setBusy(null);
     }
   }
 
@@ -191,18 +286,25 @@ export default function CustomIdea({
     setElapsed(0);
     setBusy("compose");
     try {
-      const result = await runAiJob<{ title: string; body: string }>({
+      const jobId = await startAiJob({
         mode: "compose",
         project: projectKey,
         prompt: prompt.trim(),
         questions,
         answers,
       });
-      patch({ stage: "review", draftTitle: result.title ?? "", draftBody: result.body ?? "" });
+      const result = await pollAiJob<{ title: string; body: string }>(
+        jobId,
+        () => !mountedRef.current,
+      );
+      if (result === null) return; // modal closed — restored on next open
+      applyJobResult("compose", result);
+      consumeAiJob(jobId);
     } catch (err) {
+      if (!mountedRef.current) return;
       toast.error(err instanceof Error ? err.message : "Couldn't write it up. Try again.");
     } finally {
-      setBusy(null);
+      if (mountedRef.current) setBusy(null);
     }
   }
 
@@ -585,10 +687,15 @@ function MicButton({
 
 function RunningNote({ label, elapsed }: { label: string; elapsed: number }) {
   return (
-    <div className="flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-3 text-sm text-zinc-300">
-      <Spinner />
-      <span>{label}</span>
-      <span className="text-zinc-500 tabular-nums">{elapsed}s</span>
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-3">
+      <div className="flex items-center gap-2 text-sm text-zinc-300">
+        <Spinner />
+        <span>{label}</span>
+        <span className="text-zinc-500 tabular-nums">{elapsed}s</span>
+      </div>
+      <p className="mt-1 text-[11px] text-zinc-500">
+        Keeps running if you close this or leave the page — it picks up where it left off.
+      </p>
     </div>
   );
 }

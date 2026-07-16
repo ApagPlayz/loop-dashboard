@@ -68,7 +68,38 @@ export default function LaunchButton({ projectKey }: { projectKey: string }) {
     }
   }, [projectKey]);
 
-  // On mount / project switch: find out where this project stands.
+  /** Poll a running analysis job until it settles, then refresh the status. */
+  const watchAnalysis = useCallback(
+    async (jobId: string, gen: number) => {
+      try {
+        while (generation.current === gen) {
+          await new Promise((r) => setTimeout(r, ANALYZE_POLL_MS));
+          if (generation.current !== gen) return;
+          const poll = await fetch(`/api/launch/analyze/${jobId}`);
+          if (poll.status === 404) throw new Error("That analysis expired. Try again.");
+          const pj = await poll.json().catch(() => ({}));
+          const job = pj.job as { status: string; error?: string } | undefined;
+          if (!job) continue;
+          if (job.status === "error") throw new Error(job.error ?? "The analysis failed. Try again.");
+          if (job.status === "done") break;
+        }
+        if (generation.current !== gen) return;
+
+        const s = await fetchStatus();
+        if (generation.current !== gen) return;
+        if (s) setStatus(s);
+        setPhase("idle");
+      } catch (e) {
+        if (generation.current !== gen) return;
+        setError(e instanceof Error ? e.message : "The analysis failed. Try again.");
+        setPhase("idle");
+      }
+    },
+    [fetchStatus],
+  );
+
+  // On mount / project switch: find out where this project stands, and
+  // re-attach to an analysis that's still running from a previous visit.
   useEffect(() => {
     // Copy the ref object so the cleanup invalidates the right generation.
     const gens = generation;
@@ -77,12 +108,28 @@ export default function LaunchButton({ projectKey }: { projectKey: string }) {
       const s = await fetchStatus();
       if (gens.current !== gen) return;
       setStatus(s ?? { configured: false, running: false, url: null, kind: null, analyzedAt: null, notes: null });
+
+      // A still-running analysis job survives navigation — pick it back up.
+      try {
+        const res = await fetch(`/api/launch/analyze?project=${encodeURIComponent(projectKey)}`);
+        const j = await res.json().catch(() => ({}));
+        if (gens.current !== gen) return;
+        const job = j.job as { id: string; status: string } | null;
+        if (job && job.status === "running") {
+          setPhase("analyzing");
+          void watchAnalysis(job.id, gen);
+          return;
+        }
+      } catch {
+        // No restore — not fatal.
+      }
+      if (gens.current !== gen) return;
       setPhase("idle");
     })();
     return () => {
       gens.current++;
     };
-  }, [projectKey, fetchStatus]);
+  }, [projectKey, fetchStatus, watchAnalysis]);
 
   /* ---------------- Create / re-analyze ---------------- */
 
@@ -98,32 +145,13 @@ export default function LaunchButton({ projectKey }: { projectKey: string }) {
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Couldn't start the analysis.");
-      const jobId: string = j.jobId;
-
-      // Poll the job until it finishes.
-      while (generation.current === gen) {
-        await new Promise((r) => setTimeout(r, ANALYZE_POLL_MS));
-        if (generation.current !== gen) return;
-        const poll = await fetch(`/api/launch/analyze/${jobId}`);
-        if (poll.status === 404) throw new Error("That analysis expired. Try again.");
-        const pj = await poll.json().catch(() => ({}));
-        const job = pj.job as { status: string; error?: string } | undefined;
-        if (!job) continue;
-        if (job.status === "error") throw new Error(job.error ?? "The analysis failed. Try again.");
-        if (job.status === "done") break;
-      }
-      if (generation.current !== gen) return;
-
-      const s = await fetchStatus();
-      if (generation.current !== gen) return;
-      if (s) setStatus(s);
-      setPhase("idle");
+      await watchAnalysis(j.jobId as string, gen);
     } catch (e) {
       if (generation.current !== gen) return;
       setError(e instanceof Error ? e.message : "The analysis failed. Try again.");
       setPhase("idle");
     }
-  }, [projectKey, fetchStatus]);
+  }, [projectKey, watchAnalysis]);
 
   /* ---------------- Launch ---------------- */
 
@@ -193,7 +221,7 @@ export default function LaunchButton({ projectKey }: { projectKey: string }) {
 
   if (phase === "analyzing") {
     return (
-      <span className={chipBusy}>
+      <span className={chipBusy} title="Keeps running if you leave this page — come back any time.">
         <Loader2 className="h-3 w-3 animate-spin" />
         Claude is figuring out how to launch this...
       </span>

@@ -33,6 +33,8 @@ export type FitJob = {
   result?: ScanResult;
   error?: string;
   errorStatus?: number;
+  /** True once the owner closed/replaced the scan — stops it being restored. */
+  consumed?: boolean;
 };
 
 const TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -170,6 +172,31 @@ export function getFitJob(id: string): FitJob | null {
     return fromDisk;
   }
   return null;
+}
+
+/**
+ * The newest unconsumed job across ALL repos (used to restore the panel when
+ * the owner navigated away mid-scan and comes back — the panel doesn't know
+ * which repo was being scanned, so this tells it).
+ */
+export function latestFitJob(): FitJob | null {
+  sweep();
+  let best: FitJob | null = null;
+  for (const job of jobs.values()) {
+    if (job.consumed) continue;
+    if (!best || job.createdAt > best.createdAt) best = job;
+  }
+  return best;
+}
+
+/** Mark a job consumed (the owner closed or replaced it). */
+export function consumeFitJob(id: string): boolean {
+  const job = getFitJob(id);
+  if (!job) return false;
+  job.consumed = true;
+  job.updatedAt = Date.now();
+  persist(job);
+  return true;
 }
 
 /** The newest job for a given repo, if any (used to restore on mount). */

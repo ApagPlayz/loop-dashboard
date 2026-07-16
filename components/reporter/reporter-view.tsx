@@ -8,14 +8,16 @@
  * AI backend for a plain-English "what's new lately" briefing.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ExternalLink,
   RefreshCw,
   Sparkles,
   AlertCircle,
   CheckCircle2,
+  X,
 } from "lucide-react";
+import { useAiJob } from "@/components/map/use-ai-job";
 import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
@@ -69,9 +71,23 @@ export default function ReporterView({
   const [category, setCategory] = useState<DigestCategory | "all">("all");
   const [source, setSource] = useState<string>("all");
 
-  const [summary, setSummary] = useState<string | null>(null);
-  const [summarizing, setSummarizing] = useState(false);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
+  // Both slow operations run as background jobs on the server, so leaving this
+  // page (or the whole browser tab) and coming back re-attaches to them.
+  const {
+    job: refreshJob,
+    submitting: refreshSubmitting,
+    submitError: refreshSubmitError,
+    start: startRefresh,
+    consume: consumeRefresh,
+  } = useAiJob({ kind: "reporter-refresh" });
+  const {
+    job: summaryJobState,
+    submitting: summarySubmitting,
+    submitError: summarySubmitError,
+    start: startSummary,
+    consume: consumeSummary,
+  } = useAiJob({ kind: "reporter-summary" });
+  const handledRefreshId = useRef<string | null>(null);
 
   // First-ever visit: no cached digest yet, so fetch (server builds it).
   useEffect(() => {
@@ -96,36 +112,52 @@ export default function ReporterView({
     };
   }, [initialDigest]);
 
-  const refresh = useCallback(async () => {
-    setLoading(true);
+  const refresh = useCallback(() => {
     setError(null);
-    try {
-      const res = await fetch("/api/reporter/refresh", { method: "POST" });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "Refresh failed.");
-      setDigest(j.digest);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Refresh failed.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    startRefresh("/api/reporter/refresh", {});
+  }, [startRefresh]);
 
-  const summarize = useCallback(async () => {
-    setSummarizing(true);
-    setSummaryError(null);
-    setSummary(null);
-    try {
-      const res = await fetch("/api/reporter/summarize", { method: "POST" });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "Couldn't summarize.");
-      setSummary(j.summary);
-    } catch (e) {
-      setSummaryError(e instanceof Error ? e.message : "Couldn't summarize.");
-    } finally {
-      setSummarizing(false);
+  // When a refresh job finishes (even one restored after coming back to this
+  // page), pull the freshly persisted digest and mark the job handled.
+  useEffect(() => {
+    if (!refreshJob || refreshJob.status === "running" || handledRefreshId.current === refreshJob.id)
+      return;
+    handledRefreshId.current = refreshJob.id;
+    if (refreshJob.status === "error") {
+      // Folding a finished background job (an external system) into view state.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setError(refreshJob.error ?? "Refresh failed.");
+      consumeRefresh();
+      return;
     }
-  }, []);
+    (async () => {
+      try {
+        const res = await fetch("/api/reporter", { cache: "no-store" });
+        const j = await res.json().catch(() => ({}));
+        if (res.ok && j.digest) setDigest(j.digest);
+      } catch {
+        // The digest is persisted server-side — the next visit picks it up.
+      }
+      consumeRefresh();
+    })();
+  }, [refreshJob, consumeRefresh]);
+
+  const summarize = useCallback(() => {
+    startSummary("/api/reporter/summarize", {});
+  }, [startSummary]);
+
+  const refreshing = refreshSubmitting || refreshJob?.status === "running";
+  const summarizing = summarySubmitting || summaryJobState?.status === "running";
+  const summary =
+    summaryJobState?.status === "done"
+      ? ((summaryJobState.result as { summary?: string } | undefined)?.summary ?? null)
+      : null;
+  const summaryError =
+    summarySubmitError ??
+    refreshSubmitError ??
+    (summaryJobState?.status === "error"
+      ? (summaryJobState.error ?? "Couldn't summarize.")
+      : null);
 
   const items = digest?.items ?? [];
 
@@ -182,20 +214,38 @@ export default function ReporterView({
           </button>
           <button
             onClick={refresh}
-            disabled={loading}
+            disabled={loading || refreshing}
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500/10 px-3 py-1.5 text-sm font-medium text-emerald-400 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            {loading ? "Refreshing…" : "Refresh now"}
+            <RefreshCw className={`h-4 w-4 ${loading || refreshing ? "animate-spin" : ""}`} />
+            {loading || refreshing ? "Refreshing…" : "Refresh now"}
           </button>
         </div>
       </div>
 
+      {/* Background-work note */}
+      {(refreshing || summarizing) && (
+        <p className="mb-4 text-xs text-zinc-500">
+          {summarizing ? "Claude is reading the digest… " : ""}
+          Keeps running if you leave this page — come back any time.
+        </p>
+      )}
+
       {/* AI summary panel */}
       {(summary || summaryError) && (
         <div className="mb-5 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-          <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-zinc-500">
-            <Sparkles className="h-3.5 w-3.5" /> What&apos;s new lately
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-zinc-500">
+              <Sparkles className="h-3.5 w-3.5" /> What&apos;s new lately
+            </div>
+            <button
+              onClick={consumeSummary}
+              aria-label="Dismiss the briefing"
+              title="Dismiss"
+              className="rounded-md p-1 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
           </div>
           {summary ? (
             <p className="text-sm leading-relaxed text-zinc-200">{summary}</p>

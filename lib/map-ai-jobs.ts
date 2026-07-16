@@ -18,7 +18,14 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { AiError } from "./map-ai";
 
-export type AiJobKind = "draft" | "loop-edit" | "process-chat" | "custom-idea";
+export type AiJobKind =
+  | "draft"
+  | "loop-edit"
+  | "process-chat"
+  | "custom-idea"
+  | "reporter-summary"
+  | "reporter-refresh"
+  | "catalog-scan";
 export type AiJobStatus = "running" | "done" | "error";
 
 export type AiJob = {
@@ -151,7 +158,7 @@ export function startJob(
         job.errorStatus = err.httpStatus;
       } else {
         console.error(`ai-jobs: ${kind} job failed`, err);
-        job.error = "Something went wrong while drafting. Try again.";
+        job.error = "Something went wrong while working on this. Try again.";
         job.errorStatus = 502;
       }
       persist(job);
@@ -170,7 +177,7 @@ export function getJob(id: string): AiJob | null {
     // (e.g. server restart) — its promise is gone, so it can never finish.
     if (fromDisk.status === "running" && Date.now() - fromDisk.updatedAt > 15 * 60 * 1000) {
       fromDisk.status = "error";
-      fromDisk.error = "The draft was interrupted (the dashboard restarted). Try again.";
+      fromDisk.error = "This was interrupted (the dashboard restarted). Try again.";
       fromDisk.errorStatus = 502;
     }
     jobs.set(fromDisk.id, fromDisk);

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { readCache } from "@/lib/tool-fit";
-import { startFitJob, latestFitJobForRepo } from "@/lib/tool-fit-jobs";
+import { startFitJob, latestFitJob, latestFitJobForRepo } from "@/lib/tool-fit-jobs";
 
 export const dynamic = "force-dynamic";
 // The scan spawns the local Claude CLI as a child process — Node runtime.
@@ -17,11 +17,18 @@ function parseRepo(input: string): { owner: string; repo: string } | null {
  * GET /api/tools/fit?owner=&repo=
  * Restore state for a repo when the panel mounts: any cached result plus a
  * running/finished job (so a scan the owner walked away from can be picked up).
+ *
+ * GET /api/tools/fit (no params)
+ * The newest scan the owner hasn't closed yet, whatever repo it's for — lets
+ * the panel re-attach after navigating away without knowing the repo.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const owner = url.searchParams.get("owner") ?? "";
   const repo = url.searchParams.get("repo") ?? "";
+  if (!owner && !repo) {
+    return NextResponse.json({ job: latestFitJob() });
+  }
   if (!owner || !repo) {
     return NextResponse.json({ error: "Pick a repository first." }, { status: 400 });
   }

@@ -8,9 +8,20 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+/** Mirrors AiJobKind in lib/map-ai-jobs.ts (and the whitelist in
+ *  app/api/map/ai-job/latest/route.ts). */
+export type AiJobKind =
+  | "draft"
+  | "loop-edit"
+  | "process-chat"
+  | "custom-idea"
+  | "reporter-summary"
+  | "reporter-refresh"
+  | "catalog-scan";
+
 export type PublicAiJob = {
   id: string;
-  kind: "draft" | "loop-edit" | "process-chat" | "custom-idea";
+  kind: AiJobKind;
   status: "running" | "done" | "error";
   createdAt: number;
   input: { request?: string; agentId?: string; mode?: string; project?: string };
@@ -22,7 +33,7 @@ export type PublicAiJob = {
 const POLL_MS = 2500;
 
 export function useAiJob(opts: {
-  kind: "draft" | "loop-edit" | "process-chat" | "custom-idea";
+  kind: AiJobKind;
   agentId?: string;
   /** Project registry key (or "template") — scopes job restore to one target. */
   project?: string;
@@ -56,7 +67,7 @@ export function useAiJob(opts: {
           if (res.status === 404) {
             stopTimers();
             setJob(null);
-            setSubmitError("That draft expired. Start a new one.");
+            setSubmitError("That request expired. Start a new one.");
             return;
           }
           const j = await res.json().catch(() => ({}));
@@ -111,7 +122,7 @@ export function useAiJob(opts: {
           body: JSON.stringify(body),
         });
         const j = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(j.error ?? "Couldn't start drafting.");
+        if (!res.ok) throw new Error(j.error ?? "Couldn't start. Try again.");
         const now = Date.now();
         setJob({
           id: j.jobId,
@@ -123,7 +134,7 @@ export function useAiJob(opts: {
         });
         beginPolling(j.jobId, now);
       } catch (e) {
-        setSubmitError(e instanceof Error ? e.message : "Couldn't start drafting.");
+        setSubmitError(e instanceof Error ? e.message : "Couldn't start. Try again.");
       } finally {
         setSubmitting(false);
       }
