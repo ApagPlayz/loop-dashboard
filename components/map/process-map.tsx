@@ -38,6 +38,7 @@ import LoopEditPanel from "./loop-edit-panel";
 import ProjectSwitcher, { ProjectChecklist } from "./project-switcher";
 import PowerMenu from "./power-menu";
 import EditMenu from "./edit-menu";
+import LaunchButton from "./launch-button";
 import Modal from "./modal";
 
 const PILOT_KEY = "content-generation-platform";
@@ -273,6 +274,7 @@ export default function ProcessMap() {
           loopPaused={!!status?.loopPaused}
           onChanged={fetchStatus}
         />
+        <LaunchButton projectKey={project} />
         {status?.loopPaused && (
           <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-2.5 py-1 text-[11px] font-medium text-amber-300">
             <PauseCircle className="h-3.5 w-3.5" /> Loop paused
