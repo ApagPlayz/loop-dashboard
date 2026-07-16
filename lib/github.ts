@@ -293,6 +293,34 @@ export async function getFileContent(
 }
 
 /**
+ * List the workflow filenames actually present in `.github/workflows/` on a
+ * repo (defaults to the primary repo's `main`). This is how the dashboard tells
+ * whether a given capability (e.g. the demo-evidence or tool-install workflow)
+ * is installed on a project — it queries reality rather than assuming. Returns
+ * an empty array if the folder is missing or unreadable.
+ */
+export async function listWorkflowFiles(
+  opts: { ref?: string; repo?: RepoConfig } = {},
+): Promise<string[]> {
+  const repo = opts.repo ?? REPOS.primary;
+  try {
+    const res = await getOctokit().rest.repos.getContent({
+      owner: repo.owner,
+      repo: repo.repo,
+      path: ".github/workflows",
+      ref: opts.ref,
+    });
+    if (!Array.isArray(res.data)) return [];
+    return res.data
+      .filter((e) => e.type === "file" && /\.ya?ml$/.test(e.name))
+      .map((e) => e.name);
+  } catch (err: unknown) {
+    if (isNotFound(err)) return [];
+    throw err;
+  }
+}
+
+/**
  * Create or update a text file directly on a branch (defaults to "main") via
  * the contents API. Looks up the existing blob sha automatically when updating.
  */

@@ -94,9 +94,9 @@ export default function TestSuite() {
   if ("notLive" in data) {
     return (
       <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-5 text-sm text-amber-200">
-        The test suite isn&apos;t live yet — it arrives when PR #44 merges on the
-        target repo. You&apos;ll see pass/fail results here once it&apos;s run at
-        least once.
+        This project doesn&apos;t have the test-suite workflow installed yet.
+        Onboard it from the Projects menu, and pass/fail results will show here
+        once it&apos;s run at least once.
       </div>
     );
   }

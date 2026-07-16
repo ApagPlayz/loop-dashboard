@@ -604,8 +604,8 @@ function RunTab({
   if (!meta.onMain) {
     return (
       <Banner tone="amber">
-        This workflow can&apos;t be started yet — it&apos;s waiting for PR #44 to merge into the main
-        branch. Once it&apos;s live, a &quot;Run now&quot; button will appear here.
+        This project doesn&apos;t have this agent installed yet. Onboard it from
+        the Projects menu, and a &quot;Run now&quot; button will appear here.
       </Banner>
     );
   }

@@ -36,8 +36,6 @@ export type WorkflowDef = {
   runnable: boolean;
   /** Required workflow_dispatch input, if any. */
   input?: WorkflowInput;
-  /** True for the PR #44 workflows not yet on main (may 404 on dispatch). */
-  pendingPr44?: boolean;
 };
 
 /**
@@ -74,7 +72,6 @@ export const WORKFLOWS: WorkflowDef[] = [
       source: "redraft-issues",
       label: "Which proposal to redraft",
     },
-    pendingPr44: true,
   },
   {
     file: "claude-demo.yml",
@@ -88,7 +85,6 @@ export const WORKFLOWS: WorkflowDef[] = [
       source: "claude-prs",
       label: "Which pull request to demo",
     },
-    pendingPr44: true,
   },
   {
     file: "claude-retro.yml",
@@ -113,7 +109,6 @@ export const WORKFLOWS: WorkflowDef[] = [
     description:
       "Runs the project's automated checks — install, lint, tests, and build — to confirm nothing is broken.",
     runnable: true,
-    pendingPr44: true,
   },
   {
     file: "claude-audit.yml",
@@ -138,7 +133,6 @@ export const WORKFLOWS: WorkflowDef[] = [
     description:
       "Installs a new skill / MCP server / plugin into an agent. Started from the Tools page.",
     runnable: false,
-    pendingPr44: true,
   },
 ];
 

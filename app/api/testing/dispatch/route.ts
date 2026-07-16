@@ -4,8 +4,8 @@ import { findWorkflow } from "@/lib/testing";
 
 /**
  * Trigger a workflow by hand. Body: { file: string, inputs?: Record<string,string> }.
- * A 404 from GitHub means the workflow file isn't on main yet (the PR #44
- * workflows) — we translate that into a friendly "not live yet" message.
+ * A 404 from GitHub means this project doesn't have that workflow installed on
+ * main — we translate that into a friendly "not installed yet" message.
  */
 export async function POST(req: Request) {
   let body: { file?: string; inputs?: Record<string, string> } = {};
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           error:
-            "This agent isn't live yet — waiting for PR #44 to merge on the target repo.",
+            "This agent isn't installed on this project yet. Onboard it from the Projects menu, then it'll run from here.",
           notLive: true,
         },
         { status: 404 },

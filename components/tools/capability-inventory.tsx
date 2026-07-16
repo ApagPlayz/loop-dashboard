@@ -177,7 +177,7 @@ function AgentCard({
 
       {a.source !== "main" && (
         <p className="mt-3 text-[10px] text-amber-300/70">
-          Read from PR #44 branch — not on main yet.
+          Read from a pending branch — not on main yet.
         </p>
       )}
     </div>

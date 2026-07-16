@@ -51,7 +51,7 @@ function AgentNode({ data }: { data: AgentNodeData }) {
           </span>
         ) : !onMain ? (
           <span className="rounded bg-amber-500/10 px-1.5 py-0.5 font-medium text-amber-400">
-            Coming with PR #44
+            Not installed yet
           </span>
         ) : loading && !status ? (
           <span className="flex items-center gap-1 text-zinc-500">

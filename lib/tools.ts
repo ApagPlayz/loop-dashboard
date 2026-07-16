@@ -17,8 +17,12 @@ import { getFileContent, REPOS, getOctokit } from "@/lib/github";
 
 const { owner, repo } = REPOS.primary;
 
-/** Branch that carries the PR #44 workflows until they land on main. */
-export const PR44_BRANCH = "claude/dashboard-support-workflows";
+/**
+ * Legacy fallback branch: if a workflow file isn't on main, we look here before
+ * giving up. All workflows normally live on main; this only helps a project
+ * mid-onboarding whose support workflows haven't merged yet.
+ */
+export const FALLBACK_BRANCH = "claude/dashboard-support-workflows";
 
 /* ------------------------------------------------------------------ */
 /* Target-agent picker metadata (used by the add-a-tool form)          */
@@ -43,20 +47,18 @@ export const AGENT_WORKFLOWS: {
   file: string;
   name: string;
   blurb: string;
-  pendingPr44?: boolean;
 }[] = [
   { file: "claude-scout.yml", name: "Scout", blurb: "Finds work, files proposals" },
   { file: "claude-builder.yml", name: "Builder", blurb: "Writes code, opens PRs" },
   { file: "claude-audit.yml", name: "Auditor", blurb: "Reviews PRs" },
   { file: "claude-mention.yml", name: "Mention", blurb: "Replies to @claude" },
   { file: "claude-retro.yml", name: "Retro", blurb: "Reviews the loop" },
-  { file: "claude-redraft.yml", name: "Redraft", blurb: "Rewrites proposals", pendingPr44: true },
-  { file: "claude-demo.yml", name: "Demo", blurb: "Captures evidence", pendingPr44: true },
+  { file: "claude-redraft.yml", name: "Redraft", blurb: "Rewrites proposals" },
+  { file: "claude-demo.yml", name: "Demo", blurb: "Captures evidence" },
   {
     file: "claude-tool-install.yml",
     name: "Tool installer",
     blurb: "Installs new tools",
-    pendingPr44: true,
   },
 ];
 
@@ -95,10 +97,10 @@ export type AgentCapabilities = {
   builtinTools: string[]; // friendly names
   mcpServers: string[]; // server names referenced/available
   skills: string[];
-  source: "main" | PR44Branch;
+  source: "main" | FallbackBranch;
 };
 
-type PR44Branch = typeof PR44_BRANCH;
+type FallbackBranch = typeof FALLBACK_BRANCH;
 
 /**
  * Extract the first `--allowedTools "..."` list from a claude_args block.
@@ -140,7 +142,7 @@ function parseMcpServers(json: string | null): string[] {
 
 /**
  * Read + parse one agent workflow's capabilities. Tries main first, then falls
- * back to the PR #44 branch for the workflows that haven't merged yet. The
+ * back to the onboarding branch for any workflow that hasn't merged yet. The
  * repo-level MCP servers (from .mcp.json) are passed in so we don't re-fetch.
  */
 async function parseAgentWorkflow(
@@ -150,10 +152,10 @@ async function parseAgentWorkflow(
   mcpServers: string[],
 ): Promise<AgentCapabilities> {
   let yaml = await getFileContent(`.github/workflows/${file}`);
-  let source: "main" | PR44Branch = "main";
+  let source: "main" | FallbackBranch = "main";
   if (yaml === null) {
-    yaml = await getFileContent(`.github/workflows/${file}`, PR44_BRANCH);
-    source = PR44_BRANCH;
+    yaml = await getFileContent(`.github/workflows/${file}`, FALLBACK_BRANCH);
+    source = FALLBACK_BRANCH;
   }
 
   const base: AgentCapabilities = {
@@ -244,10 +246,10 @@ export async function loadCapabilityInventory(): Promise<{
   repoMcpServers: string[];
   shared: SharedCapabilities;
 }> {
-  // .mcp.json can live on main or only on the PR #44 branch.
+  // .mcp.json can live on main or only on the onboarding branch.
   const mcpRaw =
     (await getFileContent(".mcp.json")) ??
-    (await getFileContent(".mcp.json", PR44_BRANCH));
+    (await getFileContent(".mcp.json", FALLBACK_BRANCH));
   const repoMcpServers = parseMcpServers(mcpRaw);
 
   const agents = await Promise.all(

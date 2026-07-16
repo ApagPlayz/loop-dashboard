@@ -85,7 +85,7 @@ export default function InstallActivity() {
           <p className="text-sm text-zinc-500">Loading…</p>
         ) : runs.length === 0 ? (
           <p className="text-sm text-zinc-500">
-            No installs have run yet (the installer arrives with PR #44).
+            No installs have run yet.
           </p>
         ) : (
           <div className="space-y-1.5">

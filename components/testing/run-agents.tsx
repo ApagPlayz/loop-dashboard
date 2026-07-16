@@ -26,7 +26,6 @@ type WorkflowCard = {
   name: string;
   description: string;
   input?: { name: string; source: "redraft-issues" | "claude-prs"; label: string };
-  pendingPr44?: boolean;
 };
 
 // Kept in sync with the runnable entries in lib/testing.ts WORKFLOWS.
@@ -48,7 +47,6 @@ const CARDS: WorkflowCard[] = [
     name: "Redraft a proposal",
     description: "Rewrites a proposal so it's clearer or better scoped.",
     input: { name: "issue_number", source: "redraft-issues", label: "Which proposal" },
-    pendingPr44: true,
   },
   {
     file: "claude-demo.yml",
@@ -56,7 +54,6 @@ const CARDS: WorkflowCard[] = [
     description:
       "Runs the app for a pull request and captures screenshots / video so you can see it working.",
     input: { name: "pr_number", source: "claude-prs", label: "Which pull request" },
-    pendingPr44: true,
   },
   {
     file: "claude-retro.yml",
@@ -72,7 +69,6 @@ const CARDS: WorkflowCard[] = [
     file: "repo-tests.yml",
     name: "Test suite",
     description: "Runs install, lint, tests, and build to confirm nothing is broken.",
-    pendingPr44: true,
   },
 ];
 
@@ -82,6 +78,10 @@ export default function RunAgents() {
     redraftIssues: Option[];
     claudePrs: Option[];
   }>({ redraftIssues: [], claudePrs: [] });
+  // Which workflow files are actually installed on the target repo. `null`
+  // means we haven't been able to check yet — in that case we don't flag
+  // anything as missing (the Run action itself still gates on the server).
+  const [installed, setInstalled] = useState<Set<string> | null>(null);
   const [selected, setSelected] = useState<{ id: number; htmlUrl: string } | null>(
     null,
   );
@@ -108,12 +108,15 @@ export default function RunAgents() {
     loadRuns();
     fetch("/api/testing/dispatch-options", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d) =>
+      .then((d) => {
         setOptions({
           redraftIssues: d.redraftIssues ?? [],
           claudePrs: d.claudePrs ?? [],
-        }),
-      )
+        });
+        setInstalled(
+          Array.isArray(d.installed) ? new Set<string>(d.installed) : null,
+        );
+      })
       .catch(() => {});
   }, [loadRuns]);
 
@@ -189,6 +192,8 @@ export default function RunAgents() {
         {CARDS.map((card) => {
           const latest = latestFor(card.file);
           const f = flash[card.file];
+          // Only flag as missing once we've actually checked the repo.
+          const missing = installed !== null && !installed.has(card.file);
           const opts =
             card.input?.source === "redraft-issues"
               ? options.redraftIssues
@@ -204,9 +209,9 @@ export default function RunAgents() {
                 <h3 className="text-sm font-semibold text-zinc-100">
                   {card.name}
                 </h3>
-                {card.pendingPr44 && (
+                {missing && (
                   <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-300">
-                    needs PR #44
+                    Not installed yet
                   </span>
                 )}
               </div>
@@ -214,7 +219,14 @@ export default function RunAgents() {
                 {card.description}
               </p>
 
-              {card.input && (
+              {missing && (
+                <p className="mt-2 text-[11px] text-amber-300/90">
+                  This project doesn&apos;t have this agent installed yet. Onboard
+                  it from the Projects menu, then it&apos;ll run from here.
+                </p>
+              )}
+
+              {card.input && !missing && (
                 <label className="mt-3 block">
                   <span className="mb-1 block text-[11px] font-medium text-zinc-500">
                     {card.input.label}
@@ -241,7 +253,8 @@ export default function RunAgents() {
               <div className="mt-3 flex items-center justify-between gap-2">
                 <button
                   onClick={() => runNow(card)}
-                  disabled={busy === card.file}
+                  disabled={busy === card.file || missing}
+                  title={missing ? "Not installed on this project yet" : undefined}
                   className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50"
                 >
                   <Play className="h-3.5 w-3.5" />

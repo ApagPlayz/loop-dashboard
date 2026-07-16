@@ -20,8 +20,9 @@ export type AgentMeta = {
   /** Plain-English list of when it runs. */
   triggers: string[];
   /**
-   * True if the workflow lives on the target repo's main branch (all do since
-   * PR #44 merged). When false, editing and "Run now" are disabled with a note.
+   * True if the workflow lives on the target repo's main branch. When false,
+   * the agent isn't installed on this project yet, so editing and "Run now" are
+   * disabled with a plain-English note.
    */
   onMain: boolean;
   /** True if the workflow declares workflow_dispatch (a "Run now" is possible). */

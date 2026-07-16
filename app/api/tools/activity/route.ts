@@ -18,7 +18,7 @@ export async function GET() {
     });
     runs = raw.map(toRunSummary);
   } catch {
-    // Workflow not on main yet (PR #44) → no runs. Not an error for the UI.
+    // Workflow not installed on this project → no runs. Not an error for the UI.
     runs = [];
   }
 
