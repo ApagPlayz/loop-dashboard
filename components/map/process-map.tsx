@@ -37,6 +37,7 @@ import AgentDrawer from "./agent-drawer";
 import LoopEditPanel from "./loop-edit-panel";
 import ProjectSwitcher, { ProjectChecklist } from "./project-switcher";
 import PowerMenu from "./power-menu";
+import EditMenu from "./edit-menu";
 import Modal from "./modal";
 
 const PILOT_KEY = "content-generation-platform";
@@ -263,9 +264,10 @@ export default function ProcessMap() {
 
   return (
     <>
-      {/* Toolbar: project switcher + loop power (deliberately separate controls) */}
+      {/* Toolbar: project switcher + edit menu + loop power (deliberately separate controls) */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <ProjectSwitcher selected={project} onSelect={selectProject} />
+        <EditMenu active="map" />
         <PowerMenu
           project={project}
           loopPaused={!!status?.loopPaused}

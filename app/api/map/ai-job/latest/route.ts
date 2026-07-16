@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const agentId = url.searchParams.get("agentId");
   const project = url.searchParams.get("project");
 
-  if (kind !== "draft" && kind !== "loop-edit") {
+  if (kind !== "draft" && kind !== "loop-edit" && kind !== "process-chat") {
     return NextResponse.json({ error: "Missing or invalid kind." }, { status: 400 });
   }
 

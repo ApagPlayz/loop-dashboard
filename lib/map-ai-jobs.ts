@@ -18,7 +18,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { AiError } from "./map-ai";
 
-export type AiJobKind = "draft" | "loop-edit";
+export type AiJobKind = "draft" | "loop-edit" | "process-chat";
 export type AiJobStatus = "running" | "done" | "error";
 
 export type AiJob = {

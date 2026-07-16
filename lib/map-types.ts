@@ -95,6 +95,11 @@ export type FileChange = {
   file: string;
   oldContent: string | null;
   newContent: string;
+  /**
+   * True when this change REMOVES the file (template edits only — project
+   * edits never delete). `newContent` is empty in that case.
+   */
+  delete?: boolean;
 };
 
 /** Capability chips parsed from a workflow's YAML + .mcp.json. */

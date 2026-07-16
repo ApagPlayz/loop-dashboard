@@ -13,6 +13,7 @@
 import { getOctokit, getFileContent, type RepoConfig } from "./github";
 import { atomicCommit, snapshotWorkflows, WORKFLOWS_DIR, type TreeChange } from "./map-history";
 import { listProjects, addProject, DASHBOARD_REPO, PILOT_PROJECT, type Project } from "./projects";
+import { listTemplateWorkflows } from "./loop-template";
 
 const PILOT_REPO: RepoConfig = { owner: PILOT_PROJECT.owner, repo: PILOT_PROJECT.repo };
 
@@ -111,8 +112,20 @@ export async function installBaselineLoop(
     );
   }
 
-  // ----- gather the baseline from the pilot ---------------------------
-  const workflows = await snapshotWorkflows("main", PILOT_REPO);
+  // ----- gather the baseline workflows ---------------------------------
+  // Preferred source: the editable new-project template (config/loop-template/
+  // in the dashboard repo). Fallback: a live snapshot of the pilot, so a
+  // missing or emptied template can never block adding a project.
+  let workflows: Map<string, string>;
+  try {
+    workflows = await listTemplateWorkflows();
+  } catch (err) {
+    console.error("onboard: template read failed, falling back to the pilot", err);
+    workflows = new Map();
+  }
+  if (workflows.size === 0) {
+    workflows = await snapshotWorkflows("main", PILOT_REPO);
+  }
   const files = new Map<string, string>();
   for (const [name, content] of workflows) {
     files.set(`${WORKFLOWS_DIR}/${name}`, content);
