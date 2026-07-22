@@ -15,6 +15,8 @@ import {
   ShieldAlert,
   ShieldX,
   ShieldQuestion,
+  AlertTriangle,
+  RefreshCw,
 } from "lucide-react";
 import type {
   PRSummary,
@@ -25,10 +27,17 @@ import type {
 import { Markdown, relativeTime, Spinner, ErrorPanel } from "./ui";
 import CommentThread from "./comment-thread";
 import CommentBox from "./comment-box";
-import EvidenceViewer from "./evidence-viewer";
+import EvidenceViewer, { RerunButton } from "./evidence-viewer";
 import { useToast } from "./toast";
 
-type Decision = "merge" | "sendback" | "close" | "comment" | "redemo";
+type Decision =
+  | "merge"
+  | "sendback"
+  | "close"
+  | "comment"
+  | "redemo"
+  | "reaudit"
+  | "rebuild";
 
 export default function PRCard({
   pr,
@@ -42,7 +51,9 @@ export default function PRCard({
   const [detail, setDetail] = useState<PRDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [panel, setPanel] = useState<"merge" | "sendback" | "close" | null>(null);
+  const [panel, setPanel] = useState<
+    "merge" | "sendback" | "close" | "rebuild" | null
+  >(null);
   const [panelText, setPanelText] = useState("");
   const [busy, setBusy] = useState<Decision | null>(null);
 
@@ -132,7 +143,33 @@ export default function PRCard({
     }
   }
 
+  async function rerunAudit() {
+    if (await act("reaudit")) {
+      toast.success("Auditor triggered — a fresh verdict will appear here shortly.");
+    }
+  }
+
+  async function confirmRebuild() {
+    if (await act("rebuild")) {
+      toast.success(
+        "Sent back to rebuild — the Builder will recreate it fresh against main.",
+      );
+      setPanel(null);
+      onChanged();
+    }
+  }
+
   const isOpen = pr.state === "open";
+  // The REST API's mergeable_state reports "dirty" specifically for merge
+  // conflicts (as opposed to "blocked"/"unstable" for failing checks, etc.).
+  const conflicting =
+    isOpen &&
+    !!detail &&
+    detail.mergeable === false &&
+    detail.mergeableState === "dirty";
+  // Best-effort guess for the confirm-panel copy only — the API route does
+  // its own authoritative lookup when the action actually runs.
+  const guessedIdea = detail ? guessSourceIdea(detail) : null;
 
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
@@ -174,6 +211,54 @@ export default function PRCard({
             </div>
           ) : detail ? (
             <div className="space-y-6 p-4">
+              {/* 0. Conflict notice */}
+              {conflicting && (
+                <div className="rounded-xl border border-red-800 bg-red-950/40 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-red-200">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    Conflicts with main — this can&apos;t be merged as-is.
+                  </p>
+                  <p className="mt-1 text-sm text-red-300/90">
+                    The code changed underneath it. Rebuild it fresh and the loop will recreate it cleanly.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setPanel(panel === "rebuild" ? null : "rebuild");
+                    }}
+                    disabled={busy !== null}
+                    className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+                  >
+                    <RefreshCw className="h-4 w-4" /> Rebuild fresh
+                  </button>
+
+                  {panel === "rebuild" && (
+                    <div className="mt-3 rounded-xl border border-red-900 bg-red-950/60 p-3">
+                      <p className="text-sm text-red-100">
+                        Close this PR and send idea{" "}
+                        {guessedIdea ? `#${guessedIdea}` : "its source idea"}{" "}
+                        back to be rebuilt? The current PR will be discarded.
+                      </p>
+                      <div className="mt-2 flex justify-end gap-2">
+                        <button
+                          onClick={() => setPanel(null)}
+                          className="rounded-lg px-3 py-2 text-sm text-zinc-400 hover:text-zinc-200"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={confirmRebuild}
+                          disabled={busy !== null}
+                          className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+                        >
+                          {busy === "rebuild" ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
+                          Confirm rebuild
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* 1. Header stats */}
               <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                 <span className="inline-flex items-center gap-1.5 text-zinc-300">
@@ -210,7 +295,7 @@ export default function PRCard({
               {/* 2. Audit verdict */}
               <section>
                 <SectionTitle>Auditor verdict</SectionTitle>
-                <VerdictBadge verdict={detail.verdict} />
+                <VerdictBadge verdict={detail.verdict} onRerun={rerunAudit} busy={busy === "reaudit"} />
               </section>
 
               {/* 3. Demo evidence */}
@@ -352,6 +437,26 @@ export default function PRCard({
   );
 }
 
+/**
+ * Client-side, best-effort guess at the source idea number, purely for the
+ * "Rebuild fresh" confirm copy. Mirrors the server-side lookup in
+ * app/api/builds/[pr]/route.ts, which is the authoritative version.
+ */
+function guessSourceIdea(detail: PRDetail): number | null {
+  const bodyMatch = detail.body.match(
+    /(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/i,
+  );
+  if (bodyMatch) return Number(bodyMatch[2]);
+
+  const titleMatch = detail.title.match(/\(#(\d+)\)/);
+  if (titleMatch) return Number(titleMatch[1]);
+
+  const branchMatch = detail.headRef.match(/-(\d+)$/);
+  if (branchMatch) return Number(branchMatch[1]);
+
+  return null;
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
@@ -410,11 +515,22 @@ const VERDICT_STYLES: Record<
   },
 };
 
-function VerdictBadge({ verdict }: { verdict: AuditVerdict }) {
+function VerdictBadge({
+  verdict,
+  onRerun,
+  busy,
+}: {
+  verdict: AuditVerdict;
+  onRerun: () => void;
+  busy: boolean;
+}) {
   if (!verdict) {
     return (
       <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-sm text-zinc-400">
         The Auditor hasn&apos;t reviewed this PR yet.
+        <div>
+          <RerunButton onClick={onRerun} busy={busy} label="Run audit" small />
+        </div>
       </div>
     );
   }
@@ -444,6 +560,7 @@ function VerdictBadge({ verdict }: { verdict: AuditVerdict }) {
           <Markdown>{verdict.body}</Markdown>
         </div>
       </details>
+      <RerunButton onClick={onRerun} busy={busy} label="Re-run audit" small />
     </div>
   );
 }

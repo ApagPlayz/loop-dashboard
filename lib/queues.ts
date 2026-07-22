@@ -8,7 +8,7 @@
  * server (API routes / server components) where GITHUB_TOKEN is available.
  */
 
-import { getOctokit, REPOS } from "@/lib/github";
+import { getOctokit, REPOS, type RepoConfig } from "@/lib/github";
 import { loadEvidenceManifest, readEvidenceFile } from "@/lib/queues-evidence";
 
 const { owner, repo } = REPOS.primary;
@@ -162,8 +162,11 @@ function mapIssue(i: RawIssue): IdeaSummary {
 const IDEA_LABELS = ["proposal", "approved", "redraft"];
 
 /** Load all four Ideas tabs in as few requests as possible. */
-export async function loadIdeas(): Promise<IdeasPayload> {
+export async function loadIdeas(
+  repoConfig: RepoConfig = REPOS.primary,
+): Promise<IdeasPayload> {
   const octokit = getOctokit();
+  const { owner, repo } = repoConfig;
 
   // One "open" listing covers proposal/approved/redraft (they're all open).
   const openRes = await octokit.rest.issues.listForRepo({
@@ -215,13 +218,33 @@ function byClosed(a: IdeaSummary, b: IdeaSummary) {
   return +new Date(b.closedAt ?? b.updatedAt) - +new Date(a.closedAt ?? a.updatedAt);
 }
 
+/** One issue's current title/body/labels/state — for building AI context. */
+export async function getIssue(
+  issueNumber: number,
+  repoConfig: RepoConfig = REPOS.primary,
+): Promise<{ number: number; title: string; body: string; labels: string[]; state: "open" | "closed" }> {
+  const res = await getOctokit().rest.issues.get({
+    owner: repoConfig.owner,
+    repo: repoConfig.repo,
+    issue_number: issueNumber,
+  });
+  return {
+    number: res.data.number,
+    title: res.data.title,
+    body: res.data.body ?? "",
+    labels: labelNames(res.data.labels as RawIssue["labels"]),
+    state: res.data.state === "closed" ? "closed" : "open",
+  };
+}
+
 /** List the comment thread for an issue or PR (they share the endpoint). */
 export async function listThreadComments(
   issueNumber: number,
+  repoConfig: RepoConfig = REPOS.primary,
 ): Promise<ThreadComment[]> {
   const res = await getOctokit().rest.issues.listComments({
-    owner,
-    repo,
+    owner: repoConfig.owner,
+    repo: repoConfig.repo,
     issue_number: issueNumber,
     per_page: 100,
   });
@@ -236,17 +259,64 @@ export async function listThreadComments(
   }));
 }
 
+/**
+ * List formal PR reviews (`gh pr review --comment`) as ThreadComment-shaped
+ * entries. The Auditor's prompt says "post ONE review comment," which an
+ * agent run can reasonably satisfy either with a plain issue comment
+ * (`gh pr comment`) or a formal review (`gh pr review --comment`) — both are
+ * valid GitHub objects, but they live in different API endpoints. Without
+ * this, a verdict posted the second way is invisible to the dashboard even
+ * though it's clearly visible on GitHub itself.
+ */
+async function listPRReviewComments(
+  prNumber: number,
+  repoConfig: RepoConfig = REPOS.primary,
+): Promise<ThreadComment[]> {
+  const res = await getOctokit().rest.pulls.listReviews({
+    owner: repoConfig.owner,
+    repo: repoConfig.repo,
+    pull_number: prNumber,
+    per_page: 100,
+  });
+  return res.data
+    .filter((r) => (r.body ?? "").trim().length > 0)
+    .map((r) => ({
+      id: r.id,
+      author: r.user?.login ?? "unknown",
+      authorAvatar: r.user?.avatar_url ?? "",
+      body: r.body ?? "",
+      createdAt: r.submitted_at ?? "",
+      htmlUrl: r.html_url,
+      isBot: r.user?.type === "Bot" || (r.user?.login ?? "").endsWith("[bot]"),
+    }));
+}
+
 /** Close an issue (used by the Reject action). */
 export async function closeIssue(
   issueNumber: number,
   stateReason: "completed" | "not_planned" = "not_planned",
+  repoConfig: RepoConfig = REPOS.primary,
 ) {
   const res = await getOctokit().rest.issues.update({
-    owner,
-    repo,
+    owner: repoConfig.owner,
+    repo: repoConfig.repo,
     issue_number: issueNumber,
     state: "closed",
     state_reason: stateReason,
+  });
+  return res.data;
+}
+
+/** Reopen a previously closed issue (used by the Rebuild-fresh action). */
+export async function reopenIssue(
+  issueNumber: number,
+  repoConfig: RepoConfig = REPOS.primary,
+) {
+  const res = await getOctokit().rest.issues.update({
+    owner: repoConfig.owner,
+    repo: repoConfig.repo,
+    issue_number: issueNumber,
+    state: "open",
   });
   return res.data;
 }
@@ -338,7 +408,13 @@ export async function loadPRDetail(prNumber: number): Promise<PRDetail> {
   });
   const p = prRes.data;
 
-  const comments = await listThreadComments(prNumber);
+  const [issueComments, reviewComments] = await Promise.all([
+    listThreadComments(prNumber),
+    listPRReviewComments(prNumber),
+  ]);
+  const comments = [...issueComments, ...reviewComments].sort(
+    (a, b) => +new Date(a.createdAt) - +new Date(b.createdAt),
+  );
   const verdict = parseAuditFromComments(comments);
   const demo = await resolveDemoEvidence(prNumber, p.head.sha, comments);
 
@@ -398,7 +474,9 @@ function isAuditComment(c: ThreadComment): boolean {
 }
 
 export function parseAuditFromComments(comments: ThreadComment[]): AuditVerdict {
-  const audits = comments.filter(isAuditComment);
+  const audits = comments
+    .filter(isAuditComment)
+    .sort((a, b) => +new Date(a.createdAt) - +new Date(b.createdAt));
   if (audits.length === 0) return null;
   const latest = audits[audits.length - 1];
   return {

@@ -67,6 +67,13 @@ function BuildsInner() {
     return <ErrorPanel message={error} onRetry={load} />;
   }
 
+  // TODO: a list-level "⚠️ N conflict with main" pill would need `mergeable`
+  // on every open PR, but /api/builds returns PRSummary (list rows only) —
+  // `mergeable` is only fetched per-PR via /api/builds/[pr] when a card is
+  // expanded. Skipping the summary count rather than adding N extra fetches
+  // up front; the per-card banner in pr-card.tsx is the must-have and still
+  // surfaces on open.
+
   const lists: Record<TabKey, PRSummary[]> = {
     needsReview: data?.needsReview ?? [],
     merged: data?.merged ?? [],

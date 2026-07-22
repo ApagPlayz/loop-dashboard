@@ -1,6 +1,14 @@
 import { NextResponse } from "next/server";
-import { createComment, mergePR, dispatchWorkflow } from "@/lib/github";
-import { loadPRDetail, closePR } from "@/lib/queues";
+import {
+  createComment,
+  mergePR,
+  dispatchWorkflow,
+  addLabel,
+  removeLabel,
+  getOctokit,
+  REPOS,
+} from "@/lib/github";
+import { loadPRDetail, closePR, getIssue, reopenIssue } from "@/lib/queues";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +31,14 @@ export async function GET(
 }
 
 type ActionBody = {
-  action: "merge" | "sendback" | "close" | "comment" | "redemo";
+  action:
+    | "merge"
+    | "sendback"
+    | "close"
+    | "comment"
+    | "redemo"
+    | "reaudit"
+    | "rebuild";
   text?: string;
   wakeClaude?: boolean;
 };
@@ -35,6 +50,10 @@ type ActionBody = {
  *  close    : optional comment, then close without merging
  *  comment  : plain comment (optionally @claude to wake the agent)
  *  redemo   : dispatch claude-demo.yml with pr_number to (re)capture evidence
+ *  reaudit  : dispatch claude-audit.yml with pr_number to (re)review the PR
+ *  rebuild  : PR conflicts with main and can't be merged as-is — close it and
+ *             re-queue its source idea (re-approve) so the Builder recreates
+ *             it fresh against current main instead of patching the old branch.
  */
 export async function POST(
   req: Request,
@@ -103,6 +122,55 @@ export async function POST(
         });
         return NextResponse.json({ ok: true });
       }
+      case "reaudit": {
+        await dispatchWorkflow("claude-audit.yml", "main", {
+          pr_number: String(prNumber),
+        });
+        return NextResponse.json({ ok: true });
+      }
+      case "rebuild": {
+        const { owner, repo } = REPOS.primary;
+        const prRes = await getOctokit().rest.pulls.get({
+          owner,
+          repo,
+          pull_number: prNumber,
+        });
+        const source = prRes.data;
+        const ideaNumber = findSourceIdea(
+          source.body ?? "",
+          source.title ?? "",
+          source.head.ref ?? "",
+        );
+        if (!ideaNumber) {
+          return NextResponse.json(
+            {
+              error:
+                "Couldn't find the source idea for this PR; close it manually.",
+            },
+            { status: 422 },
+          );
+        }
+
+        await createComment(
+          prNumber,
+          "🔁 Closing this PR — it conflicts with the latest `main` and can't be merged as-is. " +
+            `Sending idea #${ideaNumber} back through the loop so the Builder rebuilds it fresh against current main.`,
+        );
+        await closePR(prNumber);
+
+        const idea = await getIssue(ideaNumber);
+        if (idea.state === "closed") {
+          await reopenIssue(ideaNumber);
+        }
+        await addLabel(ideaNumber, "approved");
+        await removeLabel(ideaNumber, "proposal").catch(ignoreMissingLabel);
+        await createComment(
+          ideaNumber,
+          "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
+        );
+
+        return NextResponse.json({ ok: true, requeued: ideaNumber });
+      }
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
@@ -114,4 +182,43 @@ export async function POST(
 function msg(err: unknown): string {
   if (err instanceof Error) return err.message;
   return "GitHub request failed. Try again in a moment.";
+}
+
+/**
+ * Find the source idea (issue) number for a Builder PR, in order of
+ * confidence:
+ *  1. A GitHub closing keyword in the PR body — "closes #12", "fixes #12", etc.
+ *  2. A trailing "(#12)" in the PR title.
+ *  3. A trailing "-12" on the head branch (e.g. "claude/add-thing-12").
+ */
+function findSourceIdea(
+  body: string,
+  title: string,
+  headRef: string,
+): number | null {
+  const bodyMatch = body.match(
+    /(close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/i,
+  );
+  if (bodyMatch) return Number(bodyMatch[2]);
+
+  const titleMatch = title.match(/\(#(\d+)\)/);
+  if (titleMatch) return Number(titleMatch[1]);
+
+  const branchMatch = headRef.match(/-(\d+)$/);
+  if (branchMatch) return Number(branchMatch[1]);
+
+  return null;
+}
+
+function ignoreMissingLabel(err: unknown) {
+  // Removing a label that isn't present returns 404 — harmless here.
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "status" in err &&
+    (err as { status?: number }).status === 404
+  ) {
+    return;
+  }
+  throw err;
 }
