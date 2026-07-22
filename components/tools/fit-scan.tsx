@@ -30,6 +30,10 @@ type ToolScore = {
   score: number;
   reason: string;
   estimated: boolean;
+  /** Agents that already carry this tool (mirror of lib/tool-fit.ts). */
+  alreadyHave?: string[];
+  /** Agents this tool is worth adding to (mirror of lib/tool-fit.ts). */
+  recommendForAgents?: string[];
 };
 
 type ScanResult = {
@@ -485,6 +489,23 @@ export default function FitScan() {
                       )}
                     </div>
                     <p className="mt-0.5 text-xs text-zinc-400">{t.reason}</p>
+                    {((t.recommendForAgents ?? []).length > 0 || (t.alreadyHave ?? []).length > 0) && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px]">
+                        {(t.recommendForAgents ?? []).length > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-0.5 text-emerald-300">
+                            For: {t.recommendForAgents!.join(", ")}
+                          </span>
+                        )}
+                        {(t.alreadyHave ?? []).length > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-zinc-700 bg-zinc-800 px-1.5 py-0.5 text-zinc-400">
+                            Already on: {t.alreadyHave!.join(", ")}
+                          </span>
+                        )}
+                        {(t.recommendForAgents ?? []).length === 0 && (t.alreadyHave ?? []).length > 0 && (
+                          <span className="text-zinc-500">nothing to add</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div className="shrink-0 pt-0.5">
                     <InstallRow tool={t} />

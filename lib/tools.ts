@@ -13,7 +13,7 @@
  * formatting.
  */
 
-import { getFileContent, REPOS, getOctokit } from "@/lib/github";
+import { getFileContent, REPOS, getOctokit, type RepoConfig } from "@/lib/github";
 
 const { owner, repo } = REPOS.primary;
 
@@ -150,11 +150,12 @@ async function parseAgentWorkflow(
   name: string,
   blurb: string,
   mcpServers: string[],
+  repo: RepoConfig = REPOS.primary,
 ): Promise<AgentCapabilities> {
-  let yaml = await getFileContent(`.github/workflows/${file}`);
+  let yaml = await getFileContent(`.github/workflows/${file}`, undefined, repo);
   let source: "main" | FallbackBranch = "main";
   if (yaml === null) {
-    yaml = await getFileContent(`.github/workflows/${file}`, FALLBACK_BRANCH);
+    yaml = await getFileContent(`.github/workflows/${file}`, FALLBACK_BRANCH, repo);
     source = FALLBACK_BRANCH;
   }
 
@@ -241,20 +242,22 @@ export function computeSharedCapabilities(
   };
 }
 
-export async function loadCapabilityInventory(): Promise<{
+export async function loadCapabilityInventory(
+  repo: RepoConfig = REPOS.primary,
+): Promise<{
   agents: AgentCapabilities[];
   repoMcpServers: string[];
   shared: SharedCapabilities;
 }> {
   // .mcp.json can live on main or only on the onboarding branch.
   const mcpRaw =
-    (await getFileContent(".mcp.json")) ??
-    (await getFileContent(".mcp.json", FALLBACK_BRANCH));
+    (await getFileContent(".mcp.json", undefined, repo)) ??
+    (await getFileContent(".mcp.json", FALLBACK_BRANCH, repo));
   const repoMcpServers = parseMcpServers(mcpRaw);
 
   const agents = await Promise.all(
     AGENT_WORKFLOWS.map((w) =>
-      parseAgentWorkflow(w.file, w.name, w.blurb, repoMcpServers),
+      parseAgentWorkflow(w.file, w.name, w.blurb, repoMcpServers, repo),
     ),
   );
   const shared = computeSharedCapabilities(agents, repoMcpServers);
