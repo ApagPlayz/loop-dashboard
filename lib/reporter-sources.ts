@@ -452,7 +452,8 @@ async function pullHackerNews(): Promise<Pulled> {
         ),
       ),
     );
-    const byId = new Map<string, DigestItem>();
+    // Keep the story item alongside its HN objectID so we can pull comments.
+    const byId = new Map<string, { it: DigestItem; objectID: string }>();
     let anyOk = false;
     for (const res of results) {
       if (res.status !== "fulfilled" || !res.value.ok) continue;
@@ -473,12 +474,43 @@ async function pullHackerNews(): Promise<Pulled> {
           date: h.created_at ?? null,
           category: "community",
           summary: `${points} points · ${h.num_comments ?? 0} comments on Hacker News`,
+          discussionUrl: hnUrl,
         });
-        byId.set(it.id, it);
+        if (!byId.has(it.id)) byId.set(it.id, { it, objectID: h.objectID });
       }
     }
     if (!anyOk) return fail("hn", label, "all HN queries failed");
-    const items = [...byId.values()].sort((a, b) => b.sortTs - a.sortTs).slice(0, 30);
+    const ranked = [...byId.values()].sort((a, b) => b.it.sortTs - a.it.sortTs).slice(0, 30);
+
+    // For the top stories we actually keep, pull the top few comments as real
+    // sentiment input for the enrichment step. Best-effort and bounded (~15
+    // stories): a comment-fetch failure just leaves that story without a
+    // discussion — it never sinks the source.
+    await Promise.all(
+      ranked.slice(0, 15).map(async ({ it, objectID }) => {
+        try {
+          const cres = await fetchWithTimeout(
+            `https://hn.algolia.com/api/v1/items/${objectID}`,
+            {},
+            8000,
+          );
+          if (!cres.ok) return;
+          const tree = (await cres.json()) as { children?: { text?: string | null }[] };
+          const comments: string[] = [];
+          for (const c of tree.children ?? []) {
+            if (!c.text) continue;
+            const t = clip(stripHtml(c.text), 500);
+            if (t.length >= 20) comments.push(t);
+            if (comments.length >= 5) break;
+          }
+          if (comments.length) it.discussion = comments;
+        } catch {
+          // ignore — keep the story without discussion
+        }
+      }),
+    );
+
+    const items = ranked.map((r) => r.it);
     return ok("hn", label, items);
   } catch (e) {
     return fail("hn", label, e instanceof Error ? e.message : "fetch failed");
@@ -509,6 +541,44 @@ function parseRssItems(xml: string): { title: string; link: string; date: string
   return out;
 }
 
+/** Extract the inner text of the first <tag>…</tag> in a block, unwrapping CDATA. */
+function xmlTag(block: string, tag: string): string {
+  const m = block.match(new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, "i"));
+  if (!m) return "";
+  return m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1").trim();
+}
+
+/**
+ * Parse Atom <entry> blocks (Simon Willison, Reddit RSS, some blog feeds).
+ * Atom differs from RSS 2.0: the link lives in a <link href="…"> attribute and
+ * the body is <content>/<summary> rather than <description>. Returns the raw
+ * HTML body so callers can either summarize it or keep it as `discussion`.
+ */
+function parseAtomEntries(
+  xml: string,
+): { title: string; link: string; date: string | null; html: string }[] {
+  const out: { title: string; link: string; date: string | null; html: string }[] = [];
+  const blocks = xml.match(/<entry\b[\s\S]*?<\/entry>/gi) ?? [];
+  const pickLink = (block: string): string => {
+    const links = [...block.matchAll(/<link\b[^>]*>/gi)].map((m) => m[0]);
+    const chosen =
+      links.find((l) => /rel=["']alternate["']/i.test(l)) ??
+      links.find((l) => !/rel=/i.test(l)) ??
+      links[0];
+    if (!chosen) return "";
+    const m = chosen.match(/href=["']([^"']+)["']/i);
+    return m ? stripHtml(m[1]) : "";
+  };
+  for (const b of blocks) {
+    const title = stripHtml(xmlTag(b, "title"));
+    const link = pickLink(b);
+    const date = xmlTag(b, "published") || xmlTag(b, "updated") || null;
+    const html = xmlTag(b, "content") || xmlTag(b, "summary") || "";
+    if (title && link) out.push({ title, link, date, html });
+  }
+  return out;
+}
+
 async function pullAnthropicNews(): Promise<Pulled> {
   const label = "Anthropic news";
   try {
@@ -535,54 +605,286 @@ async function pullAnthropicNews(): Promise<Pulled> {
 }
 
 /* ------------------------------------------------------------------ */
-/* 9. r/ClaudeAI (needs a real User-Agent; degrade gracefully)         */
+/* 9. AlphaSignal (daily AI newsletter, published via Substack)        */
 /* ------------------------------------------------------------------ */
 
-type RedditChild = {
-  data?: {
-    title?: string;
-    permalink?: string;
-    url?: string;
-    created_utc?: number;
-    score?: number;
-    num_comments?: number;
-    stickied?: boolean;
-  };
-};
-
-async function pullReddit(): Promise<Pulled> {
-  const label = "r/ClaudeAI";
+async function pullAlphaSignal(): Promise<Pulled> {
+  const label = "AlphaSignal";
   try {
-    const res = await fetchWithTimeout(
-      "https://www.reddit.com/r/ClaudeAI/new.json?limit=25",
-      { headers: { Accept: "application/json" } },
+    const res = await fetchWithTimeout("https://alphasignalai.substack.com/feed");
+    if (!res.ok) return fail("alphasignal", label, `Feed responded ${res.status}`);
+    const parsed = parseRssItems(await res.text());
+    const items = parsed.slice(0, 25).map((p) =>
+      item({
+        source: label,
+        sourceKey: "alphasignal",
+        title: p.title,
+        url: p.link,
+        date: p.date ? new Date(p.date).toISOString() : null,
+        category: "ai-news",
+        summary: p.desc ? clip(p.desc, 240) : undefined,
+      }),
     );
-    if (!res.ok) return fail("reddit", label, `Reddit responded ${res.status} (often blocked without OAuth)`);
-    const data = (await res.json()) as { data?: { children?: RedditChild[] } };
-    const cutoff = Date.now() - 14 * DAY;
+    return ok("alphasignal", label, items);
+  } catch (e) {
+    return fail("alphasignal", label, e instanceof Error ? e.message : "fetch failed");
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 12. Simon Willison (Atom) — high-signal independent commentary       */
+/* ------------------------------------------------------------------ */
+
+async function pullSimonWillison(): Promise<Pulled> {
+  const label = "Simon Willison";
+  try {
+    const res = await fetchWithTimeout("https://simonwillison.net/atom/everything/");
+    if (!res.ok) return fail("simonw", label, `Atom feed responded ${res.status}`);
+    const entries = parseAtomEntries(await res.text());
+    const cutoff = Date.now() - 30 * DAY;
     const items: DigestItem[] = [];
-    for (const ch of data.data?.children ?? []) {
-      const d = ch.data;
-      if (!d?.title || d.stickied) continue;
-      const created = (d.created_utc ?? 0) * 1000;
-      if (created < cutoff) continue;
-      if ((d.score ?? 0) < 5 && (d.num_comments ?? 0) < 3) continue;
+    for (const e of entries) {
+      const ts = e.date ? Date.parse(e.date) : NaN;
+      if (Number.isNaN(ts) || ts < cutoff) continue; // recent commentary only
       items.push(
         item({
           source: label,
-          sourceKey: "reddit",
-          title: d.title,
-          url: d.permalink ? `https://www.reddit.com${d.permalink}` : d.url ?? "",
-          date: new Date(created).toISOString(),
-          category: "community",
-          summary: `${d.score ?? 0} upvotes · ${d.num_comments ?? 0} comments on r/ClaudeAI`,
+          sourceKey: "simonw",
+          title: e.title,
+          url: e.link,
+          date: new Date(ts).toISOString(),
+          category: "technique",
+          summary: e.html ? clip(stripHtml(e.html), 220) : undefined,
         }),
       );
     }
-    return ok("reddit", label, items.sort((a, b) => b.sortTs - a.sortTs).slice(0, 20));
+    items.sort((a, b) => b.sortTs - a.sortTs);
+    return ok("simonw", label, items.slice(0, 30));
   } catch (e) {
-    // Graceful degrade — Reddit blocking must never break the digest.
+    return fail("simonw", label, e instanceof Error ? e.message : "fetch failed");
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 13. Anthropic Engineering blog — try RSS/Atom, degrade if none       */
+/* ------------------------------------------------------------------ */
+
+async function pullAnthropicEngineering(): Promise<Pulled> {
+  const label = "Anthropic Engineering";
+  // No confirmed clean feed as of 2026-07; probe the likely paths and fall
+  // back gracefully (no throw) when none responds with parseable items.
+  const feeds = [
+    "https://www.anthropic.com/engineering/rss.xml",
+    "https://www.anthropic.com/rss.xml",
+  ];
+  try {
+    for (const url of feeds) {
+      let res: Response;
+      try {
+        res = await fetchWithTimeout(url);
+      } catch {
+        continue; // this candidate feed didn't respond — try the next
+      }
+      if (!res.ok) continue;
+      const xml = await res.text();
+      // Accept either RSS 2.0 <item> or Atom <entry>.
+      const rss = parseRssItems(xml);
+      const parsed = rss.length
+        ? rss
+        : parseAtomEntries(xml).map((e) => ({
+            title: e.title,
+            link: e.link,
+            date: e.date,
+            desc: e.html ? stripHtml(e.html) : "",
+          }));
+      if (!parsed.length) continue;
+      const cutoff = Date.now() - 45 * DAY;
+      const items: DigestItem[] = [];
+      for (const p of parsed) {
+        const ts = p.date ? Date.parse(p.date) : NaN;
+        if (!Number.isNaN(ts) && ts < cutoff) continue;
+        items.push(
+          item({
+            source: label,
+            sourceKey: "anthropic-eng",
+            title: p.title,
+            url: p.link,
+            date: Number.isNaN(ts) ? null : new Date(ts).toISOString(),
+            category: "technique",
+            summary: p.desc ? clip(p.desc, 220) : undefined,
+          }),
+        );
+      }
+      if (items.length) {
+        items.sort((a, b) => b.sortTs - a.sortTs);
+        return ok("anthropic-eng", label, items.slice(0, 20));
+      }
+    }
+    return fail("anthropic-eng", label, "no engineering RSS/Atom feed responded with items");
+  } catch (e) {
+    return fail("anthropic-eng", label, e instanceof Error ? e.message : "fetch failed");
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 14. TLDR AI newsletter (RSS 2.0) — broad AI headlines                */
+/* ------------------------------------------------------------------ */
+
+async function pullTldrAi(): Promise<Pulled> {
+  const label = "TLDR AI";
+  try {
+    const res = await fetchWithTimeout("https://tldr.tech/api/rss/ai");
+    if (!res.ok) return fail("tldr", label, `Feed responded ${res.status}`);
+    const parsed = parseRssItems(await res.text());
+    const cutoff = Date.now() - 21 * DAY;
+    const items: DigestItem[] = [];
+    for (const p of parsed.slice(0, 25)) {
+      const ts = p.date ? Date.parse(p.date) : NaN;
+      if (!Number.isNaN(ts) && ts < cutoff) continue;
+      items.push(
+        item({
+          source: label,
+          sourceKey: "tldr",
+          title: p.title,
+          url: p.link,
+          date: Number.isNaN(ts) ? null : new Date(ts).toISOString(),
+          category: "ai-news",
+          summary: p.desc ? clip(p.desc, 240) : undefined,
+        }),
+      );
+    }
+    return ok("tldr", label, items);
+  } catch (e) {
+    return fail("tldr", label, e instanceof Error ? e.message : "fetch failed");
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 10. Reddit (RSS) — r/ClaudeAI + r/ClaudeCode                         */
+/* ------------------------------------------------------------------ */
+
+const REDDIT_FEEDS = [
+  { url: "https://www.reddit.com/r/ClaudeAI/.rss", sub: "r/ClaudeAI" },
+  { url: "https://www.reddit.com/r/ClaudeCode/.rss", sub: "r/ClaudeCode" },
+];
+
+async function pullReddit(): Promise<Pulled> {
+  // Reddit's .json path is OAuth-gated from most networks; the public .rss
+  // (Atom) feeds are far more reliable. Each entry carries an HTML <content>
+  // body which we keep as `discussion` so the enrichment step can read the
+  // vibe of the thread. Any single feed failing must not sink the rest.
+  const label = "Reddit (r/ClaudeAI + r/ClaudeCode)";
+  try {
+    const cutoff = Date.now() - 21 * DAY;
+    const results = await Promise.allSettled(
+      REDDIT_FEEDS.map((f) =>
+        fetchWithTimeout(f.url, { headers: { Accept: "application/atom+xml" } }),
+      ),
+    );
+    const byId = new Map<string, DigestItem>();
+    let anyOk = false;
+    for (let i = 0; i < results.length; i++) {
+      const res = results[i];
+      if (res.status !== "fulfilled" || !res.value.ok) continue;
+      anyOk = true;
+      const sub = REDDIT_FEEDS[i].sub;
+      const entries = parseAtomEntries(await res.value.text());
+      for (const e of entries) {
+        const ts = e.date ? Date.parse(e.date) : NaN;
+        if (!Number.isNaN(ts) && ts < cutoff) continue;
+        // Drop the pinned megathread boilerplate — pure noise, no real signal.
+        if (/megathread|please choose one of the following/i.test(`${e.title} ${e.html}`)) continue;
+        const snippet = e.html ? clip(stripHtml(e.html), 500) : "";
+        const it = item({
+          source: sub,
+          sourceKey: "reddit",
+          title: e.title,
+          url: e.link,
+          date: Number.isNaN(ts) ? null : new Date(ts).toISOString(),
+          category: "community",
+          summary: `Discussion on ${sub}`,
+          discussionUrl: e.link,
+          discussion: snippet.length >= 40 ? [snippet] : undefined,
+        });
+        byId.set(it.id, it);
+      }
+    }
+    if (!anyOk) {
+      // Graceful degrade — Reddit blocking/rate-limiting must never break the digest.
+      return fail("reddit", label, "both Reddit RSS feeds failed (often rate-limited without OAuth)");
+    }
+    const items = [...byId.values()].sort((a, b) => b.sortTs - a.sortTs).slice(0, 25);
+    return ok("reddit", label, items);
+  } catch (e) {
     return fail("reddit", label, e instanceof Error ? e.message : "fetch failed");
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* 15. GitHub Discussions (anthropics/claude-code) — pulse of usage     */
+/* ------------------------------------------------------------------ */
+
+type GhDiscussion = {
+  title?: string;
+  url?: string;
+  updatedAt?: string;
+  bodyText?: string;
+  category?: { name?: string } | null;
+};
+
+async function pullClaudeCodeDiscussions(): Promise<Pulled> {
+  const label = "Claude Code discussions";
+  // GitHub's GraphQL API requires auth — reuse the file's token helper and
+  // degrade gracefully (no throw) when no token is configured.
+  const headers = githubHeaders();
+  if (!headers.Authorization) {
+    return fail("discussions", label, "no GITHUB_TOKEN — GitHub GraphQL requires auth");
+  }
+  const query = `query {
+    repository(owner: "anthropics", name: "claude-code") {
+      discussions(first: 15, orderBy: { field: UPDATED_AT, direction: DESC }) {
+        nodes { title url updatedAt bodyText category { name } }
+      }
+    }
+  }`;
+  try {
+    const res = await fetchWithTimeout("https://api.github.com/graphql", {
+      method: "POST",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify({ query }),
+    });
+    if (!res.ok) return fail("discussions", label, `GraphQL responded ${res.status}`);
+    const data = (await res.json()) as {
+      data?: { repository?: { discussions?: { nodes?: GhDiscussion[] } } };
+      errors?: { message?: string }[];
+    };
+    if (data.errors?.length) {
+      return fail("discussions", label, data.errors[0]?.message ?? "GraphQL error");
+    }
+    const nodes = data.data?.repository?.discussions?.nodes ?? [];
+    const items: DigestItem[] = [];
+    for (const n of nodes) {
+      if (!n?.title || !n.url) continue;
+      const body = n.bodyText ? clip(n.bodyText, 500) : "";
+      const cat = n.category?.name;
+      items.push(
+        item({
+          source: label,
+          sourceKey: "discussions",
+          title: cat ? `${n.title} — ${cat}` : n.title,
+          url: n.url,
+          date: n.updatedAt ?? null,
+          category: "community",
+          summary: "Discussion in anthropics/claude-code",
+          discussionUrl: n.url,
+          discussion: body.length >= 40 ? [body] : undefined,
+        }),
+      );
+    }
+    items.sort((a, b) => b.sortTs - a.sortTs);
+    return ok("discussions", label, items);
+  } catch (e) {
+    return fail("discussions", label, e instanceof Error ? e.message : "fetch failed");
   }
 }
 
@@ -601,7 +903,12 @@ export async function pullAllSources(): Promise<{
     pullAwesomeClaudeCode(),
     pullHackerNews(),
     pullAnthropicNews(),
+    pullAlphaSignal(),
+    pullSimonWillison(),
+    pullAnthropicEngineering(),
+    pullTldrAi(),
     pullReddit(),
+    pullClaudeCodeDiscussions(),
   ]);
   const items = results.flatMap((r) => r.items);
   const sources = results.map((r) => r.status);

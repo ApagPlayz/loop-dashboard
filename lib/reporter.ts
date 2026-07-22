@@ -9,6 +9,7 @@
 
 import type { Digest, DigestItem } from "./reporter-types";
 import { pullAllSources, canonicalUrl } from "./reporter-sources";
+import { enrichDigest } from "./reporter-enrich";
 import { loadCache, saveCache } from "./reporter-store";
 
 const MAX_ITEMS = 200;
@@ -42,6 +43,10 @@ function mergeItems(older: DigestItem[], newer: DigestItem[]): DigestItem[] {
       merged.sortTs = it.pinned ? it.sortTs : prev.sortTs;
     }
     if (!it.summary && prev.summary) merged.summary = prev.summary;
+    // Preserve the AI-distilled insight across refreshes — enrichment is
+    // expensive, so a fresh pull that hasn't been enriched yet keeps the
+    // insight we already derived rather than dropping it.
+    if (!it.insight && prev.insight) merged.insight = prev.insight;
     byKey.set(key, merged);
   }
   return [...byKey.values()].sort((a, b) => b.sortTs - a.sortTs).slice(0, MAX_ITEMS);
@@ -75,11 +80,21 @@ export async function refreshDigest(): Promise<Digest> {
   const cache = loadCache();
   const { items: fresh, sources } = await pullAllSources();
   const merged = mergeItems(cache.digest?.items ?? [], fresh);
+  // Enrich community items (derive `insight` from raw discussion, clear it).
+  // A failure here must never sink the refresh — fall back to the un-enriched
+  // merge so the digest still updates.
+  let enriched: DigestItem[];
+  try {
+    enriched = await enrichDigest(merged);
+  } catch (e) {
+    console.error("reporter: enrichDigest failed, using un-enriched merge", e);
+    enriched = merged;
+  }
   const digest: Digest = {
-    items: merged,
+    items: enriched,
     lastUpdated: new Date().toISOString(),
     sources,
   };
-  saveCache({ digest, checkpoints: computeCheckpoints(merged) });
+  saveCache({ digest, checkpoints: computeCheckpoints(enriched) });
   return digest;
 }

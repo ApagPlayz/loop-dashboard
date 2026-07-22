@@ -31,6 +31,8 @@ const NEW_WINDOW_MS = 48 * 60 * 60 * 1000;
 const CATEGORY_STYLES: Record<DigestCategory, string> = {
   "code-release": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   news: "bg-sky-500/10 text-sky-400 border-sky-500/20",
+  technique: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+  "ai-news": "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
   mcp: "bg-violet-500/10 text-violet-400 border-violet-500/20",
   "skill-plugin": "bg-amber-500/10 text-amber-400 border-amber-500/20",
   community: "bg-zinc-500/10 text-zinc-300 border-zinc-500/20",
@@ -371,6 +373,11 @@ function ItemCard({ item }: { item: DigestItem }) {
         </div>
         {item.summary && (
           <p className="mt-1 line-clamp-3 text-sm text-zinc-400">{item.summary}</p>
+        )}
+        {item.insight && (
+          <p className="mt-1.5 line-clamp-2 text-xs italic text-zinc-500">
+            💬 What people say: {item.insight}
+          </p>
         )}
       </a>
     </li>

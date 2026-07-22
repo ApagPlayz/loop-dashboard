@@ -31,11 +31,15 @@ export async function POST() {
     }
 
     // Feed the model the most recent items (title, source, category, date).
+    // When an item has a distilled community insight (real discussion
+    // sentiment, not guesswork), append it so the "community mood" line in
+    // the briefing is grounded in what people actually said.
     const lines = digest.items
       .slice(0, 40)
       .map((it) => {
         const when = it.date ? new Date(it.date).toISOString().slice(0, 10) : "just now";
-        return `- [${it.category}] ${it.title} (${it.source}, ${when})`;
+        const base = `- [${it.category}] ${it.title} (${it.source}, ${when})`;
+        return it.insight ? `${base} — people say: ${it.insight}` : base;
       })
       .join("\n");
 
@@ -45,7 +49,7 @@ export async function POST() {
 
 ${lines}
 
-Write a short "what's new lately" briefing (3-5 sentences, one paragraph). Lead with the most important developments (new Claude Code releases and official announcements), then note any interesting new MCP servers, skills, or plugins, and finish with the general community mood if relevant. Do not list every item — synthesize. Plain English only.`;
+Write a short "what's new lately" briefing (3-5 sentences, one paragraph). Lead with the most important developments (new Claude Code releases and official announcements), then note any interesting new MCP servers, skills, or plugins, and finish with the general community mood if relevant. Where items are annotated with "people say:", that's real discussion sentiment pulled from HN/Reddit threads — ground your community-mood sentence in those, don't guess from titles alone. Do not list every item — synthesize. Plain English only.`;
 
     const result = await aiStructuredCall<{ summary: string }>({
       system,
