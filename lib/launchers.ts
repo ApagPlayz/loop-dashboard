@@ -285,6 +285,7 @@ function renderLauncherScript(cfg: {
   startCmd: string;
   url?: string;
   openBrowser: boolean;
+  port?: number;
 }): string {
   const scriptName = `${cfg.key}.command`;
   const log = `/tmp/loop-launcher-${cfg.key}.log`;
@@ -297,8 +298,9 @@ function renderLauncherScript(cfg: {
     "# if something goes wrong it stays open so you can read the error.",
     "# Safe to delete — the dashboard can recreate it any time.",
     "#",
-    "# This launcher only installs dependencies and starts the product.",
-    "# It never runs git and never changes the project's code.",
+    "# This launcher only installs dependencies and starts the product. It may",
+    "# read git state (fetch + count commits behind) to decide whether a restart",
+    "# is worth it, but it never modifies the project's code or commits anything.",
     "",
     `APP_DIR=${shq(cfg.folder)}`,
     `LOG=${shq(log)}`,
@@ -317,12 +319,37 @@ function renderLauncherScript(cfg: {
     lines.push(
       `URL=${shq(cfg.url)}`,
       "",
-      "# Already running? Just open it.",
+      "# Already running? Check whether the repo has new commits before deciding",
+      "# whether to just reopen it or restart it. Without this, a long-running",
+      "# server would never pick up newly-merged changes no matter how many times",
+      "# you relaunch — it only ever checked \"is something answering,\" not",
+      "# \"is what's running still current.\"",
       'if curl -s -o /dev/null --max-time 2 "$URL"; then',
-      `  echo ${shq(`${cfg.label} is already running — opening it.`)}`,
-      ...(cfg.openBrowser ? ['  open "$URL"'] : []),
-      "  close_window",
-      "  exit 0",
+      "  BEHIND=0",
+      "  if [ -d .git ]; then",
+      "    git fetch --quiet origin 2>/dev/null && BEHIND=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo 0)",
+      "  fi",
+      '  if [ "$BEHIND" = "0" ]; then',
+      `    echo ${shq(`${cfg.label} is already running and up to date — opening it.`)}`,
+      ...(cfg.openBrowser ? ['    open "$URL"'] : []),
+      "    close_window",
+      "    exit 0",
+      "  fi",
+      `  echo ${shq(`${cfg.label} is running, but $BEHIND new commit(s) have landed on GitHub — restarting so they're not stuck out of date.`)}`,
+      ...(cfg.port
+        ? [
+            `  OLD_PID=$(lsof -ti tcp:${cfg.port} 2>/dev/null)`,
+            '  [ -n "$OLD_PID" ] && kill $OLD_PID 2>/dev/null',
+            `  for i in {1..10}; do lsof -ti tcp:${cfg.port} >/dev/null 2>&1 || break; sleep 0.5; done`,
+          ]
+        : [
+            "  # No known port for this launcher — can't safely stop the old process,",
+            "  # so just open what's running rather than risk leaving two copies up.",
+            `  echo ${shq(`(Couldn't determine ${cfg.label}'s port to restart it safely — opening the running copy instead. Re-analyze the launcher to fix this.)`)}`,
+            ...(cfg.openBrowser ? ['  open "$URL"'] : []),
+            "  close_window",
+            "  exit 0",
+          ]),
       "fi",
       "",
     );
@@ -476,6 +503,7 @@ How should the launcher start this product?`,
     startCmd: analysis.startCmd.trim(),
     url: url || undefined,
     openBrowser: analysis.openBrowser && !!url,
+    port: analysis.port > 0 ? analysis.port : undefined,
   });
   await fs.writeFile(commandPath, script, { encoding: "utf-8", mode: 0o755 });
   await fs.chmod(commandPath, 0o755);

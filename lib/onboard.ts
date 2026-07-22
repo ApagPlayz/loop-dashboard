@@ -14,6 +14,7 @@ import { getOctokit, getFileContent, type RepoConfig } from "./github";
 import { atomicCommit, snapshotWorkflows, WORKFLOWS_DIR, type TreeChange } from "./map-history";
 import { listProjects, addProject, DASHBOARD_REPO, PILOT_PROJECT, type Project } from "./projects";
 import { listTemplateWorkflows } from "./loop-template";
+import { DEFAULT_LOOP_CONFIG, LOOP_CONFIG_PATH } from "./loop-config";
 
 const PILOT_REPO: RepoConfig = { owner: PILOT_PROJECT.owner, repo: PILOT_PROJECT.repo };
 
@@ -136,6 +137,7 @@ export async function installBaselineLoop(
   }
   files.set("LEARNINGS.md", FRESH_LEARNINGS);
   files.set("metrics/loop-metrics.json", "[]\n");
+  files.set(LOOP_CONFIG_PATH, JSON.stringify(DEFAULT_LOOP_CONFIG, null, 2) + "\n");
 
   // ----- skip anything the target repo already has --------------------
   const installed: string[] = [];

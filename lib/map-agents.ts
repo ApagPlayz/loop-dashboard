@@ -10,8 +10,6 @@
 
 import type { AgentMeta } from "./map-types";
 
-export const TARGET_REPO = { owner: "ApagPlayz", repo: "content-generation-platform" };
-
 /**
  * Legacy fallback branch. All workflows now live on main; this ref is only
  * consulted if a file unexpectedly disappears from main.

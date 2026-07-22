@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   X,
   Loader2,
@@ -22,12 +22,11 @@ import { useAiJob, formatElapsed } from "./use-ai-job";
 import Modal from "./modal";
 import CatalogBrowser from "@/components/tools/catalog-browser";
 
-type Tab = "overview" | "instructions" | "capabilities" | "run" | "install" | "history";
+type Tab = "overview" | "instructions" | "run" | "install" | "history";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "instructions", label: "Instructions" },
-  { id: "capabilities", label: "Abilities" },
   { id: "run", label: "Run now" },
   { id: "install", label: "Install tools" },
   { id: "history", label: "History" },
@@ -51,24 +50,30 @@ export default function AgentDrawer({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const load = useCallback(async () => {
-    if (!agentId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/map/agent/${agentId}?project=${encodeURIComponent(project)}`);
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? "Couldn't load this agent.");
+  const load = useCallback(
+    async (silent = false) => {
+      if (!agentId) return;
+      if (!silent) setLoading(true);
+      if (!silent) setError(null);
+      try {
+        const res = await fetch(`/api/map/agent/${agentId}?project=${encodeURIComponent(project)}`);
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error(j.error ?? "Couldn't load this agent.");
+        }
+        setDetail(await res.json());
+      } catch (e) {
+        // A background refresh failing silently shouldn't blow away an
+        // already-loaded panel with an error banner.
+        if (!silent) setError(e instanceof Error ? e.message : "Something went wrong.");
+      } finally {
+        if (!silent) setLoading(false);
       }
-      setDetail(await res.json());
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  }, [agentId, project]);
+    },
+    [agentId, project],
+  );
 
   useEffect(() => {
     if (agentId) {
@@ -78,6 +83,17 @@ export default function AgentDrawer({
       setDetail(null);
       load();
     }
+  }, [agentId, load]);
+
+  useEffect(() => {
+    // Keep "Recent Runs" (and status) live while the drawer is open, instead
+    // of freezing on whatever loaded first — mirrors the polling in
+    // process-map.tsx so an open drawer can't show a stale run history.
+    if (!agentId) return;
+    timer.current = setInterval(() => load(true), 20000);
+    return () => {
+      if (timer.current) clearInterval(timer.current);
+    };
   }, [agentId, load]);
 
   if (!agentId) return null;
@@ -130,14 +146,13 @@ export default function AgentDrawer({
             <Loader2 className="h-4 w-4 animate-spin" /> Loading…
           </div>
         ) : error && !detail ? (
-          <ErrorBox message={error} onRetry={load} />
+          <ErrorBox message={error} onRetry={() => load()} />
         ) : detail ? (
           <>
-            {tab === "overview" && <OverviewTab detail={detail} />}
+            {tab === "overview" && <OverviewTab detail={detail} setTab={setTab} />}
             {tab === "instructions" && (
               <InstructionsTab detail={detail} project={project} onSaved={load} />
             )}
-            {tab === "capabilities" && <CapabilitiesTab detail={detail} />}
             {tab === "run" && (
               <RunTab
                 detail={detail}
@@ -163,7 +178,17 @@ export default function AgentDrawer({
 /* Overview                                                            */
 /* ------------------------------------------------------------------ */
 
-function OverviewTab({ detail }: { detail: AgentDetail }) {
+function OverviewTab({
+  detail,
+  setTab,
+}: {
+  detail: AgentDetail;
+  setTab: (tab: Tab) => void;
+}) {
+  const { tools, mcpServers, skills } = detail.capabilities;
+  const capsEmpty = tools.length === 0 && mcpServers.length === 0 && skills.length === 0;
+  const isTarget = TOOL_TARGET_AGENTS.has(detail.meta.id);
+
   return (
     <div className="space-y-5">
       <section>
@@ -182,6 +207,36 @@ function OverviewTab({ detail }: { detail: AgentDetail }) {
             </li>
           ))}
         </ul>
+      </section>
+
+      <section>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          Installed
+        </h3>
+        {capsEmpty ? (
+          <p className="text-sm text-zinc-500">
+            No special tools or services are configured for this workflow.
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <ChipGroup title="Tools" chips={tools} tone="emerald" />
+            <ChipGroup title="Connected services (MCP)" chips={mcpServers} tone="sky" />
+            <ChipGroup title="Skills" chips={skills} tone="violet" />
+          </div>
+        )}
+        {isTarget ? (
+          <button
+            onClick={() => setTab("install")}
+            className="mt-3 text-xs font-medium text-emerald-400 underline underline-offset-2 hover:text-emerald-300"
+          >
+            Browse &amp; install tools →
+          </button>
+        ) : (
+          <p className="mt-3 text-xs text-zinc-500">
+            This one runs a plain script (or isn&apos;t a tool-using agent), so it can&apos;t take
+            extra tools.
+          </p>
+        )}
       </section>
 
       <section>
@@ -515,33 +570,8 @@ function InstructionsTab({
 }
 
 /* ------------------------------------------------------------------ */
-/* Capabilities                                                        */
+/* Shared chips                                                        */
 /* ------------------------------------------------------------------ */
-
-function CapabilitiesTab({ detail }: { detail: AgentDetail }) {
-  const { tools, mcpServers, skills } = detail.capabilities;
-  const empty = tools.length === 0 && mcpServers.length === 0 && skills.length === 0;
-
-  return (
-    <div className="space-y-5">
-      <p className="text-sm text-zinc-400">
-        The tools and connected services this agent can use. To add a new one, use the Tools
-        section.
-      </p>
-      {empty ? (
-        <p className="text-sm text-zinc-500">
-          No special tools or services are configured for this workflow.
-        </p>
-      ) : (
-        <>
-          <ChipGroup title="Tools" chips={tools} tone="emerald" />
-          <ChipGroup title="Connected services (MCP)" chips={mcpServers} tone="sky" />
-          <ChipGroup title="Skills" chips={skills} tone="violet" />
-        </>
-      )}
-    </div>
-  );
-}
 
 function ChipGroup({
   title,

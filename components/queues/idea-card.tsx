@@ -14,10 +14,11 @@ import {
 import type { IdeaSummary, ThreadComment } from "@/lib/queues";
 import { Markdown, relativeTime, Spinner, ErrorPanel } from "./ui";
 import CommentThread from "./comment-thread";
-import CommentBox from "./comment-box";
+import IdeaChat from "./idea-chat";
+import { useIdeaChat } from "./use-idea-chat";
 import { useToast } from "./toast";
 
-type ActionKind = "approve" | "unapprove" | "redraft" | "reject" | "comment";
+type ActionKind = "approve" | "unapprove" | "redraft" | "reject";
 
 function labelBadge(labels: string[]) {
   if (labels.includes("proposal"))
@@ -31,9 +32,11 @@ function labelBadge(labels: string[]) {
 
 export default function IdeaCard({
   idea,
+  project,
   onChanged,
 }: {
   idea: IdeaSummary;
+  project: string;
   onChanged: () => void;
 }) {
   const toast = useToast();
@@ -44,6 +47,7 @@ export default function IdeaCard({
   const [panel, setPanel] = useState<"feedback" | "reject" | null>(null);
   const [panelText, setPanelText] = useState("");
   const [busy, setBusy] = useState<ActionKind | null>(null);
+  const chat = useIdeaChat(project, idea.number);
 
   const badge = labelBadge(idea.labels);
   const isProposal = idea.labels.includes("proposal") && idea.state === "open";
@@ -57,7 +61,9 @@ export default function IdeaCard({
     setLoadingComments(true);
     setCommentsError(null);
     try {
-      const res = await fetch(`/api/ideas/${idea.number}`);
+      const res = await fetch(
+        `/api/ideas/${idea.number}?project=${encodeURIComponent(project)}`,
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to load comments");
       setComments(data.comments as ThreadComment[]);
@@ -74,16 +80,23 @@ export default function IdeaCard({
     if (next) loadComments();
   }
 
+  /** Append the private chat transcript to `text`, when included and present. */
+  function withChat(text: string): string {
+    if (!chat.includeInAction || !chat.hasContent) return text;
+    const block = `**Chat with Claude before deciding:**\n\n${chat.transcriptText}`;
+    return text ? `${text}\n\n---\n\n${block}` : block;
+  }
+
   async function act(
     action: ActionKind,
-    opts: { text?: string; wakeClaude?: boolean } = {},
+    opts: { text?: string } = {},
   ): Promise<boolean> {
     setBusy(action);
     try {
       const res = await fetch(`/api/ideas/${idea.number}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ...opts }),
+        body: JSON.stringify({ action, project, ...opts }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Action failed");
@@ -97,10 +110,11 @@ export default function IdeaCard({
   }
 
   async function approve() {
-    if (await act("approve")) {
+    if (await act("approve", { text: withChat("") })) {
       toast.success(
-        "Approved — the Builder will pick this up tonight (or trigger it from Testing).",
+        "Approved — the Builder will start on this within a minute (or trigger it from Testing).",
       );
+      chat.clear();
       onChanged();
     }
   }
@@ -117,33 +131,24 @@ export default function IdeaCard({
       toast.error("Add some feedback so the agent knows what to change.");
       return;
     }
-    if (await act("redraft", { text: panelText.trim() })) {
+    if (await act("redraft", { text: withChat(panelText.trim()) })) {
       toast.success(
         "Sent back. The agent will rewrite this idea and it'll return to “Waiting for you”.",
       );
       setPanel(null);
       setPanelText("");
+      chat.clear();
       onChanged();
     }
   }
 
   async function submitReject() {
-    if (await act("reject", { text: panelText.trim() || undefined })) {
+    if (await act("reject", { text: withChat(panelText.trim()) || undefined })) {
       toast.success("Idea rejected and closed.");
       setPanel(null);
       setPanelText("");
+      chat.clear();
       onChanged();
-    }
-  }
-
-  async function submitComment(text: string, wakeClaude: boolean) {
-    if (await act("comment", { text, wakeClaude })) {
-      toast.success(
-        wakeClaude ? "Comment posted — Claude will respond." : "Comment posted.",
-      );
-      // refresh the thread
-      setComments(null);
-      await loadComments();
     }
   }
 
@@ -206,9 +211,23 @@ export default function IdeaCard({
             <p className="text-sm text-zinc-500">No description.</p>
           )}
 
+          {/* Private chat — think it through before deciding */}
+          {idea.state === "open" && (
+            <div className="mt-4">
+              <IdeaChat chat={chat} />
+            </div>
+          )}
+
           {/* Actions */}
           {isProposal && (
             <div className="mt-4 space-y-2">
+              {chat.hasContent && (
+                <p className="text-xs text-zinc-500">
+                  {chat.includeInAction
+                    ? "Your chat with Claude will be included with whatever you do next."
+                    : "Your chat with Claude will stay private — nothing from it will be sent."}
+                </p>
+              )}
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <button
                   onClick={approve}
@@ -302,10 +321,10 @@ export default function IdeaCard({
             </div>
           )}
 
-          {/* Comment thread */}
+          {/* The real, posted GitHub history — separate from the private chat above */}
           <div className="mt-5">
             <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Conversation
+              Activity on GitHub
             </h4>
             {commentsError ? (
               <ErrorPanel
@@ -322,16 +341,6 @@ export default function IdeaCard({
               />
             )}
           </div>
-
-          {/* Comment box */}
-          {idea.state === "open" && (
-            <div className="mt-3">
-              <CommentBox
-                onSubmit={submitComment}
-                placeholder="Add a comment for the record…"
-              />
-            </div>
-          )}
         </div>
       )}
     </div>

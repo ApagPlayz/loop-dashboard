@@ -42,3 +42,8 @@ next-env.d.ts
 
 # Keep the example env file tracked
 !.env.example
+
+# local test artifacts (screenshots/console logs left by live verification runs)
+/.playwright-mcp/
+/idea-*.png
+/*-screenshot.png

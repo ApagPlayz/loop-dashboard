@@ -1,16 +1,13 @@
 import { NextResponse } from "next/server";
-import {
-  addLabel,
-  removeLabel,
-  createComment,
-} from "@/lib/github";
+import { addLabel, removeLabel, createComment } from "@/lib/github";
 import { listThreadComments, closeIssue } from "@/lib/queues";
+import { resolveProject, resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
-/** GET /api/ideas/[number] — the comment thread for one idea. */
+/** GET /api/ideas/[number]?project=<key> — the comment thread for one idea. */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ number: string }> },
 ) {
   const { number } = await params;
@@ -19,26 +16,31 @@ export async function GET(
     return NextResponse.json({ error: "Bad issue number" }, { status: 400 });
   }
   try {
-    const comments = await listThreadComments(issueNumber);
+    const { repo } = await resolveProjectFromUrl(req.url);
+    const comments = await listThreadComments(issueNumber, repo);
     return NextResponse.json({ comments });
   } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json({ error: msg(err) }, { status: 502 });
   }
 }
 
 type ActionBody = {
-  action: "approve" | "unapprove" | "redraft" | "reject" | "comment";
+  action: "approve" | "unapprove" | "redraft" | "reject";
   text?: string;
-  wakeClaude?: boolean;
+  project?: string;
 };
 
 /**
  * POST /api/ideas/[number] — mutate an idea.
- *  approve   : add "approved", remove "proposal"
+ *  approve   : optional comment (e.g. an included chat transcript), add "approved", remove "proposal"
  *  unapprove : add "proposal", remove "approved"
  *  redraft   : comment owner feedback, add "redraft", remove "proposal"
  *  reject    : optional comment, close (not_planned)
- *  comment   : plain comment (optionally prefixed @claude to wake the agent)
+ *
+ * Body carries a `project` field so the mutation targets the right repo.
  */
 export async function POST(
   req: Request,
@@ -57,16 +59,30 @@ export async function POST(
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  let repo;
+  try {
+    ({ repo } = await resolveProject(body.project));
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
+    throw err;
+  }
+
   try {
     switch (body.action) {
       case "approve": {
-        await addLabel(issueNumber, "approved");
-        await removeLabel(issueNumber, "proposal").catch(ignoreMissingLabel);
+        const text = (body.text ?? "").trim();
+        if (text) {
+          await createComment(issueNumber, text, repo);
+        }
+        await addLabel(issueNumber, "approved", repo);
+        await removeLabel(issueNumber, "proposal", repo).catch(ignoreMissingLabel);
         return NextResponse.json({ ok: true });
       }
       case "unapprove": {
-        await addLabel(issueNumber, "proposal");
-        await removeLabel(issueNumber, "approved").catch(ignoreMissingLabel);
+        await addLabel(issueNumber, "proposal", repo);
+        await removeLabel(issueNumber, "approved", repo).catch(ignoreMissingLabel);
         return NextResponse.json({ ok: true });
       }
       case "redraft": {
@@ -80,29 +96,18 @@ export async function POST(
         await createComment(
           issueNumber,
           `**Owner feedback for redraft:**\n\n${text}`,
+          repo,
         );
-        await addLabel(issueNumber, "redraft");
-        await removeLabel(issueNumber, "proposal").catch(ignoreMissingLabel);
+        await addLabel(issueNumber, "redraft", repo);
+        await removeLabel(issueNumber, "proposal", repo).catch(ignoreMissingLabel);
         return NextResponse.json({ ok: true });
       }
       case "reject": {
         const text = (body.text ?? "").trim();
         if (text) {
-          await createComment(issueNumber, text);
+          await createComment(issueNumber, text, repo);
         }
-        await closeIssue(issueNumber, "not_planned");
-        return NextResponse.json({ ok: true });
-      }
-      case "comment": {
-        const text = (body.text ?? "").trim();
-        if (!text) {
-          return NextResponse.json(
-            { error: "Write a comment first." },
-            { status: 400 },
-          );
-        }
-        const finalBody = body.wakeClaude ? `@claude ${text}` : text;
-        await createComment(issueNumber, finalBody);
+        await closeIssue(issueNumber, "not_planned", repo);
         return NextResponse.json({ ok: true });
       }
       default:

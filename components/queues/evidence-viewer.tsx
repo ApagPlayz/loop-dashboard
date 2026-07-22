@@ -244,7 +244,7 @@ function Lightbox({
   );
 }
 
-function RerunButton({
+export function RerunButton({
   onClick,
   busy,
   label,

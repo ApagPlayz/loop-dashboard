@@ -88,9 +88,12 @@ function consumeAiJob(jobId: string) {
 export default function CustomIdea({
   onClose,
   onRefreshPilot,
+  project,
 }: {
   onClose: () => void;
   onRefreshPilot: () => void;
+  /** The project currently selected on the Ideas page — the default target. */
+  project: string;
 }) {
   const toast = useToast();
   const speech = useSpeech();
@@ -98,16 +101,19 @@ export default function CustomIdea({
   const [projects, setProjects] = useState<Project[]>([]);
   // Lazily restore any in-progress draft from sessionStorage. The modal only
   // mounts after a click (never server-rendered while open), so reading storage
-  // during init is safe and avoids a restore/persist race.
+  // during init is safe and avoids a restore/persist race. A brand-new draft
+  // defaults to whichever project is currently selected on the Ideas page.
   const [draft, setDraft] = useState<Draft>(() => {
-    if (typeof window === "undefined") return EMPTY_DRAFT;
+    if (typeof window === "undefined") return { ...EMPTY_DRAFT, projectKey: project };
     try {
       const raw = sessionStorage.getItem(DRAFT_STORAGE_KEY);
-      if (raw) return { ...EMPTY_DRAFT, ...(JSON.parse(raw) as Partial<Draft>) };
+      if (raw) {
+        return { ...EMPTY_DRAFT, projectKey: project, ...(JSON.parse(raw) as Partial<Draft>) };
+      }
     } catch {
       /* ignore */
     }
-    return EMPTY_DRAFT;
+    return { ...EMPTY_DRAFT, projectKey: project };
   });
   const [busy, setBusy] = useState<BusyKind>(null);
   const [elapsed, setElapsed] = useState(0);
@@ -233,9 +239,11 @@ export default function CustomIdea({
     return () => clearInterval(t);
   }, [busy]);
 
-  const isPilot = projectKey === PILOT_KEY;
+  // Whether the idea is being filed on the same project currently shown on
+  // the Ideas page — if so, filing can just refresh that list and close.
+  const isCurrentProject = projectKey === project;
   const projectLabel = useMemo(
-    () => projects.find((p) => p.key === projectKey)?.label ?? "the pilot project",
+    () => projects.find((p) => p.key === projectKey)?.label ?? "the selected project",
     [projects, projectKey],
   );
 
@@ -336,7 +344,7 @@ export default function CustomIdea({
         /* ignore */
       }
 
-      if (isPilot) {
+      if (isCurrentProject) {
         toast.success("Idea filed — it's now in the queue.");
         onRefreshPilot();
         closeAll();
@@ -389,7 +397,11 @@ export default function CustomIdea({
                 disabled={running || busy === "submit"}
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-600 focus:outline-none disabled:opacity-50"
               >
-                {projects.length === 0 && <option value={PILOT_KEY}>Content Generation Platform</option>}
+                {projects.length === 0 && (
+                  <option value={projectKey}>
+                    {projectKey === PILOT_KEY ? "Content Generation Platform" : projectKey}
+                  </option>
+                )}
                 {projects.map((p) => (
                   <option key={p.key} value={p.key}>
                     {p.label}
@@ -571,7 +583,7 @@ export default function CustomIdea({
       {!filed && (
         <div className="flex items-center justify-between border-t border-zinc-800 px-5 py-3">
           <span className="text-xs text-zinc-600">
-            Files as a proposal on {isPilot ? "the pilot" : projectLabel} for triage.
+            Files as a proposal on {isCurrentProject ? "this project" : projectLabel} for triage.
           </span>
           {hasContent && (
             <button
@@ -710,8 +722,9 @@ function FiledSuccess({
   return (
     <div className="space-y-4 py-4 text-center">
       <p className="text-sm text-zinc-200">
-        Your idea was filed as proposal #{filed.number}. It will not show in the list here (that only
-        shows the pilot project), but it is queued for triage on its project.
+        Your idea was filed as proposal #{filed.number}. It will not show in the list here (that
+        only shows the project you&apos;re currently viewing), but it is queued for triage on its
+        project.
       </p>
       <a
         href={filed.htmlUrl}
