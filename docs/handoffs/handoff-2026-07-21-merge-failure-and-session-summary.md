@@ -1,5 +1,7 @@
 # Handoff — Merge-failure investigation (in progress) + full session summary
 
+> **SUPERSEDED by `handoff-2026-07-22-loop-safety-and-commit-hygiene.md` (2026-07-22)** — read that file instead; this one is kept for history. (The merge-failure question it raised was resolved: PR #42 & co. genuinely conflict with main; a "Rebuild fresh" flow was built to handle them.)
+
 ## TL;DR
 - Branch `main`, 23 modified + several untracked files (full list below), **nothing committed**.
 - This session shipped a LOT: automation settings, audit-rerun fixes, an AlphaSignal news source, a private per-idea AI chat, unlimited review-queue caps, and — critically — fixed the root cause of "everything looks stale" (dev-server launchers, both the dashboard's own and the generic per-project one).
