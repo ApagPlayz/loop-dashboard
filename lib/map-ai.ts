@@ -159,13 +159,18 @@ type CliEnvelope = {
   structured_output?: unknown;
 };
 
-function runCli(cliPath: string, args: string[], timeoutMs: number): Promise<string> {
+function runCli(
+  cliPath: string,
+  args: string[],
+  timeoutMs: number,
+  cwd?: string,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     execFile(
       cliPath,
       args,
       {
-        cwd: sandboxDir(),
+        cwd: cwd ?? sandboxDir(),
         timeout: timeoutMs,
         maxBuffer: 32 * 1024 * 1024,
         env: {
@@ -297,6 +302,18 @@ export type ChatCallOpts = {
   messages: ChatMessage[];
   /** How long the local Claude app may run (default 60s). */
   timeoutMs?: number;
+  /**
+   * Working directory to run the CLI in. When set to a project's local
+   * checkout, the assistant can actually read that project's code (paired with
+   * read-only `tools` below). Defaults to a throwaway sandbox so the assistant
+   * can only answer, never touch real files.
+   */
+  cwd?: string;
+  /**
+   * Tool names to allow (e.g. ["Read", "Grep", "Glob"]). Empty/undefined =
+   * no tools at all (answer-only). Only pass read-only tools here.
+   */
+  tools?: string[];
 };
 
 /** True when a plain-text CLI chat call can actually run right now. */
@@ -326,6 +343,10 @@ ${transcript}
 
 Write your next reply to the owner's most recent message. Reply with plain text only — no JSON, no preamble.`;
 
+  // No tools by default (answer-only). When the caller passes read-only tools
+  // AND a real cwd, the assistant can inspect that project's code.
+  const toolsArg = opts.tools && opts.tools.length ? opts.tools.join(",") : "";
+
   const args = [
     "-p",
     "--output-format",
@@ -333,14 +354,14 @@ Write your next reply to the owner's most recent message. Reply with plain text 
     "--model",
     "sonnet", // forced: keep the help assistant cheap
     "--tools",
-    "", // no tools: the assistant may only answer, never act
+    toolsArg,
     "--no-session-persistence",
     "--append-system-prompt",
     opts.system,
     prompt,
   ];
 
-  const stdout = await runCli(cliPath, args, opts.timeoutMs ?? 60_000);
+  const stdout = await runCli(cliPath, args, opts.timeoutMs ?? 60_000, opts.cwd);
 
   let envelope: CliEnvelope;
   try {

@@ -100,6 +100,49 @@ async function readRemoteSlug(dir: string): Promise<string | null> {
   }
 }
 
+const checkoutCache = new Map<string, { at: number; path: string | null }>();
+const CHECKOUT_TTL_MS = 60_000;
+
+/**
+ * Absolute path to the local checkout of a GitHub repo (owner/repo), found by
+ * scanning the projects directory and matching each folder's origin remote.
+ * Returns null when no matching checkout exists on this machine (e.g. running
+ * in the cloud, or the repo simply isn't cloned here). Cached ~60s per slug.
+ *
+ * This is what lets the local chat assistants actually READ a project's code
+ * instead of guessing from issue/PR text alone.
+ */
+export async function localCheckoutForRepo(
+  owner: string,
+  repo: string,
+): Promise<string | null> {
+  const slug = `${owner}/${repo}`.toLowerCase();
+  const hit = checkoutCache.get(slug);
+  if (hit && Date.now() - hit.at < CHECKOUT_TTL_MS) return hit.path;
+
+  const baseDir = getProjectsDir();
+  let entries: import("node:fs").Dirent[];
+  try {
+    entries = await fs.readdir(baseDir, { withFileTypes: true });
+  } catch {
+    checkoutCache.set(slug, { at: Date.now(), path: null });
+    return null;
+  }
+
+  let found: string | null = null;
+  for (const entry of entries) {
+    if (!entry.isDirectory() || entry.name.startsWith(".")) continue;
+    const dir = path.join(baseDir, entry.name);
+    const remote = await readRemoteSlug(dir);
+    if (remote && remote.toLowerCase() === slug) {
+      found = dir;
+      break;
+    }
+  }
+  checkoutCache.set(slug, { at: Date.now(), path: found });
+  return found;
+}
+
 /** Bounded recursive file count, skipping heavy/generated directories. */
 async function roughFileCount(dir: string, cap = 3000): Promise<number> {
   let count = 0;
