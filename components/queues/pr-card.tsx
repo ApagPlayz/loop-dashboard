@@ -39,6 +39,10 @@ type Decision =
   | "reaudit"
   | "rebuild";
 
+// Below this many commits behind main, an open (non-conflicting) PR is
+// "getting stale" and worth a heads-up before it turns into a hard conflict.
+const STALE_THRESHOLD = 10;
+
 export default function PRCard({
   pr,
   onChanged,
@@ -167,6 +171,14 @@ export default function PRCard({
     !!detail &&
     detail.mergeable === false &&
     detail.mergeableState === "dirty";
+  // Not yet conflicting, but drifting behind main — a heads-up so the user
+  // can merge or rebuild before it turns into a hard conflict. The red
+  // conflict banner always wins if both would technically apply.
+  const stale =
+    isOpen &&
+    !!detail &&
+    !conflicting &&
+    (detail.behindBy ?? 0) >= STALE_THRESHOLD;
   // Best-effort guess for the confirm-panel copy only — the API route does
   // its own authoritative lookup when the action actually runs.
   const guessedIdea = detail ? guessSourceIdea(detail) : null;
@@ -249,6 +261,55 @@ export default function PRCard({
                           onClick={confirmRebuild}
                           disabled={busy !== null}
                           className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50"
+                        >
+                          {busy === "rebuild" ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
+                          Confirm rebuild
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 0b. Falling-behind notice (only when not already conflicting) */}
+              {stale && (
+                <div className="rounded-xl border border-amber-700 bg-amber-950/40 p-4">
+                  <p className="flex items-center gap-2 text-sm font-semibold text-amber-200">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    ⏳ This PR is {detail.behindBy} commits behind main — it
+                    may start conflicting soon.
+                  </p>
+                  <p className="mt-1 text-sm text-amber-300/90">
+                    Merge it now, or Rebuild fresh to recreate it cleanly.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setPanel(panel === "rebuild" ? null : "rebuild");
+                    }}
+                    disabled={busy !== null}
+                    className="mt-3 inline-flex items-center justify-center gap-2 rounded-xl border border-amber-700 bg-amber-900/40 px-4 py-2.5 text-sm font-semibold text-amber-100 transition hover:bg-amber-900/70 disabled:opacity-50"
+                  >
+                    <RefreshCw className="h-4 w-4" /> Rebuild fresh
+                  </button>
+
+                  {panel === "rebuild" && (
+                    <div className="mt-3 rounded-xl border border-amber-900 bg-amber-950/60 p-3">
+                      <p className="text-sm text-amber-100">
+                        Close this PR and send idea{" "}
+                        {guessedIdea ? `#${guessedIdea}` : "its source idea"}{" "}
+                        back to be rebuilt? The current PR will be discarded.
+                      </p>
+                      <div className="mt-2 flex justify-end gap-2">
+                        <button
+                          onClick={() => setPanel(null)}
+                          className="rounded-lg px-3 py-2 text-sm text-zinc-400 hover:text-zinc-200"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={confirmRebuild}
+                          disabled={busy !== null}
+                          className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-500 disabled:opacity-50"
                         >
                           {busy === "rebuild" ? <Spinner /> : <RefreshCw className="h-4 w-4" />}
                           Confirm rebuild

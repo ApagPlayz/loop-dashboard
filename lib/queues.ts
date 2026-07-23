@@ -107,6 +107,12 @@ export type PRDetail = PRSummary & {
   mergeable: boolean | null;
   mergeableState: string;
   baseRef: string;
+  /**
+   * How many commits `baseRef` (main) has that this PR's branch doesn't —
+   * i.e. how far behind main the PR is. Best-effort: 0 if we couldn't
+   * compute it (closed/merged PRs, or a failed compare call).
+   */
+  behindBy: number;
   verdict: AuditVerdict;
   demo: DemoEvidence;
   comments: ThreadComment[];
@@ -417,6 +423,8 @@ export async function loadPRDetail(prNumber: number): Promise<PRDetail> {
   );
   const verdict = parseAuditFromComments(comments);
   const demo = await resolveDemoEvidence(prNumber, p.head.sha, comments);
+  const behindBy =
+    p.state === "open" ? await countCommitsBehindMain(p.base?.ref, p.head?.ref) : 0;
 
   return {
     ...mapPR(p as unknown as RawPR, Boolean(p.merged)),
@@ -427,10 +435,35 @@ export async function loadPRDetail(prNumber: number): Promise<PRDetail> {
     mergeable: p.mergeable,
     mergeableState: p.mergeable_state ?? "unknown",
     baseRef: p.base?.ref ?? "main",
+    behindBy,
     verdict,
     demo,
     comments,
   };
+}
+
+/**
+ * Best-effort: how many commits `baseRef` (main) has that `headRef` (the PR
+ * branch) doesn't yet — i.e. how far behind main the PR is getting. Used to
+ * show an early "falling behind" warning before it turns into a hard
+ * conflict. Never throws; returns 0 on any error so a flaky compare call
+ * can't break the PR card.
+ */
+async function countCommitsBehindMain(
+  baseRef: string | undefined,
+  headRef: string | undefined,
+): Promise<number> {
+  if (!baseRef || !headRef) return 0;
+  try {
+    const res = await getOctokit().rest.repos.compareCommitsWithBasehead({
+      owner,
+      repo,
+      basehead: `${baseRef}...${headRef}`,
+    });
+    return res.data.behind_by ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 /** Close a PR without merging. */
