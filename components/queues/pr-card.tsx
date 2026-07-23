@@ -28,6 +28,8 @@ import { Markdown, relativeTime, Spinner, ErrorPanel } from "./ui";
 import CommentThread from "./comment-thread";
 import CommentBox from "./comment-box";
 import EvidenceViewer, { RerunButton } from "./evidence-viewer";
+import PrChat from "./pr-chat";
+import { usePrChat } from "./use-pr-chat";
 import { useToast } from "./toast";
 
 type Decision =
@@ -58,6 +60,7 @@ export default function PRCard({
   const [panel, setPanel] = useState<
     "merge" | "sendback" | "close" | "rebuild" | null
   >(null);
+  const chat = usePrChat(pr.number);
   const [panelText, setPanelText] = useState("");
   const [busy, setBusy] = useState<Decision | null>(null);
 
@@ -489,6 +492,11 @@ export default function PRCard({
                     <CommentBox onSubmit={submitComment} placeholder="Reply on this PR…" />
                   </div>
                 )}
+              </section>
+
+              {/* 6. Private, code-aware chat about this PR */}
+              <section>
+                <PrChat chat={chat} />
               </section>
             </div>
           ) : null}
