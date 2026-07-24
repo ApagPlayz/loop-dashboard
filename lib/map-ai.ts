@@ -122,6 +122,19 @@ export type StructuredCallOpts = {
   timeoutMs?: number;
   /** API backend: output token cap (default 16000). */
   maxTokens?: number;
+  /**
+   * CLI backend only: working directory to run the CLI in. When set to a
+   * project's local checkout (paired with read-only `tools` below), the model
+   * can actually read that project's code while producing structured output.
+   * Defaults to a throwaway sandbox. Ignored by the API backend.
+   */
+  cwd?: string;
+  /**
+   * CLI backend only: tool names to allow (e.g. ["Read", "Grep", "Glob"]).
+   * Empty/undefined = no tools at all (answer-only). Only pass read-only tools
+   * here. Ignored by the API backend.
+   */
+  tools?: string[];
 };
 
 /**
@@ -225,6 +238,11 @@ Output rules: respond with ONLY a single JSON object matching the required schem
 IMPORTANT: your previous reply was not valid JSON matching the schema. This time output ONLY the JSON object — nothing else.`
     : opts.user;
 
+  // No tools by default (answer-only). When the caller passes read-only tools
+  // AND a real cwd, the model can inspect that project's code while still
+  // returning schema-validated JSON.
+  const toolsArg = opts.tools && opts.tools.length ? opts.tools.join(",") : "";
+
   const args = [
     "-p",
     "--output-format",
@@ -232,7 +250,7 @@ IMPORTANT: your previous reply was not valid JSON matching the schema. This time
     "--model",
     cliModel(),
     "--tools",
-    "", // no tools: the CLI may only answer, never act
+    toolsArg,
     "--no-session-persistence",
     "--append-system-prompt",
     system,
@@ -241,7 +259,7 @@ IMPORTANT: your previous reply was not valid JSON matching the schema. This time
     prompt,
   ];
 
-  const stdout = await runCli(cliPath, args, opts.timeoutMs ?? CLI_TIMEOUT_MS);
+  const stdout = await runCli(cliPath, args, opts.timeoutMs ?? CLI_TIMEOUT_MS, opts.cwd);
 
   let envelope: CliEnvelope;
   try {

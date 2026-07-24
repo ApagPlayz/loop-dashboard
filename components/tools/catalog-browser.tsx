@@ -33,11 +33,11 @@ import {
 
 /* ---------- types (mirror lib/tool-catalog.ts) ---------- */
 
-type ToolType = "mcp" | "skill" | "plugin";
+export type ToolType = "mcp" | "skill" | "plugin";
 type ToolStatus = "reviewed" | "unreviewed";
 type TrustTier = "official" | "verified" | "community" | "unreviewed";
 
-type CatalogEntry = {
+export type CatalogEntry = {
   id: string;
   name: string;
   type: ToolType;
@@ -105,9 +105,30 @@ const FILTERS: { value: "all" | ToolType; label: string }[] = [
 
 const PAGE_SIZE = 24;
 
+/**
+ * Optional multi-select mode. When `selectable` is set (used by the custom-idea
+ * composer's "Browse catalog" picker), cards render a selected state and toggle
+ * selection on click instead of opening the install detail. All existing hosts
+ * omit these props and get the unchanged install-oriented behaviour.
+ */
+export type CatalogSelection = {
+  selectable?: boolean;
+  selectedIds?: Set<string> | string[];
+  onToggleSelect?: (entry: CatalogEntry) => void;
+};
+
 /* ================================================================== */
 
-export default function CatalogBrowser({ install = { mode: "all" } }: { install?: InstallContext }) {
+export default function CatalogBrowser({
+  install = { mode: "all" },
+  selectable = false,
+  selectedIds,
+  onToggleSelect,
+}: { install?: InstallContext } & CatalogSelection) {
+  const selectedSet = useMemo(
+    () => (selectedIds instanceof Set ? selectedIds : new Set(selectedIds ?? [])),
+    [selectedIds],
+  );
   const [entries, setEntries] = useState<CatalogEntry[]>([]);
   const [requestedIds, setRequestedIds] = useState<Set<string>>(new Set());
   const [loaded, setLoaded] = useState(false);
@@ -214,7 +235,16 @@ export default function CatalogBrowser({ install = { mode: "all" } }: { install?
   return (
     <div>
       {/* Intro / install-target context */}
-      {install.mode === "agent" ? (
+      {selectable ? (
+        <p className="mb-3 text-xs text-zinc-400">
+          Tap tools to attach them to your idea. Claude will consider them when helping you draft it.
+          {entries.length > 0 && (
+            <span className="ml-1 text-zinc-500">
+              {counts.mcp} MCP · {counts.skill} skills · {counts.plugin} plugins.
+            </span>
+          )}
+        </p>
+      ) : install.mode === "agent" ? (
         <p className="mb-3 text-xs text-zinc-400">
           Browse the whole tool library and install straight into{" "}
           <span className="font-medium text-zinc-200">{install.agentLabel}</span>. Tap a tool to see
@@ -342,7 +372,15 @@ export default function CatalogBrowser({ install = { mode: "all" } }: { install?
             </p>
             <div className="grid gap-2.5 sm:grid-cols-2">
               {shown.map((e) => (
-                <CatalogCard key={e.id} entry={e} requested={requestedIds.has(e.id)} onOpen={() => setSelected(e)} />
+                <CatalogCard
+                  key={e.id}
+                  entry={e}
+                  requested={requestedIds.has(e.id)}
+                  onOpen={() => setSelected(e)}
+                  selectable={selectable}
+                  selected={selectedSet.has(e.id)}
+                  onToggleSelect={onToggleSelect}
+                />
               ))}
             </div>
             {visible < filtered.length && (
@@ -359,7 +397,7 @@ export default function CatalogBrowser({ install = { mode: "all" } }: { install?
         )}
       </div>
 
-      {selected && (
+      {selected && !selectable && (
         <DetailModal
           entry={selected}
           requested={requestedIds.has(selected.id)}
@@ -384,17 +422,47 @@ function TierBadge({ tier }: { tier: TrustTier }) {
 
 /* ---------- list card ---------- */
 
-function CatalogCard({ entry, requested, onOpen }: { entry: CatalogEntry; requested: boolean; onOpen: () => void }) {
+function CatalogCard({
+  entry,
+  requested,
+  onOpen,
+  selectable = false,
+  selected = false,
+  onToggleSelect,
+}: {
+  entry: CatalogEntry;
+  requested: boolean;
+  onOpen: () => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (entry: CatalogEntry) => void;
+}) {
   const meta = TYPE_META[entry.type];
   const tier = tierOf(entry);
   const flags = entry.safetyFlags ?? [];
   return (
     <button
-      onClick={onOpen}
-      className="flex flex-col rounded-lg border border-zinc-800 bg-zinc-950 p-3.5 text-left transition-colors hover:border-zinc-700 hover:bg-zinc-800/40"
+      onClick={() => (selectable ? onToggleSelect?.(entry) : onOpen())}
+      aria-pressed={selectable ? selected : undefined}
+      className={`flex flex-col rounded-lg border p-3.5 text-left transition-colors ${
+        selectable && selected
+          ? "border-emerald-500/60 bg-emerald-500/5 hover:border-emerald-500"
+          : "border-zinc-800 bg-zinc-950 hover:border-zinc-700 hover:bg-zinc-800/40"
+      }`}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-1.5">
+          {selectable && (
+            <span
+              className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                selected
+                  ? "border-emerald-500 bg-emerald-500 text-zinc-950"
+                  : "border-zinc-600 bg-zinc-950"
+              }`}
+            >
+              {selected && <CheckCircle2 className="h-3 w-3" />}
+            </span>
+          )}
           {entry.recommended && (
             <span title="Best pick in its category" className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-300">
               <Star className="h-3 w-3 fill-emerald-300" /> Recommended

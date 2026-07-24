@@ -176,6 +176,74 @@ function repoSlug(url: string): string {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Cheap relevance shortlist (no AI)                                   */
+/* ------------------------------------------------------------------ */
+
+/** Split arbitrary text into deduped lowercase word tokens (>=3 chars). */
+function tokenize(text: string): string[] {
+  const seen = new Set<string>();
+  for (const raw of text.toLowerCase().split(/[^a-z0-9]+/)) {
+    if (raw.length >= 3) seen.add(raw);
+  }
+  return [...seen];
+}
+
+/**
+ * Rank catalog entries by cheap token-overlap relevance to `text` and return a
+ * shortlist for prompting the drafting assistant — no AI, no network. Tokens
+ * from `text` are matched against each entry's name/description/goodFor/
+ * categories, with name and goodFor weighted higher. Any `alwaysIncludeIds`
+ * (e.g. tools the owner already attached) are prepended and deduped regardless
+ * of score. Returns at most `limit` entries (default 25).
+ */
+export function shortlistForText(
+  text: string,
+  opts?: { limit?: number; alwaysIncludeIds?: string[] },
+): CatalogEntry[] {
+  const limit = opts?.limit ?? 25;
+  const always = opts?.alwaysIncludeIds ?? [];
+  const entries = seedCatalog().entries;
+  const byId = new Map(entries.map((e) => [e.id, e]));
+
+  const tokens = tokenize(text);
+  const scored = entries
+    .map((e) => {
+      const name = e.name.toLowerCase();
+      const goodFor = (e.goodFor ?? []).join(" ").toLowerCase();
+      const categories = (e.categories ?? []).join(" ").toLowerCase();
+      const description = (e.description ?? "").toLowerCase();
+      let score = 0;
+      for (const t of tokens) {
+        if (name.includes(t)) score += 3;
+        if (goodFor.includes(t)) score += 2;
+        if (categories.includes(t)) score += 2;
+        if (description.includes(t)) score += 1;
+      }
+      return { entry: e, score };
+    })
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score);
+
+  // Always-include entries first (in the order given), then top-scored, deduped.
+  const out: CatalogEntry[] = [];
+  const used = new Set<string>();
+  for (const id of always) {
+    const e = byId.get(id);
+    if (e && !used.has(e.id)) {
+      out.push(e);
+      used.add(e.id);
+    }
+  }
+  for (const { entry } of scored) {
+    if (out.length >= limit) break;
+    if (used.has(entry.id)) continue;
+    out.push(entry);
+    used.add(entry.id);
+  }
+  return out;
+}
+
 /** Title-case a discovered directory name for a friendly display name. */
 export function titleize(slug: string): string {
   return slug
