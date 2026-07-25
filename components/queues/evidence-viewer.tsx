@@ -16,10 +16,12 @@ import { Markdown, Spinner } from "./ui";
 /** Star feature: the demo-evidence viewer for a PR. */
 export default function EvidenceViewer({
   pr,
+  project,
   demo,
   onRerun,
 }: {
   pr: number;
+  project: string;
   demo: DemoEvidence;
   onRerun: () => Promise<void>;
 }) {
@@ -88,6 +90,7 @@ export default function EvidenceViewer({
           <EvidenceCard
             key={`${item.file}-${i}`}
             pr={pr}
+            project={project}
             item={item}
             onOpenImage={() => setLightbox(item)}
           />
@@ -95,30 +98,39 @@ export default function EvidenceViewer({
       </div>
 
       {lightbox && (
-        <Lightbox pr={pr} item={lightbox} onClose={() => setLightbox(null)} />
+        <Lightbox
+          pr={pr}
+          project={project}
+          item={lightbox}
+          onClose={() => setLightbox(null)}
+        />
       )}
     </div>
   );
 }
 
-function evidenceUrl(pr: number, file: string) {
+function evidenceUrl(pr: number, file: string, project: string) {
   const encoded = file
     .split("/")
     .map((p) => encodeURIComponent(p))
     .join("/");
-  return `/api/builds/evidence/${pr}/${encoded}`;
+  return `/api/builds/evidence/${pr}/${encoded}?project=${encodeURIComponent(
+    project,
+  )}`;
 }
 
 function EvidenceCard({
   pr,
+  project,
   item,
   onOpenImage,
 }: {
   pr: number;
+  project: string;
   item: EvidenceItem;
   onOpenImage: () => void;
 }) {
-  const url = evidenceUrl(pr, item.file);
+  const url = evidenceUrl(pr, item.file, project);
   return (
     <figure className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
       <div className="bg-zinc-950">
@@ -204,10 +216,12 @@ function LogPreview({ url, type }: { url: string; type: string }) {
 
 function Lightbox({
   pr,
+  project,
   item,
   onClose,
 }: {
   pr: number;
+  project: string;
   item: EvidenceItem;
   onClose: () => void;
 }) {
@@ -232,7 +246,7 @@ function Lightbox({
       </button>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={evidenceUrl(pr, item.file)}
+        src={evidenceUrl(pr, item.file, project)}
         alt={item.caption}
         onClick={(e) => e.stopPropagation()}
         className="max-h-[85vh] max-w-full rounded-lg object-contain"

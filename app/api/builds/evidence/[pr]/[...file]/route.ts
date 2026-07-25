@@ -1,4 +1,5 @@
 import { readEvidenceFile } from "@/lib/queues";
+import { resolveProjectFromUrl } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
  * The [...file] catch-all lets us serve nested paths like video/01-demo.webm.
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ pr: string; file: string[] }> },
 ) {
   const { pr, file } = await params;
@@ -23,7 +24,8 @@ export async function GET(
   }
 
   try {
-    const result = await readEvidenceFile(prNumber, filePath);
+    const { repo } = await resolveProjectFromUrl(req.url);
+    const result = await readEvidenceFile(prNumber, filePath, repo);
     if (!result) {
       return new Response("Evidence file not found or artifact expired.", {
         status: 404,

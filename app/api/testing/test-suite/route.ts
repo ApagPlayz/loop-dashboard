@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWorkflowRuns } from "@/lib/github";
 import { listRunJobs, toRunSummary } from "@/lib/testing";
+import { resolveProjectFromUrl } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -9,11 +10,13 @@ export const dynamic = "force-dynamic";
  * (install / lint / tests / build) results, plus a compact history of the last
  * 10 runs. If the workflow isn't on main yet, returns { notLive: true }.
  */
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { repo } = await resolveProjectFromUrl(req.url);
     const runs = await getWorkflowRuns({
       workflowId: "repo-tests.yml",
       per_page: 10,
+      repo,
     });
     if (runs.length === 0) {
       return NextResponse.json({ notLive: true, history: [] });
@@ -21,7 +24,7 @@ export async function GET() {
     const history = runs.map(toRunSummary);
     const latest = history[0];
     // Pull the step-level breakdown from the latest run's jobs.
-    const jobs = await listRunJobs(latest.id);
+    const jobs = await listRunJobs(latest.id, repo);
     const steps = jobs.flatMap((j) => j.steps);
     return NextResponse.json({ latest, history, steps });
   } catch (err: unknown) {

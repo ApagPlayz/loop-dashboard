@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { aiChatCall, assistantAvailable, AiError, type ChatMessage } from "@/lib/map-ai";
 import { loadPRDetail } from "@/lib/queues";
-import { getOctokit, REPOS } from "@/lib/github";
+import { getOctokit, type RepoConfig } from "@/lib/github";
+import { resolveProjectFromUrl } from "@/lib/projects";
 import { localCheckoutForRepo } from "@/lib/local-folders";
 
 export const dynamic = "force-dynamic";
@@ -86,10 +87,11 @@ export async function POST(
   }
 
   try {
-    const { owner, repo } = REPOS.primary;
+    const { repo: repoConfig } = await resolveProjectFromUrl(req.url);
+    const { owner, repo } = repoConfig;
     const [detail, diff, checkout] = await Promise.all([
-      loadPRDetail(prNumber),
-      loadDiff(prNumber),
+      loadPRDetail(prNumber, repoConfig),
+      loadDiff(prNumber, repoConfig),
       localCheckoutForRepo(owner, repo),
     ]);
 
@@ -144,8 +146,11 @@ Answer the owner's questions plainly and honestly — be direct about correctnes
  * to a sane budget. Best-effort — returns a placeholder on any failure so the
  * chat still works from the code checkout + text.
  */
-async function loadDiff(prNumber: number): Promise<string> {
-  const { owner, repo } = REPOS.primary;
+async function loadDiff(
+  prNumber: number,
+  repoConfig: RepoConfig,
+): Promise<string> {
+  const { owner, repo } = repoConfig;
   try {
     const files = await getOctokit().paginate(getOctokit().rest.pulls.listFiles, {
       owner,

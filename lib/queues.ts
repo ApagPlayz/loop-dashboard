@@ -11,8 +11,6 @@
 import { getOctokit, REPOS, type RepoConfig } from "@/lib/github";
 import { loadEvidenceManifest, readEvidenceFile } from "@/lib/queues-evidence";
 
-const { owner, repo } = REPOS.primary;
-
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
 /* ------------------------------------------------------------------ */
@@ -367,7 +365,10 @@ function mapPR(p: RawPR, merged: boolean): PRSummary {
 const isBuilderBranch = (ref: string) => ref.startsWith("claude/");
 
 /** Load the three Builds tabs. */
-export async function loadBuilds(): Promise<BuildsPayload> {
+export async function loadBuilds(
+  repoConfig: RepoConfig = REPOS.primary,
+): Promise<BuildsPayload> {
+  const { owner, repo } = repoConfig;
   const octokit = getOctokit();
   const res = await octokit.rest.pulls.list({
     owner,
@@ -404,7 +405,11 @@ export async function loadBuilds(): Promise<BuildsPayload> {
 }
 
 /** Full PR detail: stats, comments, audit verdict, and demo evidence. */
-export async function loadPRDetail(prNumber: number): Promise<PRDetail> {
+export async function loadPRDetail(
+  prNumber: number,
+  repoConfig: RepoConfig = REPOS.primary,
+): Promise<PRDetail> {
+  const { owner, repo } = repoConfig;
   const octokit = getOctokit();
 
   const prRes = await octokit.rest.pulls.get({
@@ -415,16 +420,18 @@ export async function loadPRDetail(prNumber: number): Promise<PRDetail> {
   const p = prRes.data;
 
   const [issueComments, reviewComments] = await Promise.all([
-    listThreadComments(prNumber),
-    listPRReviewComments(prNumber),
+    listThreadComments(prNumber, repoConfig),
+    listPRReviewComments(prNumber, repoConfig),
   ]);
   const comments = [...issueComments, ...reviewComments].sort(
     (a, b) => +new Date(a.createdAt) - +new Date(b.createdAt),
   );
   const verdict = parseAuditFromComments(comments);
-  const demo = await resolveDemoEvidence(prNumber, p.head.sha, comments);
+  const demo = await resolveDemoEvidence(prNumber, p.head.sha, comments, repoConfig);
   const behindBy =
-    p.state === "open" ? await countCommitsBehindMain(p.base?.ref, p.head?.ref) : 0;
+    p.state === "open"
+      ? await countCommitsBehindMain(p.base?.ref, p.head?.ref, repoConfig)
+      : 0;
 
   return {
     ...mapPR(p as unknown as RawPR, Boolean(p.merged)),
@@ -452,8 +459,10 @@ export async function loadPRDetail(prNumber: number): Promise<PRDetail> {
 async function countCommitsBehindMain(
   baseRef: string | undefined,
   headRef: string | undefined,
+  repoConfig: RepoConfig = REPOS.primary,
 ): Promise<number> {
   if (!baseRef || !headRef) return 0;
+  const { owner, repo } = repoConfig;
   try {
     const res = await getOctokit().rest.repos.compareCommitsWithBasehead({
       owner,
@@ -467,10 +476,13 @@ async function countCommitsBehindMain(
 }
 
 /** Close a PR without merging. */
-export async function closePR(prNumber: number) {
+export async function closePR(
+  prNumber: number,
+  repoConfig: RepoConfig = REPOS.primary,
+) {
   const res = await getOctokit().rest.pulls.update({
-    owner,
-    repo,
+    owner: repoConfig.owner,
+    repo: repoConfig.repo,
     pull_number: prNumber,
     state: "closed",
   });
@@ -544,10 +556,11 @@ export async function resolveDemoEvidence(
   prNumber: number,
   _headSha: string,
   comments: ThreadComment[],
+  repoConfig: RepoConfig = REPOS.primary,
 ): Promise<DemoEvidence> {
   const demoComment = findDemoComment(comments);
   try {
-    const manifest = await loadEvidenceManifest(prNumber);
+    const manifest = await loadEvidenceManifest(prNumber, repoConfig);
     if (manifest && manifest.items.length > 0) {
       return {
         status: "available",

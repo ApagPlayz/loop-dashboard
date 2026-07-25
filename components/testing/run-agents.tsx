@@ -72,7 +72,7 @@ const CARDS: WorkflowCard[] = [
   },
 ];
 
-export default function RunAgents() {
+export default function RunAgents({ project }: { project: string }) {
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [options, setOptions] = useState<{
     redraftIssues: Option[];
@@ -92,21 +92,26 @@ export default function RunAgents() {
   );
 
   const loadRuns = useCallback(async () => {
+    if (!project) return;
     try {
-      const res = await fetch("/api/testing/runs?per_page=15", {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/testing/runs?per_page=15&project=${encodeURIComponent(project)}`,
+        { cache: "no-store" },
+      );
       const data = await res.json();
       if (res.ok) setRuns(data.runs ?? []);
     } catch {
       /* ignore transient */
     }
-  }, []);
+  }, [project]);
 
   useEffect(() => {
+    if (!project) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadRuns();
-    fetch("/api/testing/dispatch-options", { cache: "no-store" })
+    fetch(`/api/testing/dispatch-options?project=${encodeURIComponent(project)}`, {
+      cache: "no-store",
+    })
       .then((r) => r.json())
       .then((d) => {
         setOptions({
@@ -118,14 +123,15 @@ export default function RunAgents() {
         );
       })
       .catch(() => {});
-  }, [loadRuns]);
+  }, [project, loadRuns]);
 
   // Poll runs while anything is active, otherwise a slow refresh.
   useEffect(() => {
+    if (!project) return;
     const active = runs.some((r) => r.status !== "completed");
     const t = setInterval(loadRuns, active ? 5000 : 20000);
     return () => clearInterval(t);
-  }, [runs, loadRuns]);
+  }, [project, runs, loadRuns]);
 
   const runNow = useCallback(
     async (card: WorkflowCard) => {
@@ -147,11 +153,14 @@ export default function RunAgents() {
         payload.inputs = { [card.input.name]: val };
       }
       try {
-        const res = await fetch("/api/testing/dispatch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+        const res = await fetch(
+          `/api/testing/dispatch?project=${encodeURIComponent(project)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          },
+        );
         const data = await res.json();
         if (res.ok) {
           setFlash((p) => ({
@@ -179,7 +188,7 @@ export default function RunAgents() {
         setBusy(null);
       }
     },
-    [inputs, loadRuns],
+    [inputs, loadRuns, project],
   );
 
   const latestFor = (file: string) =>
@@ -309,6 +318,7 @@ export default function RunAgents() {
             key={selected.id}
             runId={selected.id}
             htmlUrl={selected.htmlUrl}
+            project={project}
           />
         </section>
       )}

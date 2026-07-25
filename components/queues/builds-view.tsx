@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { BuildsPayload, PRSummary } from "@/lib/queues";
+import { useProject } from "@/components/project-context";
 import { TabBar, ErrorPanel, EmptyState, Spinner } from "./ui";
 import { ToastProvider } from "./toast";
 import PRCard from "./pr-card";
@@ -29,16 +30,20 @@ export default function BuildsView() {
 }
 
 function BuildsInner() {
+  const { project } = useProject();
   const [data, setData] = useState<BuildsPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("needsReview");
 
   const load = useCallback(async () => {
+    if (!project) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/builds");
+      const res = await fetch(
+        `/api/builds?project=${encodeURIComponent(project)}`,
+      );
       const payload = await res.json();
       if (!res.ok) throw new Error(payload.error ?? "Failed to load builds");
       setData(payload as BuildsPayload);
@@ -47,7 +52,7 @@ function BuildsInner() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [project]);
 
   useEffect(() => {
     // Defer so we don't call setState synchronously inside the effect body.
@@ -96,7 +101,7 @@ function BuildsInner() {
       ) : (
         <div className="space-y-3">
           {current.map((pr) => (
-            <PRCard key={pr.number} pr={pr} onChanged={load} />
+            <PRCard key={pr.number} pr={pr} project={project} onChanged={load} />
           ))}
         </div>
       )}

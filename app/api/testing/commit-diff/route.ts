@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCommitWorkflowPatch } from "@/lib/testing";
+import { resolveProjectFromUrl } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing sha" }, { status: 400 });
   }
   try {
-    const data = await getCommitWorkflowPatch(sha);
+    const { repo } = await resolveProjectFromUrl(req.url);
+    const data = await getCommitWorkflowPatch(sha, repo);
     return NextResponse.json(data);
   } catch {
     return NextResponse.json(

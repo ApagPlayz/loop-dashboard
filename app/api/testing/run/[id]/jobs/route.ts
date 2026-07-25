@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { listRunJobs } from "@/lib/testing";
+import { resolveProjectFromUrl } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
 /** Jobs + step statuses for a single run (live). */
 export async function GET(
-  _req: Request,
+  req: Request,
   ctx: { params: Promise<{ id: string }> },
 ) {
   const { id } = await ctx.params;
@@ -14,7 +15,8 @@ export async function GET(
     return NextResponse.json({ error: "Bad run id" }, { status: 400 });
   }
   try {
-    const jobs = await listRunJobs(runId);
+    const { repo } = await resolveProjectFromUrl(req.url);
+    const jobs = await listRunJobs(runId, repo);
     return NextResponse.json({ jobs });
   } catch {
     return NextResponse.json(

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWorkflowRuns } from "@/lib/github";
 import { toRunSummary } from "@/lib/testing";
+import { resolveProjectFromUrl } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -15,9 +16,11 @@ export async function GET(req: Request) {
   const perPage = Number(url.searchParams.get("per_page") ?? "15");
 
   try {
+    const { repo } = await resolveProjectFromUrl(req.url);
     const runs = await getWorkflowRuns({
       workflowId: file,
       per_page: Number.isFinite(perPage) ? perPage : 15,
+      repo,
     });
     return NextResponse.json({ runs: runs.map(toRunSummary) });
   } catch {

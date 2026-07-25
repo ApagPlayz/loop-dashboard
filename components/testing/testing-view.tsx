@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Rocket, ClipboardCheck, History } from "lucide-react";
+import { useProject } from "@/components/project-context";
 import RunAgents from "./run-agents";
 import TestSuite from "./test-suite";
 import InstructionChanges from "./instruction-changes";
@@ -16,6 +17,7 @@ type TabKey = (typeof TABS)[number]["key"];
 
 export default function TestingView() {
   const [tab, setTab] = useState<TabKey>("run");
+  const { project } = useProject();
   return (
     <div>
       <div className="mb-6 flex flex-wrap gap-2 border-b border-zinc-800 pb-3">
@@ -39,9 +41,9 @@ export default function TestingView() {
         })}
       </div>
 
-      {tab === "run" && <RunAgents />}
-      {tab === "suite" && <TestSuite />}
-      {tab === "changes" && <InstructionChanges />}
+      {tab === "run" && <RunAgents project={project} />}
+      {tab === "suite" && <TestSuite project={project} />}
+      {tab === "changes" && <InstructionChanges project={project} />}
     </div>
   );
 }

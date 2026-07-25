@@ -7,9 +7,7 @@
  * GITHUB_TOKEN is available.
  */
 
-import { getOctokit, REPOS } from "@/lib/github";
-
-const { owner, repo } = REPOS.primary;
+import { getOctokit, REPOS, type RepoConfig } from "@/lib/github";
 
 /* ------------------------------------------------------------------ */
 /* Workflow registry                                                   */
@@ -211,7 +209,11 @@ export type JobSummary = {
   steps: JobStep[];
 };
 
-export async function listRunJobs(runId: number): Promise<JobSummary[]> {
+export async function listRunJobs(
+  runId: number,
+  repoConfig: RepoConfig = REPOS.primary,
+): Promise<JobSummary[]> {
+  const { owner, repo } = repoConfig;
   const res = await getOctokit().rest.actions.listJobsForWorkflowRun({
     owner,
     repo,
@@ -247,7 +249,9 @@ export type JobLogResult =
 export async function getJobLogTail(
   jobId: number,
   maxLines = 200,
+  repoConfig: RepoConfig = REPOS.primary,
 ): Promise<JobLogResult> {
+  const { owner, repo } = repoConfig;
   const octokit = getOctokit();
   try {
     const res = await octokit.request(
@@ -289,7 +293,10 @@ export async function getJobLogTail(
 export type Option = { value: string; label: string };
 
 /** Open issues labeled `redraft` or `proposal` — choices for the Redraft run. */
-export async function redraftIssueOptions(): Promise<Option[]> {
+export async function redraftIssueOptions(
+  repoConfig: RepoConfig = REPOS.primary,
+): Promise<Option[]> {
+  const { owner, repo } = repoConfig;
   const octokit = getOctokit();
   // listForRepo with comma labels is AND, so query each label and merge.
   const [prop, red] = await Promise.all([
@@ -320,7 +327,10 @@ export async function redraftIssueOptions(): Promise<Option[]> {
 }
 
 /** Open PRs from `claude/` branches — choices for the Demo run. */
-export async function claudePrOptions(): Promise<Option[]> {
+export async function claudePrOptions(
+  repoConfig: RepoConfig = REPOS.primary,
+): Promise<Option[]> {
+  const { owner, repo } = repoConfig;
   const res = await getOctokit().rest.pulls.list({
     owner,
     repo,
@@ -351,7 +361,9 @@ export type InstructionCommit = {
 export async function listWorkflowCommits(
   path: string,
   perPage = 15,
+  repoConfig: RepoConfig = REPOS.primary,
 ): Promise<InstructionCommit[]> {
+  const { owner, repo } = repoConfig;
   const res = await getOctokit().rest.repos.listCommits({
     owner,
     repo,
@@ -382,7 +394,9 @@ export type FilePatch = {
 /** Get the per-file patches for a commit, limited to workflow files. */
 export async function getCommitWorkflowPatch(
   sha: string,
+  repoConfig: RepoConfig = REPOS.primary,
 ): Promise<{ message: string; files: FilePatch[] }> {
+  const { owner, repo } = repoConfig;
   const res = await getOctokit().rest.repos.getCommit({
     owner,
     repo,

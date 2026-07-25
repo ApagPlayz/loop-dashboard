@@ -47,9 +47,11 @@ const STALE_THRESHOLD = 10;
 
 export default function PRCard({
   pr,
+  project,
   onChanged,
 }: {
   pr: PRSummary;
+  project: string;
   onChanged: () => void;
 }) {
   const toast = useToast();
@@ -60,7 +62,9 @@ export default function PRCard({
   const [panel, setPanel] = useState<
     "merge" | "sendback" | "close" | "rebuild" | null
   >(null);
-  const chat = usePrChat(pr.number);
+  const chat = usePrChat(pr.number, project);
+  // Query-string suffix that scopes every builds API call to the current project.
+  const projectQuery = `?project=${encodeURIComponent(project)}`;
   const [panelText, setPanelText] = useState("");
   const [busy, setBusy] = useState<Decision | null>(null);
 
@@ -68,7 +72,7 @@ export default function PRCard({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/builds/${pr.number}`);
+      const res = await fetch(`/api/builds/${pr.number}${projectQuery}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Failed to load PR");
       setDetail(data as PRDetail);
@@ -91,7 +95,7 @@ export default function PRCard({
   ): Promise<boolean> {
     setBusy(action);
     try {
-      const res = await fetch(`/api/builds/${pr.number}`, {
+      const res = await fetch(`/api/builds/${pr.number}${projectQuery}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, ...opts }),
@@ -365,7 +369,7 @@ export default function PRCard({
               {/* 3. Demo evidence */}
               <section>
                 <SectionTitle>📸 Demo evidence</SectionTitle>
-                <EvidenceViewer pr={pr.number} demo={detail.demo} onRerun={rerunDemo} />
+                <EvidenceViewer pr={pr.number} project={project} demo={detail.demo} onRerun={rerunDemo} />
               </section>
 
               {/* 4. Decision row (sticky on mobile) */}

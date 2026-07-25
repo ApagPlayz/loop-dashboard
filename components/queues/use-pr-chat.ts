@@ -28,7 +28,7 @@ function load(prNumber: number): PrChatMsg[] {
  * gives Claude the PR's diff plus read-only access to the local checkout, so
  * answers are grounded in the actual code, not the PR's description.
  */
-export function usePrChat(prNumber: number) {
+export function usePrChat(prNumber: number, project: string) {
   const [messages, setMessages] = useState<PrChatMsg[]>([]);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,11 +63,14 @@ export function usePrChat(prNumber: number) {
       setError(null);
       setSending(true);
       try {
-        const res = await fetch(`/api/builds/${prNumber}/chat`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: next }),
-        });
+        const res = await fetch(
+          `/api/builds/${prNumber}/chat?project=${encodeURIComponent(project)}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ messages: next }),
+          },
+        );
         const data = (await res.json().catch(() => ({}))) as { reply?: string; error?: string };
         if (!res.ok || !data.reply) {
           setError(data.error || "Claude couldn't answer just now. Try again.");
@@ -80,7 +83,7 @@ export function usePrChat(prNumber: number) {
         setSending(false);
       }
     },
-    [prNumber, messages, sending],
+    [prNumber, project, messages, sending],
   );
 
   return { messages, sendMessage, sending, error };

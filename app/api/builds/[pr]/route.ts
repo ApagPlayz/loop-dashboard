@@ -6,15 +6,15 @@ import {
   addLabel,
   removeLabel,
   getOctokit,
-  REPOS,
 } from "@/lib/github";
 import { loadPRDetail, closePR, getIssue, reopenIssue } from "@/lib/queues";
+import { resolveProjectFromUrl } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
 /** GET /api/builds/[pr] — full detail: stats, verdict, demo evidence, thread. */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ pr: string }> },
 ) {
   const { pr } = await params;
@@ -23,7 +23,8 @@ export async function GET(
     return NextResponse.json({ error: "Bad PR number" }, { status: 400 });
   }
   try {
-    const detail = await loadPRDetail(prNumber);
+    const { repo } = await resolveProjectFromUrl(req.url);
+    const detail = await loadPRDetail(prNumber, repo);
     return NextResponse.json(detail);
   } catch (err) {
     return NextResponse.json({ error: msg(err) }, { status: 502 });
@@ -72,11 +73,13 @@ export async function POST(
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  const { repo } = await resolveProjectFromUrl(req.url);
+
   try {
     switch (body.action) {
       case "merge": {
         try {
-          const result = await mergePR(prNumber, { merge_method: "squash" });
+          const result = await mergePR(prNumber, { merge_method: "squash", repo });
           return NextResponse.json({ ok: true, merged: result.merged });
         } catch (err) {
           // 405 = not mergeable (conflicts / checks); surface GitHub's message.
@@ -93,13 +96,13 @@ export async function POST(
             { status: 400 },
           );
         }
-        await createComment(prNumber, `@claude ${text}`);
+        await createComment(prNumber, `@claude ${text}`, repo);
         return NextResponse.json({ ok: true });
       }
       case "close": {
         const text = (body.text ?? "").trim();
-        if (text) await createComment(prNumber, text);
-        await closePR(prNumber);
+        if (text) await createComment(prNumber, text, repo);
+        await closePR(prNumber, repo);
         return NextResponse.json({ ok: true });
       }
       case "comment": {
@@ -113,26 +116,32 @@ export async function POST(
         await createComment(
           prNumber,
           body.wakeClaude ? `@claude ${text}` : text,
+          repo,
         );
         return NextResponse.json({ ok: true });
       }
       case "redemo": {
-        await dispatchWorkflow("claude-demo.yml", "main", {
-          pr_number: String(prNumber),
-        });
+        await dispatchWorkflow(
+          "claude-demo.yml",
+          "main",
+          { pr_number: String(prNumber) },
+          repo,
+        );
         return NextResponse.json({ ok: true });
       }
       case "reaudit": {
-        await dispatchWorkflow("claude-audit.yml", "main", {
-          pr_number: String(prNumber),
-        });
+        await dispatchWorkflow(
+          "claude-audit.yml",
+          "main",
+          { pr_number: String(prNumber) },
+          repo,
+        );
         return NextResponse.json({ ok: true });
       }
       case "rebuild": {
-        const { owner, repo } = REPOS.primary;
         const prRes = await getOctokit().rest.pulls.get({
-          owner,
-          repo,
+          owner: repo.owner,
+          repo: repo.repo,
           pull_number: prNumber,
         });
         const source = prRes.data;
@@ -155,18 +164,20 @@ export async function POST(
           prNumber,
           "🔁 Closing this PR — it conflicts with the latest `main` and can't be merged as-is. " +
             `Sending idea #${ideaNumber} back through the loop so the Builder rebuilds it fresh against current main.`,
+          repo,
         );
-        await closePR(prNumber);
+        await closePR(prNumber, repo);
 
-        const idea = await getIssue(ideaNumber);
+        const idea = await getIssue(ideaNumber, repo);
         if (idea.state === "closed") {
-          await reopenIssue(ideaNumber);
+          await reopenIssue(ideaNumber, repo);
         }
-        await addLabel(ideaNumber, "approved");
-        await removeLabel(ideaNumber, "proposal").catch(ignoreMissingLabel);
+        await addLabel(ideaNumber, "approved", repo);
+        await removeLabel(ideaNumber, "proposal", repo).catch(ignoreMissingLabel);
         await createComment(
           ideaNumber,
           "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
+          repo,
         );
 
         return NextResponse.json({ ok: true, requeued: ideaNumber });

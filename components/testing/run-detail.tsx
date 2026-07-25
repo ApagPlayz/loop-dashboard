@@ -35,9 +35,11 @@ type LogState =
 export default function RunDetail({
   runId,
   htmlUrl,
+  project,
 }: {
   runId: number;
   htmlUrl: string;
+  project: string;
 }) {
   const [jobs, setJobs] = useState<JobSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -45,10 +47,12 @@ export default function RunDetail({
   const [logs, setLogs] = useState<Record<number, LogState>>({});
 
   const load = useCallback(async () => {
+    if (!project) return;
     try {
-      const res = await fetch(`/api/testing/run/${runId}/jobs`, {
-        cache: "no-store",
-      });
+      const res = await fetch(
+        `/api/testing/run/${runId}/jobs?project=${encodeURIComponent(project)}`,
+        { cache: "no-store" },
+      );
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "failed");
       setJobs(data.jobs);
@@ -56,30 +60,33 @@ export default function RunDetail({
     } catch {
       setError("Couldn't load this run's progress.");
     }
-  }, [runId]);
+  }, [runId, project]);
 
   // Initial load. The parent remounts this component (via a key) when runId
   // changes, so we don't reset state here.
   useEffect(() => {
+    if (!project) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, [load]);
+  }, [project, load]);
 
   // Poll while any job is unfinished.
   useEffect(() => {
+    if (!project) return;
     const anyRunning =
       jobs === null || jobs.some((j) => j.status !== "completed");
     if (!anyRunning) return;
     const t = setInterval(load, 5000);
     return () => clearInterval(t);
-  }, [jobs, load]);
+  }, [project, jobs, load]);
 
   const fetchLog = useCallback(
     async (jobId: number) => {
+      if (!project) return;
       setLogs((p) => ({ ...p, [jobId]: { loading: true } }));
       try {
         const res = await fetch(
-          `/api/testing/run/${runId}/logs?job=${jobId}&lines=200`,
+          `/api/testing/run/${runId}/logs?job=${jobId}&lines=200&project=${encodeURIComponent(project)}`,
           { cache: "no-store" },
         );
         const data = await res.json();
@@ -108,7 +115,7 @@ export default function RunDetail({
         }));
       }
     },
-    [runId],
+    [runId, project],
   );
 
   if (error) {

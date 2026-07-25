@@ -1,8 +1,11 @@
+import { cookies } from "next/headers";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import PageHeader from "@/components/page-header";
 import StatCard from "@/components/stat-card";
-import { getFileContent } from "@/lib/github";
+import { PROJECT_COOKIE } from "@/components/project-context";
+import { getFileContent, type RepoConfig } from "@/lib/github";
+import { resolveProject } from "@/lib/projects";
 
 // Always fetch fresh from GitHub on each request.
 export const dynamic = "force-dynamic";
@@ -28,11 +31,11 @@ function fmt(v: number | null | undefined, suffix = ""): string {
   return `${v}${suffix}`;
 }
 
-async function loadMetrics(): Promise<{
+async function loadMetrics(repo: RepoConfig): Promise<{
   snapshots: Snapshot[] | null;
   parseError: boolean;
 }> {
-  const raw = await getFileContent("metrics/loop-metrics.json");
+  const raw = await getFileContent("metrics/loop-metrics.json", undefined, repo);
   if (raw === null) return { snapshots: null, parseError: false };
   try {
     const data = JSON.parse(raw);
@@ -48,9 +51,13 @@ async function loadMetrics(): Promise<{
 }
 
 export default async function MetricsPage() {
+  const cookieStore = await cookies();
+  const cookieKey = cookieStore.get(PROJECT_COOKIE)?.value;
+  const { project, repo } = await resolveProject(cookieKey);
+
   const [{ snapshots, parseError }, dashboardMd] = await Promise.all([
-    loadMetrics(),
-    getFileContent("LOOP-DASHBOARD.md"),
+    loadMetrics(repo),
+    getFileContent("LOOP-DASHBOARD.md", undefined, repo),
   ]);
 
   const latest =
@@ -60,7 +67,7 @@ export default async function MetricsPage() {
     <>
       <PageHeader
         title="Metrics"
-        description="Live snapshot of the loop, read straight from the repo."
+        description={`Live snapshot of the loop for ${project.label}, read straight from the repo.`}
       />
 
       {/* Stat cards for the latest snapshot */}

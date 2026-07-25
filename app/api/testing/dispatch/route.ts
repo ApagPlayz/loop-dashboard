@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { dispatchWorkflow } from "@/lib/github";
 import { findWorkflow } from "@/lib/testing";
+import { resolveProjectFromUrl } from "@/lib/projects";
 
 /**
  * Trigger a workflow by hand. Body: { file: string, inputs?: Record<string,string> }.
@@ -21,7 +22,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    await dispatchWorkflow(file, "main", body.inputs ?? {});
+    const { repo } = await resolveProjectFromUrl(req.url);
+    await dispatchWorkflow(file, "main", body.inputs ?? {}, repo);
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     const status =

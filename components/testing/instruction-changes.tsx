@@ -81,17 +81,19 @@ function delta(before: number | null, after: number | null, suffix = ""): string
   return `${before}${suffix} → ${after}${suffix} (${dir})`;
 }
 
-function BeforeAfterPanel({ date }: { date: string }) {
+function BeforeAfterPanel({ date, project }: { date: string; project: string }) {
   const [data, setData] = useState<BeforeAfter | { noMetrics: true } | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!project) return;
     let live = true;
-    fetch(`/api/testing/metrics-compare?date=${encodeURIComponent(date)}`, {
-      cache: "no-store",
-    })
+    fetch(
+      `/api/testing/metrics-compare?date=${encodeURIComponent(date)}&project=${encodeURIComponent(project)}`,
+      { cache: "no-store" },
+    )
       .then((r) => r.json())
       .then((d) => {
         if (!live) return;
@@ -102,7 +104,7 @@ function BeforeAfterPanel({ date }: { date: string }) {
     return () => {
       live = false;
     };
-  }, [date]);
+  }, [date, project]);
 
   if (error) return <p className="text-xs text-red-300">{error}</p>;
   if (!data) return <p className="text-xs text-zinc-500">Comparing metrics…</p>;
@@ -171,7 +173,7 @@ function BeforeAfterPanel({ date }: { date: string }) {
 
 /* ---------- main ---------- */
 
-export default function InstructionChanges() {
+export default function InstructionChanges({ project }: { project: string }) {
   const [groups, setGroups] = useState<Group[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [openSha, setOpenSha] = useState<string | null>(null);
@@ -179,14 +181,17 @@ export default function InstructionChanges() {
   const [compareSha, setCompareSha] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/testing/instructions", { cache: "no-store" })
+    if (!project) return;
+    fetch(`/api/testing/instructions?project=${encodeURIComponent(project)}`, {
+      cache: "no-store",
+    })
       .then((r) => r.json())
       .then((d) => {
         if (d.error) setError(d.error);
         else setGroups(d.groups ?? []);
       })
       .catch(() => setError("Couldn't load instruction history."));
-  }, []);
+  }, [project]);
 
   const toggleDiff = useCallback(
     async (sha: string) => {
@@ -198,9 +203,10 @@ export default function InstructionChanges() {
       if (!diffs[sha]) {
         setDiffs((p) => ({ ...p, [sha]: "loading" }));
         try {
-          const res = await fetch(`/api/testing/commit-diff?sha=${sha}`, {
-            cache: "no-store",
-          });
+          const res = await fetch(
+            `/api/testing/commit-diff?sha=${sha}&project=${encodeURIComponent(project)}`,
+            { cache: "no-store" },
+          );
           const d = await res.json();
           setDiffs((p) => ({ ...p, [sha]: d.files ?? [] }));
         } catch {
@@ -208,7 +214,7 @@ export default function InstructionChanges() {
         }
       }
     },
-    [openSha, diffs],
+    [openSha, diffs, project],
   );
 
   return (
@@ -349,7 +355,7 @@ export default function InstructionChanges() {
 
                   {compareSha === c.sha && c.date && (
                     <div className="border-t border-zinc-800 px-3 py-3">
-                      <BeforeAfterPanel date={c.date} />
+                      <BeforeAfterPanel date={c.date} project={project} />
                     </div>
                   )}
                 </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getJobLogTail } from "@/lib/testing";
+import { resolveProjectFromUrl } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing job id" }, { status: 400 });
   }
   try {
+    const { repo } = await resolveProjectFromUrl(req.url);
     const result = await getJobLogTail(
       jobId,
       Number.isFinite(lines) ? lines : 200,
+      repo,
     );
     return NextResponse.json(result);
   } catch {

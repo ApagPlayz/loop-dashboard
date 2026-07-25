@@ -36,15 +36,19 @@ function StepIcon({ tone }: { tone: string }) {
   return <MinusCircle className={`${cls} text-zinc-500`} />;
 }
 
-export default function TestSuite() {
+export default function TestSuite({ project }: { project: string }) {
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [rerunning, setRerunning] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    if (!project) return;
     try {
-      const res = await fetch("/api/testing/test-suite", { cache: "no-store" });
+      const res = await fetch(
+        `/api/testing/test-suite?project=${encodeURIComponent(project)}`,
+        { cache: "no-store" },
+      );
       const d = await res.json();
       if (!res.ok) throw new Error();
       setData(d);
@@ -52,29 +56,35 @@ export default function TestSuite() {
     } catch {
       setError("Couldn't load test results.");
     }
-  }, []);
+  }, [project]);
 
   useEffect(() => {
+    if (!project) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-  }, [load]);
+  }, [project, load]);
 
   useEffect(() => {
+    if (!project) return;
     if (data && "latest" in data && data.latest.status !== "completed") {
       const t = setInterval(load, 5000);
       return () => clearInterval(t);
     }
-  }, [data, load]);
+  }, [project, data, load]);
 
   const rerun = useCallback(async () => {
+    if (!project) return;
     setRerunning(true);
     setFlash(null);
     try {
-      const res = await fetch("/api/testing/dispatch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file: "repo-tests.yml" }),
-      });
+      const res = await fetch(
+        `/api/testing/dispatch?project=${encodeURIComponent(project)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ file: "repo-tests.yml" }),
+        },
+      );
       const d = await res.json();
       setFlash(res.ok ? "Re-running now…" : d.error ?? "Couldn't start.");
       if (res.ok) {
@@ -86,7 +96,7 @@ export default function TestSuite() {
     } finally {
       setRerunning(false);
     }
-  }, [load]);
+  }, [project, load]);
 
   if (error) return <p className="text-sm text-red-300">{error}</p>;
   if (!data) return <p className="text-sm text-zinc-500">Loading…</p>;

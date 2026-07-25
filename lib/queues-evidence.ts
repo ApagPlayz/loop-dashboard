@@ -18,10 +18,8 @@
  */
 
 import { unzipSync } from "fflate";
-import { getOctokit, downloadArtifact, REPOS } from "@/lib/github";
+import { getOctokit, downloadArtifact, REPOS, type RepoConfig } from "@/lib/github";
 import type { EvidenceItem } from "@/lib/queues";
-
-const { owner, repo } = REPOS.primary;
 
 export type EvidenceManifest = {
   pr?: number;
@@ -37,25 +35,30 @@ type Unzipped = {
 
 /* ---- tiny in-memory LRU (per warm lambda instance) ---- */
 
-const CACHE = new Map<number, Unzipped>();
+const CACHE = new Map<string, Unzipped>();
 const MAX_ENTRIES = 3; // keep memory bounded — artifacts can be tens of MB
 const TTL_MS = 5 * 60 * 1000; // re-check for newer artifacts after 5 min
 
-function cacheGet(prNumber: number): Unzipped | null {
-  const hit = CACHE.get(prNumber);
+/** Cache key: scope by repo so same-numbered PRs across projects don't collide. */
+function cacheKey(repoConfig: RepoConfig, prNumber: number): string {
+  return `${repoConfig.owner}/${repoConfig.repo}#${prNumber}`;
+}
+
+function cacheGet(key: string): Unzipped | null {
+  const hit = CACHE.get(key);
   if (!hit) return null;
   if (Date.now() - hit.fetchedAt > TTL_MS) {
-    CACHE.delete(prNumber);
+    CACHE.delete(key);
     return null;
   }
   // refresh LRU position
-  CACHE.delete(prNumber);
-  CACHE.set(prNumber, hit);
+  CACHE.delete(key);
+  CACHE.set(key, hit);
   return hit;
 }
 
-function cacheSet(prNumber: number, value: Unzipped) {
-  CACHE.set(prNumber, value);
+function cacheSet(key: string, value: Unzipped) {
+  CACHE.set(key, value);
   while (CACHE.size > MAX_ENTRIES) {
     const oldest = CACHE.keys().next().value;
     if (oldest === undefined) break;
@@ -65,8 +68,13 @@ function cacheSet(prNumber: number, value: Unzipped) {
 
 /* ---- artifact lookup + unzip ---- */
 
-async function fetchAndUnzip(prNumber: number): Promise<Unzipped | null> {
-  const cached = cacheGet(prNumber);
+async function fetchAndUnzip(
+  prNumber: number,
+  repoConfig: RepoConfig = REPOS.primary,
+): Promise<Unzipped | null> {
+  const { owner, repo } = repoConfig;
+  const key = cacheKey(repoConfig, prNumber);
+  const cached = cacheGet(key);
   if (cached) return cached;
 
   const name = `demo-evidence-pr-${prNumber}`;
@@ -89,7 +97,7 @@ async function fetchAndUnzip(prNumber: number): Promise<Unzipped | null> {
 
   if (usable.length === 0) return null; // none, or all expired
 
-  const zip = await downloadArtifact(usable[0].id);
+  const zip = await downloadArtifact(usable[0].id, repoConfig);
   const entries = unzipSync(new Uint8Array(zip));
 
   const files = new Map<string, Uint8Array>();
@@ -114,15 +122,16 @@ async function fetchAndUnzip(prNumber: number): Promise<Unzipped | null> {
   }
 
   const value: Unzipped = { manifest, files, fetchedAt: Date.now() };
-  cacheSet(prNumber, value);
+  cacheSet(key, value);
   return value;
 }
 
 /** Return the parsed manifest for a PR, or null if no usable artifact exists. */
 export async function loadEvidenceManifest(
   prNumber: number,
+  repoConfig: RepoConfig = REPOS.primary,
 ): Promise<EvidenceManifest | null> {
-  const bundle = await fetchAndUnzip(prNumber);
+  const bundle = await fetchAndUnzip(prNumber, repoConfig);
   return bundle?.manifest ?? null;
 }
 
@@ -130,8 +139,9 @@ export async function loadEvidenceManifest(
 export async function readEvidenceFile(
   prNumber: number,
   filePath: string,
+  repoConfig: RepoConfig = REPOS.primary,
 ): Promise<{ bytes: Uint8Array; contentType: string } | null> {
-  const bundle = await fetchAndUnzip(prNumber);
+  const bundle = await fetchAndUnzip(prNumber, repoConfig);
   if (!bundle) return null;
 
   const key = decodeURIComponent(filePath).replace(/^evidence\//, "");

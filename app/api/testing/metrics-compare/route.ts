@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getFileContent } from "@/lib/github";
 import { parseMetrics, splitMetrics } from "@/lib/testing";
+import { resolveProjectFromUrl } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing date" }, { status: 400 });
   }
   try {
-    const raw = await getFileContent("metrics/loop-metrics.json");
+    const { repo } = await resolveProjectFromUrl(req.url);
+    const raw = await getFileContent("metrics/loop-metrics.json", undefined, repo);
     const snapshots = parseMetrics(raw);
     if (snapshots.length === 0) {
       return NextResponse.json({ noMetrics: true });
