@@ -20,10 +20,14 @@ import { snapshotWorkflows } from "./map-history";
 import { aiStructuredCall, AiError, type ChatMessage } from "./map-ai";
 import { listTemplateWorkflows, isValidTemplateFileName } from "./loop-template";
 import { resolveProject } from "./projects";
+import { localCheckoutForRepo } from "./local-folders";
 import type { FileChange } from "./map-types";
 
 /** How long one chat turn may run (background job; big edits are slow). */
 const CHAT_TIMEOUT_MS = 10 * 60 * 1000;
+
+/** Read-only tools handed to the assistant when a local checkout exists. */
+const READONLY_TOOLS = ["Read", "Grep", "Glob"];
 
 const LOOP_DESCRIPTION = `The workflows form an autonomous improvement loop on a software product's GitHub repo:
 - claude-scout.yml (Scout): hourly; researches and files 'proposal' issues. Never writes code.
@@ -85,12 +89,15 @@ export async function runProcessChat(
 
   // ----- current files of the target -----------------------------------
   let current: Map<string, string>;
+  /** Local checkout of the target project's code (PROJECT mode only). */
+  let checkout: string | null = null;
   try {
     if (isTemplate) {
       current = await listTemplateWorkflows();
     } else {
       const { repo } = await resolveProject(target);
       current = await snapshotWorkflows("main", repo);
+      checkout = await localCheckoutForRepo(repo.owner, repo.repo);
     }
   } catch (err) {
     if (err instanceof AiError) throw err;
@@ -104,11 +111,15 @@ export async function runProcessChat(
 You may MODIFY existing workflow files, ADD brand-new ones, and REMOVE ones (to remove a file, include it in changes with newContent set to an empty string). Filenames must be plain names ending in .yml (custom agents should be named claude-<something>.yml so the map picks them up).`
     : `You are editing ONE PROJECT's live loop: the workflow files on the repo's main branch. You may ONLY modify the existing files listed below. You must NOT add or remove files — if the request truly needs a brand-new workflow file, explain in the reply that new agents can be added on the template page (or by asking Claude in a chat session), and draft only whatever parts CAN be done by editing existing files.`;
 
+  const codeAccess = !isTemplate && checkout
+    ? `\n\nIn addition to the workflow YAML above, you CAN read this project's ACTUAL source code: it is checked out locally and you have read-only tools (Read, Grep, Glob) rooted at its repository. Before proposing a workflow change based on a claim about how the app behaves, verify that claim against the real code rather than guessing from the YAML or the conversation alone.`
+    : "";
+
   const system = `You are the maintenance engineer for an autonomous agent loop built on GitHub Actions, chatting with the loop's owner. ${LOOP_DESCRIPTION}
 
 ${targetIntro}
 
-${SHARED_RULES}`;
+${SHARED_RULES}${codeAccess}`;
 
   const user = `Current workflow files of ${isTemplate ? "the new-project template" : "this project"}:
 
@@ -131,6 +142,8 @@ Reply to the owner's most recent message (and draft file changes only if they as
       "Reply to the owner in plain English, plus the complete new content of each changed file (empty list when no change was asked for).",
     timeoutMs: CHAT_TIMEOUT_MS,
     maxTokens: 32000,
+    cwd: checkout ?? undefined,
+    tools: checkout ? READONLY_TOOLS : undefined,
     schema: {
       type: "object",
       properties: {

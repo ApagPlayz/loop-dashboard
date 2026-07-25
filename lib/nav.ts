@@ -10,6 +10,7 @@ import {
   Workflow,
   Lightbulb,
   GitPullRequest,
+  BookText,
   FlaskConical,
   BarChart3,
   Blocks,
@@ -32,6 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/map", label: "Process Map", icon: Workflow, scope: "project" },
   { href: "/ideas", label: "Ideas", icon: Lightbulb, scope: "project" },
   { href: "/builds", label: "Pull Requests", icon: GitPullRequest, scope: "project" },
+  { href: "/learnings", label: "Learnings", icon: BookText, scope: "project" },
   { href: "/testing", label: "Testing", icon: FlaskConical, scope: "project" },
   { href: "/metrics", label: "Metrics", icon: BarChart3, scope: "project" },
   // Global — the same for every project.
