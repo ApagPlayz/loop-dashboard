@@ -35,14 +35,12 @@ import AgentNode from "./agent-node";
 import StageNode from "./stage-node";
 import AgentDrawer from "./agent-drawer";
 import LoopEditPanel from "./loop-edit-panel";
-import ProjectSwitcher, { ProjectChecklist } from "./project-switcher";
+import { ProjectChecklist } from "./project-switcher";
 import PowerMenu from "./power-menu";
 import EditMenu from "./edit-menu";
 import LaunchButton from "./launch-button";
 import Modal from "./modal";
-
-const PILOT_KEY = "content-generation-platform";
-const PROJECT_LS_KEY = "loop-dashboard.project";
+import { useProject } from "@/components/project-context";
 
 const ICONS: Record<string, LucideIcon> = {
   scout: Telescope,
@@ -167,7 +165,7 @@ function buildEdges(nodes: Node[]): Edge[] {
 }
 
 export default function ProcessMap() {
-  const [project, setProject] = useState(PILOT_KEY);
+  const { project } = useProject();
   const [status, setStatus] = useState<MapStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -176,31 +174,8 @@ export default function ProcessMap() {
   const [checklistOpen, setChecklistOpen] = useState(false);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Restore the selected project from the URL (?project=) or localStorage.
-  useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get("project");
-    const saved = fromUrl || window.localStorage.getItem(PROJECT_LS_KEY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (saved && saved !== PILOT_KEY) setProject(saved);
-  }, []);
-
-  const selectProject = useCallback((key: string) => {
-    setProject(key);
-    setStatus(null);
-    setLoading(true);
-    setStatusError(null);
-    setOpenAgent(null);
-    try {
-      window.localStorage.setItem(PROJECT_LS_KEY, key);
-      const url = new URL(window.location.href);
-      url.searchParams.set("project", key);
-      window.history.replaceState(null, "", url.toString());
-    } catch {
-      /* cosmetic only */
-    }
-  }, []);
-
   const fetchStatus = useCallback(async () => {
+    if (!project) return;
     try {
       const res = await fetch(`/api/map/status?project=${encodeURIComponent(project)}`);
       if (!res.ok) {
@@ -234,6 +209,7 @@ export default function ProcessMap() {
 
   // One setup check per selected project (not on every poll).
   useEffect(() => {
+    if (!project) return;
     let cancelled = false;
     (async () => {
       try {
@@ -267,7 +243,6 @@ export default function ProcessMap() {
     <>
       {/* Toolbar: project switcher + edit menu + loop power (deliberately separate controls) */}
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <ProjectSwitcher selected={project} onSelect={selectProject} />
         <EditMenu active="map" />
         <PowerMenu
           project={project}

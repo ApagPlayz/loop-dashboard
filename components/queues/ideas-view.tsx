@@ -4,17 +4,12 @@ import { useCallback, useEffect, useState } from "react";
 import { PenLine } from "lucide-react";
 import type { IdeasPayload, IdeaSummary } from "@/lib/queues";
 import type { Project } from "@/lib/projects";
-import ProjectSwitcher from "@/components/map/project-switcher";
+import { useProject } from "@/components/project-context";
 import { TabBar, ErrorPanel, EmptyState, Spinner } from "./ui";
 import { ToastProvider } from "./toast";
 import IdeaCard from "./idea-card";
 import CustomIdea from "./custom-idea";
 import AutomationPanel from "./automation-panel";
-
-const PILOT_KEY = "content-generation-platform";
-// Deliberately its own key, separate from the Map page's — a shared/global
-// project switcher across pages is a later follow-up, not this round.
-const PROJECT_LS_KEY = "loop-dashboard.project.ideas";
 
 type TabKey = "waiting" | "approved" | "redraft" | "closed";
 
@@ -46,17 +41,8 @@ function IdeasInner() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("waiting");
   const [showCustom, setShowCustom] = useState(false);
-  const [project, setProject] = useState(PILOT_KEY);
+  const { project } = useProject();
   const [projects, setProjects] = useState<Project[]>([]);
-
-  // Restore the selected project from the URL (?project=) or localStorage —
-  // same pattern the Map page uses, but with its own storage key.
-  useEffect(() => {
-    const fromUrl = new URLSearchParams(window.location.search).get("project");
-    const saved = fromUrl || window.localStorage.getItem(PROJECT_LS_KEY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (saved && saved !== PILOT_KEY) setProject(saved);
-  }, []);
 
   // Project labels for the "Viewing: <project>" indicator.
   useEffect(() => {
@@ -71,21 +57,8 @@ function IdeasInner() {
     })();
   }, []);
 
-  const selectProject = useCallback((key: string) => {
-    setProject(key);
-    setData(null);
-    setError(null);
-    try {
-      window.localStorage.setItem(PROJECT_LS_KEY, key);
-      const url = new URL(window.location.href);
-      url.searchParams.set("project", key);
-      window.history.replaceState(null, "", url.toString());
-    } catch {
-      /* cosmetic only */
-    }
-  }, []);
-
   const load = useCallback(async () => {
+    if (!project) return;
     setLoading(true);
     setError(null);
     try {
@@ -111,7 +84,6 @@ function IdeasInner() {
   const toolbar = (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        <ProjectSwitcher selected={project} onSelect={selectProject} />
         <span className="text-xs text-zinc-500">
           Viewing: <span className="text-zinc-300">{projectLabel}</span>
         </span>
