@@ -86,10 +86,34 @@ async function resolveAttachedTools(body: Body): Promise<AttachedTool[]> {
   return out;
 }
 
-/** Render the attached integrations as a markdown section for the issue body. */
+/**
+ * Render the attached integrations as a markdown section for the issue body.
+ *
+ * Deliberately honest: nothing in the loop installs or wires these up. The old
+ * wording promised "for the Builder/tool-installer to wire up", which no
+ * workflow performs — so the Builder read a promise it could not keep and the
+ * owner expected a step that never ran. They are context, nothing more.
+ *
+ * The heading is `## Context for the Builder` because the Builder reads the
+ * whole issue body (and its comments) when it plans a build; a section it can
+ * recognise is more use to it than one addressed to a step that doesn't exist.
+ */
 function renderAttachedTools(tools: AttachedTool[]): string {
   const lines = tools.map((t) => `- **${t.name}** (${t.type}) — ${t.url}`);
-  return `\n\n## Suggested Claude integrations\nThe owner attached these for the Builder/tool-installer to wire up:\n${lines.join("\n")}`;
+  return [
+    "",
+    "",
+    "## Context for the Builder",
+    "",
+    "The owner attached these Claude integrations as **context** for this idea.",
+    "They are NOT installed or configured automatically — nothing in the loop",
+    "wires them up. Treat them as a pointer to the capability the owner has in",
+    "mind, and only use one if it is already available in this repo's",
+    "environment. If the work genuinely needs one that isn't set up, say so in",
+    "the pull request instead of assuming it exists.",
+    "",
+    ...lines,
+  ].join("\n");
 }
 
 /**
@@ -137,7 +161,12 @@ export async function POST(req: Request) {
   const issueBody = `${provenance}\n\n${ideaBody}${toolsSection}`;
 
   try {
-    const issue = await createIssue(title, issueBody, ["proposal"], repo);
+    // Assign the repo owner, the same way the Scout files its issues with
+    // `--assignee ${{ github.repository_owner }}`. Without it the owner's own
+    // ideas were the only ones that never reached their GitHub inbox.
+    const issue = await createIssue(title, issueBody, ["proposal"], repo, {
+      assignees: [repo.owner],
+    });
     return NextResponse.json({ number: issue.number, htmlUrl: issue.html_url });
   } catch (err) {
     console.error("ideas/custom: create failed", err);

@@ -8,7 +8,7 @@
  * server (API routes / server components) where GITHUB_TOKEN is available.
  */
 
-import { getOctokit, REPOS, type RepoConfig } from "@/lib/github";
+import { getOctokit, type RepoConfig } from "@/lib/github";
 import { loadEvidenceManifest, readEvidenceFile } from "@/lib/queues-evidence";
 
 /* ------------------------------------------------------------------ */
@@ -37,7 +37,7 @@ export type IdeasPayload = {
   waiting: IdeaSummary[]; // proposal
   approved: IdeaSummary[]; // approved
   redraft: IdeaSummary[]; // redraft
-  closed: IdeaSummary[]; // recently closed that carried one of the above labels
+  closed: IdeaSummary[]; // recently closed that carried one of the idea labels
 };
 
 /** A single comment on an issue or PR. */
@@ -70,9 +70,17 @@ export type PRSummary = {
 
 /** The three Builds tabs. */
 export type BuildsPayload = {
-  needsReview: PRSummary[]; // open PRs from claude/** branches
+  needsReview: PRSummary[]; // open PRs from claude/** branches (drafts included)
   merged: PRSummary[]; // recently merged
   closed: PRSummary[]; // recently closed without merging
+  /**
+   * Open non-draft `claude/` PRs — the number the Builder counts against
+   * `prCap` when it decides whether it has room for another build. Drafts are
+   * still shown in `needsReview` (flagged by `draft`) but, like the Builder,
+   * they are NOT counted here: showing a free slot the Builder doesn't agree
+   * exists is what made the queue look open while it stood down.
+   */
+  capCount: number;
 };
 
 export type VerdictLevel = "SHIP" | "FIX FIRST" | "DO NOT MERGE" | "UNKNOWN";
@@ -163,54 +171,111 @@ function mapIssue(i: RawIssue): IdeaSummary {
 /* Ideas data                                                          */
 /* ------------------------------------------------------------------ */
 
-const IDEA_LABELS = ["proposal", "approved", "redraft"];
+/** The labels that make an issue an "idea" as far as this dashboard is concerned. */
+const IDEA_LABELS = ["proposal", "approved", "redraft", "declined"] as const;
+/** How many recently-closed ideas the Closed tab shows. */
+const CLOSED_TAB_SIZE = 10;
+/** Per-label page size for the closed listing (recent only — no pagination). */
+const CLOSED_PER_LABEL = 30;
 
-/** Load all four Ideas tabs in as few requests as possible. */
-export async function loadIdeas(
-  repoConfig: RepoConfig = REPOS.primary,
-): Promise<IdeasPayload> {
+/**
+ * Every open issue carrying `label`, following pagination to the end.
+ *
+ * `listForRepo` treats a comma-separated `labels` value as AND, so each label
+ * has to be its own query; callers merge the results. Paginating matters: the
+ * previous single unfiltered `per_page: 100` listing silently dropped ideas
+ * once the repo had more than 100 open issues (pull requests eat slots too),
+ * so approved ideas could vanish from the dashboard while the Builder was
+ * still acting on them, and the queue count disagreed with the Scout's gate.
+ */
+async function listIdeasByLabel(
+  repoConfig: RepoConfig,
+  label: string,
+): Promise<IdeaSummary[]> {
   const octokit = getOctokit();
-  const { owner, repo } = repoConfig;
-
-  // One "open" listing covers proposal/approved/redraft (they're all open).
-  const openRes = await octokit.rest.issues.listForRepo({
-    owner,
-    repo,
+  const rows = await octokit.paginate(octokit.rest.issues.listForRepo, {
+    owner: repoConfig.owner,
+    repo: repoConfig.repo,
     state: "open",
+    labels: label,
     per_page: 100,
   });
-  const open = openRes.data
+  return rows
     .filter((i) => !i.pull_request)
     .map((i) => mapIssue(i as unknown as RawIssue));
+}
 
-  const has = (idea: IdeaSummary, label: string) =>
-    idea.labels.includes(label);
-
-  const waiting = open
-    .filter((i) => has(i, "proposal"))
-    .sort(byNewest);
-  const approved = open
-    .filter((i) => has(i, "approved") && !has(i, "proposal"))
-    .sort(byNewest);
-  const redraft = open
-    .filter((i) => has(i, "redraft") && !has(i, "proposal"))
-    .sort(byNewest);
-
-  // Recently closed issues that carried one of the queue labels.
-  const closedRes = await octokit.rest.issues.listForRepo({
-    owner,
-    repo,
+/** Recently-closed issues carrying `label` (newest activity first). */
+async function listClosedIdeasByLabel(
+  repoConfig: RepoConfig,
+  label: string,
+): Promise<IdeaSummary[]> {
+  const res = await getOctokit().rest.issues.listForRepo({
+    owner: repoConfig.owner,
+    repo: repoConfig.repo,
     state: "closed",
-    per_page: 50,
+    labels: label,
+    per_page: CLOSED_PER_LABEL,
     sort: "updated",
     direction: "desc",
   });
-  const closed = closedRes.data
+  return res.data
     .filter((i) => !i.pull_request)
-    .map((i) => mapIssue(i as unknown as RawIssue))
-    .filter((i) => i.labels.some((l) => IDEA_LABELS.includes(l)))
+    .map((i) => mapIssue(i as unknown as RawIssue));
+}
+
+/** Merge several label queries into one list, keeping the first copy seen. */
+function dedupeByNumber(lists: IdeaSummary[][]): IdeaSummary[] {
+  const seen = new Set<number>();
+  const out: IdeaSummary[] = [];
+  for (const list of lists) {
+    for (const idea of list) {
+      if (seen.has(idea.number)) continue;
+      seen.add(idea.number);
+      out.push(idea);
+    }
+  }
+  return out;
+}
+
+/** Load all four Ideas tabs. */
+export async function loadIdeas(
+  repoConfig: RepoConfig,
+): Promise<IdeasPayload> {
+  // `declined` is queried on the OPEN side too, not just the closed one.
+  // Declining is two calls — set the label, then close the issue — and if the
+  // close failed the issue was left open carrying only `declined`: not in any
+  // of the three live tabs (they key off the other labels) and not in the
+  // closed tab (it isn't closed). The idea vanished from the dashboard while
+  // still sitting open on GitHub.
+  const [openLists, closedLists] = await Promise.all([
+    Promise.all(IDEA_LABELS.map((l) => listIdeasByLabel(repoConfig, l))),
+    Promise.all(IDEA_LABELS.map((l) => listClosedIdeasByLabel(repoConfig, l))),
+  ]);
+
+  const open = dedupeByNumber(openLists);
+  const has = (idea: IdeaSummary, label: string) => idea.labels.includes(label);
+  const isDeclined = (idea: IdeaSummary) => has(idea, "declined");
+
+  // A declined idea is out of play whatever else it still carries — the owner
+  // said no, so it must never reappear in a live queue.
+  const live = open.filter((i) => !isDeclined(i));
+
+  const waiting = live.filter((i) => has(i, "proposal")).sort(byNewest);
+  const approved = live
+    .filter((i) => has(i, "approved") && !has(i, "proposal"))
+    .sort(byNewest);
+  const redraft = live
+    .filter((i) => has(i, "redraft") && !has(i, "proposal"))
+    .sort(byNewest);
+
+  // Closed ideas, including the ones the owner declined — a decline is the
+  // loop's only "no", so it has to stay visible rather than disappear into an
+  // unfiltered listing of whatever closed most recently. Open-but-declined
+  // ideas ride along here: the decision was made, only the close didn't land.
+  const closed = dedupeByNumber([open.filter(isDeclined), ...closedLists])
     .sort(byClosed)
-    .slice(0, 10);
+    .slice(0, CLOSED_TAB_SIZE);
 
   return { waiting, approved, redraft, closed };
 }
@@ -218,14 +283,28 @@ export async function loadIdeas(
 function byNewest(a: IdeaSummary, b: IdeaSummary) {
   return +new Date(b.createdAt) - +new Date(a.createdAt);
 }
+
+/**
+ * When an idea was closed, as a sortable number. Closed issues always carry
+ * `closed_at`; `updatedAt` is only a fallback for a malformed payload, and it
+ * is applied through this one accessor so two entries are never compared on
+ * different clocks (a genuine close time against someone's last edit).
+ */
+function closedTime(i: IdeaSummary): number {
+  const closed = i.closedAt ? Date.parse(i.closedAt) : NaN;
+  if (!Number.isNaN(closed)) return closed;
+  const updated = Date.parse(i.updatedAt);
+  return Number.isNaN(updated) ? 0 : updated;
+}
+
 function byClosed(a: IdeaSummary, b: IdeaSummary) {
-  return +new Date(b.closedAt ?? b.updatedAt) - +new Date(a.closedAt ?? a.updatedAt);
+  return closedTime(b) - closedTime(a);
 }
 
 /** One issue's current title/body/labels/state — for building AI context. */
 export async function getIssue(
   issueNumber: number,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<{ number: number; title: string; body: string; labels: string[]; state: "open" | "closed" }> {
   const res = await getOctokit().rest.issues.get({
     owner: repoConfig.owner,
@@ -244,7 +323,7 @@ export async function getIssue(
 /** List the comment thread for an issue or PR (they share the endpoint). */
 export async function listThreadComments(
   issueNumber: number,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<ThreadComment[]> {
   const res = await getOctokit().rest.issues.listComments({
     owner: repoConfig.owner,
@@ -274,7 +353,7 @@ export async function listThreadComments(
  */
 async function listPRReviewComments(
   prNumber: number,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<ThreadComment[]> {
   const res = await getOctokit().rest.pulls.listReviews({
     owner: repoConfig.owner,
@@ -295,11 +374,11 @@ async function listPRReviewComments(
     }));
 }
 
-/** Close an issue (used by the Reject action). */
+/** Close an issue (used by the Decline action). */
 export async function closeIssue(
   issueNumber: number,
   stateReason: "completed" | "not_planned" = "not_planned",
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ) {
   const res = await getOctokit().rest.issues.update({
     owner: repoConfig.owner,
@@ -314,7 +393,7 @@ export async function closeIssue(
 /** Reopen a previously closed issue (used by the Rebuild-fresh action). */
 export async function reopenIssue(
   issueNumber: number,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ) {
   const res = await getOctokit().rest.issues.update({
     owner: repoConfig.owner,
@@ -366,24 +445,50 @@ const isBuilderBranch = (ref: string) => ref.startsWith("claude/");
 
 /** Load the three Builds tabs. */
 export async function loadBuilds(
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<BuildsPayload> {
   const { owner, repo } = repoConfig;
   const octokit = getOctokit();
-  const res = await octokit.rest.pulls.list({
-    owner,
-    repo,
-    state: "all",
-    per_page: 100,
-    sort: "updated",
-    direction: "desc",
-  });
-  const prs = res.data as unknown as RawPR[];
 
-  const needsReview = prs
-    .filter((p) => p.state === "open" && isBuilderBranch(p.head.ref) && !p.draft)
+  // Two listings on purpose.
+  //
+  // The recent-activity page (`state: "all"`, newest-updated first) is all the
+  // merged/closed tabs need — they only ever show the last 15.
+  //
+  // The open PRs are PAGINATED and queried as `state: "open"`, because
+  // `capCount` has to agree with the Builder, which counts its slots with
+  // `gh pr list --state open --limit 200` minus drafts. Reading one unpaginated
+  // page of `state: "all"` meant a busy repo's older open PRs fell off the end:
+  // the dashboard showed free slots the Builder didn't believe in and the queue
+  // looked open while the Builder was standing down.
+  const [recentRes, openPRsRaw] = await Promise.all([
+    octokit.rest.pulls.list({
+      owner,
+      repo,
+      state: "all",
+      per_page: 100,
+      sort: "updated",
+      direction: "desc",
+    }),
+    octokit.paginate(octokit.rest.pulls.list, {
+      owner,
+      repo,
+      state: "open",
+      per_page: 100,
+    }),
+  ]);
+  const prs = recentRes.data as unknown as RawPR[];
+  const openPRs = openPRsRaw as unknown as RawPR[];
+
+  // Drafts stay VISIBLE here (each row carries `draft`) but are excluded from
+  // `capCount` below, because that is exactly how the Builder counts its own
+  // slots. Hiding them made a draft PR invisible; counting them made the
+  // dashboard show a free slot the Builder didn't believe in.
+  const needsReview = openPRs
+    .filter((p) => isBuilderBranch(p.head.ref))
     .map((p) => mapPR(p, false))
     .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
+  const capCount = needsReview.filter((p) => !p.draft).length;
 
   const merged = prs
     .filter((p) => p.state === "closed" && p.merged_at)
@@ -401,13 +506,13 @@ export async function loadBuilds(
     )
     .slice(0, 15);
 
-  return { needsReview, merged, closed };
+  return { needsReview, merged, closed, capCount };
 }
 
 /** Full PR detail: stats, comments, audit verdict, and demo evidence. */
 export async function loadPRDetail(
   prNumber: number,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<PRDetail> {
   const { owner, repo } = repoConfig;
   const octokit = getOctokit();
@@ -459,7 +564,7 @@ export async function loadPRDetail(
 async function countCommitsBehindMain(
   baseRef: string | undefined,
   headRef: string | undefined,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<number> {
   if (!baseRef || !headRef) return 0;
   const { owner, repo } = repoConfig;
@@ -478,7 +583,7 @@ async function countCommitsBehindMain(
 /** Close a PR without merging. */
 export async function closePR(
   prNumber: number,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ) {
   const res = await getOctokit().rest.pulls.update({
     owner: repoConfig.owner,
@@ -556,7 +661,7 @@ export async function resolveDemoEvidence(
   prNumber: number,
   _headSha: string,
   comments: ThreadComment[],
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<DemoEvidence> {
   const demoComment = findDemoComment(comments);
   try {

@@ -13,9 +13,12 @@
  * formatting.
  */
 
-import { getFileContent, REPOS, getOctokit, type RepoConfig } from "@/lib/github";
-
-const { owner, repo } = REPOS.primary;
+import {
+  getFileContent,
+  getOctokit,
+  listWorkflowFiles,
+  type RepoConfig,
+} from "@/lib/github";
 
 /**
  * Legacy fallback branch: if a workflow file isn't on main, we look here before
@@ -42,12 +45,22 @@ export const TARGET_AGENTS: { value: string; label: string; blurb: string }[] = 
 /* Capability inventory                                                */
 /* ------------------------------------------------------------------ */
 
-/** The agent workflows we show capability cards for (script-only ones excluded). */
-export const AGENT_WORKFLOWS: {
+/** One capability card's identity, before we've read the workflow itself. */
+type AgentWorkflowRef = {
   file: string;
   name: string;
   blurb: string;
-}[] = [
+  /** True for a workflow discovered on the repo rather than a known agent. */
+  custom?: boolean;
+};
+
+/**
+ * The BASELINE agent workflows — the ones every loop ships with, in the order
+ * we want to show them. This is not the whole list: `resolveAgentWorkflows`
+ * adds whatever other `claude-*.yml` the project actually has, so an agent the
+ * owner (or the tool installer) added shows its capabilities too.
+ */
+export const AGENT_WORKFLOWS: AgentWorkflowRef[] = [
   { file: "claude-scout.yml", name: "Scout", blurb: "Finds work, files proposals" },
   { file: "claude-builder.yml", name: "Builder", blurb: "Writes code, opens PRs" },
   { file: "claude-audit.yml", name: "Auditor", blurb: "Reviews PRs" },
@@ -146,17 +159,35 @@ function parseMcpServers(json: string | null): string[] {
  * repo-level MCP servers (from .mcp.json) are passed in so we don't re-fetch.
  */
 async function parseAgentWorkflow(
-  file: string,
-  name: string,
-  blurb: string,
+  ref: AgentWorkflowRef,
   mcpServers: string[],
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ): Promise<AgentCapabilities> {
+  const { file, blurb } = ref;
+  let name = ref.name;
   let yaml = await getFileContent(`.github/workflows/${file}`, undefined, repo);
   let source: "main" | FallbackBranch = "main";
   if (yaml === null) {
-    yaml = await getFileContent(`.github/workflows/${file}`, FALLBACK_BRANCH, repo);
-    source = FALLBACK_BRANCH;
+    // Only claim "read from a pending branch" when the fallback read actually
+    // WORKED. Setting it unconditionally meant a workflow missing from both
+    // refs was reported as living on the onboarding branch, which reads as
+    // "it's on its way" when in fact the agent isn't installed anywhere.
+    const fallback = await getFileContent(
+      `.github/workflows/${file}`,
+      FALLBACK_BRANCH,
+      repo,
+    );
+    if (fallback !== null) {
+      yaml = fallback;
+      source = FALLBACK_BRANCH;
+    }
+  }
+
+  // A custom agent's real name lives in its YAML `name:` — same rule the
+  // process map uses (lib/projects.ts `genericMeta`).
+  if (ref.custom && yaml) {
+    const m = yaml.match(/^name:\s*["']?(.+?)["']?\s*$/m);
+    if (m) name = m[1];
   }
 
   const base: AgentCapabilities = {
@@ -242,23 +273,68 @@ export function computeSharedCapabilities(
   };
 }
 
+/** Filename pattern for an agent workflow — same rule lib/projects.ts uses. */
+const AGENT_FILE_RX = /^claude-.*\.ya?ml$/;
+
+/**
+ * The capability cards to build for one project: the baseline agents first (so
+ * the order the owner learned never shuffles), then every OTHER `claude-*.yml`
+ * the repo actually has, alphabetically.
+ *
+ * This used to be the hardcoded baseline list alone, which meant a custom agent
+ * — including anything the tool installer had added — had no card at all, and
+ * "what my agents can do today" quietly omitted it. If the workflow listing
+ * can't be read (rate limit, outage) we fall back to the baseline so the page
+ * still renders, exactly like the process map does.
+ */
+async function resolveAgentWorkflows(repo: RepoConfig): Promise<AgentWorkflowRef[]> {
+  let files: string[];
+  try {
+    const [onMain, onFallback] = await Promise.all([
+      listWorkflowFiles({ repo }),
+      // Mid-onboarding projects keep their agents on the support branch until
+      // it merges; parseAgentWorkflow reads from there too, so list it as well.
+      listWorkflowFiles({ ref: FALLBACK_BRANCH, repo }).catch(() => [] as string[]),
+    ]);
+    files = [...onMain, ...onFallback];
+  } catch (err) {
+    console.error("tools: workflow listing failed", err);
+    return AGENT_WORKFLOWS;
+  }
+
+  const known = new Set(AGENT_WORKFLOWS.map((w) => w.file));
+  const extras = [...new Set(files)]
+    .filter((f) => AGENT_FILE_RX.test(f) && !known.has(f))
+    .sort()
+    .map<AgentWorkflowRef>((file) => ({
+      file,
+      // Replaced with the workflow's own `name:` once we've read it.
+      name: file.replace(/^claude-/, "").replace(/\.ya?ml$/, "") || file,
+      blurb: "Custom agent for this project",
+      custom: true,
+    }));
+
+  return [...AGENT_WORKFLOWS, ...extras];
+}
+
 export async function loadCapabilityInventory(
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ): Promise<{
   agents: AgentCapabilities[];
   repoMcpServers: string[];
   shared: SharedCapabilities;
 }> {
   // .mcp.json can live on main or only on the onboarding branch.
-  const mcpRaw =
-    (await getFileContent(".mcp.json", undefined, repo)) ??
-    (await getFileContent(".mcp.json", FALLBACK_BRANCH, repo));
+  const [mcpRaw, workflowRefs] = await Promise.all([
+    getFileContent(".mcp.json", undefined, repo).then(
+      (raw) => raw ?? getFileContent(".mcp.json", FALLBACK_BRANCH, repo),
+    ),
+    resolveAgentWorkflows(repo),
+  ]);
   const repoMcpServers = parseMcpServers(mcpRaw);
 
   const agents = await Promise.all(
-    AGENT_WORKFLOWS.map((w) =>
-      parseAgentWorkflow(w.file, w.name, w.blurb, repoMcpServers, repo),
-    ),
+    workflowRefs.map((w) => parseAgentWorkflow(w, repoMcpServers, repo)),
   );
   const shared = computeSharedCapabilities(agents, repoMcpServers);
   return { agents, repoMcpServers, shared };
@@ -278,11 +354,17 @@ export type ActionIssue = {
 
 const ACTION_PREFIX = "🔑 Action needed";
 
-/** Open issues whose title starts with the tool-install "action needed" flag. */
-export async function listActionNeededIssues(): Promise<ActionIssue[]> {
+/**
+ * Open issues whose title starts with the tool-install "action needed" flag.
+ * `target` names the project's repo and is required — there is no pilot
+ * fallback, so a caller that hasn't resolved a project can't read the wrong one.
+ */
+export async function listActionNeededIssues(
+  target: RepoConfig,
+): Promise<ActionIssue[]> {
   const res = await getOctokit().rest.issues.listForRepo({
-    owner,
-    repo,
+    owner: target.owner,
+    repo: target.repo,
     state: "open",
     per_page: 100,
   });
@@ -310,10 +392,12 @@ export type ToolPr = {
 };
 
 /** Open claude/ PRs whose title/branch look like a tool install. */
-export async function listToolInstallPrs(): Promise<ToolPr[]> {
+export async function listToolInstallPrs(
+  target: RepoConfig,
+): Promise<ToolPr[]> {
   const res = await getOctokit().rest.pulls.list({
-    owner,
-    repo,
+    owner: target.owner,
+    repo: target.repo,
     state: "open",
     per_page: 50,
   });

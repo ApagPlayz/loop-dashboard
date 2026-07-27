@@ -6,6 +6,10 @@ import { resolveProject, ProjectError } from "@/lib/projects";
 export const dynamic = "force-dynamic";
 // The CLI backend spawns a child process — keep this on the Node runtime.
 export const runtime = "nodejs";
+// The response returns a jobId immediately, but the job itself runs in this
+// same invocation for up to AI_TIMEOUT_MS below. Size the segment to the job,
+// not to the response, or the work is frozen before it finishes.
+export const maxDuration = 300;
 
 /** Custom-idea AI calls get 5 minutes (background job). */
 const AI_TIMEOUT_MS = 5 * 60 * 1000;

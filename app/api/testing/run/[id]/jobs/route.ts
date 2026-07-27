@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { listRunJobs } from "@/lib/testing";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,10 @@ export async function GET(
     const { repo } = await resolveProjectFromUrl(req.url);
     const jobs = await listRunJobs(runId, repo);
     return NextResponse.json({ jobs });
-  } catch {
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json(
       { error: "Could not load this run's jobs." },
       { status: 500 },

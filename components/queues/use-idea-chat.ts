@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type IdeaChatMsg = { role: "user" | "assistant"; content: string };
 
@@ -40,7 +40,14 @@ export function useIdeaChat(project: string, issueNumber: number) {
   const [includeInAction, setIncludeInAction] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
+
+  // Tracks which project+issue the current in-memory transcript belongs to.
+  // The persist effect only writes once this matches, so switching project (or
+  // issue) can never write project A's transcript under project B's storage
+  // key before B's own transcript has been (re)hydrated.
+  // Same guard as use-custom-idea-chat.ts.
+  const loadedKeyRef = useRef<string | null>(null);
+  const key = storageKey(project, issueNumber);
 
   useEffect(() => {
     // Defer so we don't call setState synchronously inside the effect body.
@@ -48,22 +55,22 @@ export function useIdeaChat(project: string, issueNumber: number) {
       const p = load(project, issueNumber);
       setMessages(p.messages);
       setIncludeInAction(p.includeInAction);
-      setHydrated(true);
+      loadedKeyRef.current = storageKey(project, issueNumber);
     }, 0);
     return () => clearTimeout(t);
   }, [project, issueNumber]);
 
   useEffect(() => {
-    if (!hydrated) return;
+    if (loadedKeyRef.current !== key) return;
     try {
       window.sessionStorage.setItem(
-        storageKey(project, issueNumber),
+        key,
         JSON.stringify({ messages, includeInAction } satisfies Persisted),
       );
     } catch {
       /* storage full / unavailable — non-fatal */
     }
-  }, [project, issueNumber, messages, includeInAction, hydrated]);
+  }, [key, messages, includeInAction]);
 
   const sendMessage = useCallback(
     async (text: string) => {
@@ -96,13 +103,14 @@ export function useIdeaChat(project: string, issueNumber: number) {
 
   const clear = useCallback(() => {
     setMessages([]);
+    setIncludeInAction(true);
     setError(null);
     try {
-      window.sessionStorage.removeItem(storageKey(project, issueNumber));
+      window.sessionStorage.removeItem(key);
     } catch {
       /* ignore */
     }
-  }, [project, issueNumber]);
+  }, [key]);
 
   const transcriptText = messages.length
     ? messages

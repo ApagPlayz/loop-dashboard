@@ -892,24 +892,68 @@ async function pullClaudeCodeDiscussions(): Promise<Pulled> {
 /* Orchestration                                                       */
 /* ------------------------------------------------------------------ */
 
-/** Pull every source in parallel. Never throws — failures become statuses. */
-export async function pullAllSources(): Promise<{
+/**
+ * Every registered fetcher. The key/label are repeated here (each fetcher also
+ * reports them in its own SourceStatus) for one reason only: a source that
+ * blows the time budget below has produced no status of its own, and we'd
+ * rather say "skipped" than let it vanish from the status strip.
+ */
+const FETCHERS: { key: string; label: string; run: () => Promise<Pulled> }[] = [
+  { key: "releases", label: "Claude Code releases", run: pullClaudeCodeReleases },
+  { key: "mcp", label: "MCP registry", run: pullMcpRegistry },
+  { key: "awesome", label: "awesome-claude-code", run: pullAwesomeClaudeCode },
+  { key: "hn", label: "Hacker News", run: pullHackerNews },
+  { key: "news", label: "Anthropic news", run: pullAnthropicNews },
+  { key: "alphasignal", label: "AlphaSignal", run: pullAlphaSignal },
+  { key: "simonw", label: "Simon Willison", run: pullSimonWillison },
+  { key: "anthropic-eng", label: "Anthropic Engineering", run: pullAnthropicEngineering },
+  { key: "tldr", label: "TLDR AI", run: pullTldrAi },
+  { key: "reddit", label: "Reddit (r/ClaudeAI + r/ClaudeCode)", run: pullReddit },
+  { key: "discussions", label: "Claude Code discussions", run: pullClaudeCodeDiscussions },
+];
+
+/**
+ * Pull every source in parallel. Never throws — failures become statuses.
+ *
+ * Every fetcher reads a *fixed* window (24h–45d, see docs/reporter-sources.md);
+ * there is no per-source cursor, so each pull re-reads its whole window and the
+ * merge in lib/reporter.ts dedupes. That's deliberate: the digest cache is
+ * best-effort (see lib/reporter-store.ts) and a fixed window is self-healing.
+ *
+ * `budgetMs`, when given, caps the whole fan-out: any source still running when
+ * the budget expires is reported as skipped (its own request keeps running to
+ * its own fetch timeout, we just stop waiting). Used by the cold-start path in
+ * lib/reporter.ts, which has to answer a live request quickly.
+ */
+export async function pullAllSources(
+  opts: { budgetMs?: number } = {},
+): Promise<{
   items: DigestItem[];
   sources: SourceStatus[];
 }> {
-  const results = await Promise.all([
-    pullClaudeCodeReleases(),
-    pullMcpRegistry(),
-    pullAwesomeClaudeCode(),
-    pullHackerNews(),
-    pullAnthropicNews(),
-    pullAlphaSignal(),
-    pullSimonWillison(),
-    pullAnthropicEngineering(),
-    pullTldrAi(),
-    pullReddit(),
-    pullClaudeCodeDiscussions(),
-  ]);
+  const { budgetMs } = opts;
+  const results = await Promise.all(
+    FETCHERS.map(({ key, label, run }) => {
+      const pull = run();
+      if (!budgetMs) return pull;
+      return new Promise<Pulled>((resolve) => {
+        const timer = setTimeout(
+          () => resolve(fail(key, label, "skipped — slower than the refresh budget")),
+          budgetMs,
+        );
+        pull.then(
+          (r) => {
+            clearTimeout(timer);
+            resolve(r);
+          },
+          (e) => {
+            clearTimeout(timer);
+            resolve(fail(key, label, e instanceof Error ? e.message : "fetch failed"));
+          },
+        );
+      });
+    }),
+  );
   const items = results.flatMap((r) => r.items);
   const sources = results.map((r) => r.status);
   return { items, sources };

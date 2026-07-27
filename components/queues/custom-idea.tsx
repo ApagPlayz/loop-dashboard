@@ -30,14 +30,11 @@ import {
 } from "lucide-react";
 import Modal from "@/components/map/modal";
 import CatalogBrowser from "@/components/tools/catalog-browser";
+import { useProject } from "@/components/project-context";
 import { Spinner, Markdown } from "./ui";
 import { useToast } from "./toast";
 import { useSpeech } from "./use-speech";
 import { useCustomIdeaChat, type AttachedTool, type SuggestedTool } from "./use-custom-idea-chat";
-
-const PILOT_KEY = "content-generation-platform";
-
-type Project = { key: string; label: string; owner: string; repo: string };
 
 /** Small type icon for integration chips (mirrors the catalog's type colors). */
 const TYPE_ICON: Record<AttachedTool["type"], { icon: React.ReactNode; chip: string }> = {
@@ -58,8 +55,10 @@ export default function CustomIdea({
 }) {
   const toast = useToast();
   const speech = useSpeech();
+  // The registry comes from the global project switcher — no private fetch,
+  // and no project is special-cased here.
+  const { projects } = useProject();
 
-  const [projects, setProjects] = useState<Project[]>([]);
   const [projectKey, setProjectKey] = useState<string>(project);
   const [submitting, setSubmitting] = useState(false);
   const [filed, setFiled] = useState<{ number: number; htmlUrl: string } | null>(null);
@@ -84,28 +83,9 @@ export default function CustomIdea({
     reset,
   } = chat;
 
-  // ----- load the project list ----------------------------------------
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/map/projects");
-        const data = await res.json().catch(() => ({}));
-        if (!cancelled && Array.isArray(data.projects)) {
-          setProjects(data.projects as Project[]);
-        }
-      } catch {
-        /* the selector just falls back to the pilot */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   const isCurrentProject = projectKey === project;
   const projectLabel = useMemo(
-    () => projects.find((p) => p.key === projectKey)?.label ?? "the selected project",
+    () => projects.find((p) => p.key === projectKey)?.label ?? projectKey,
     [projects, projectKey],
   );
 
@@ -197,10 +177,10 @@ export default function CustomIdea({
                 disabled={busy}
                 className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 focus:border-emerald-600 focus:outline-none disabled:opacity-50"
               >
-                {projects.length === 0 && (
-                  <option value={projectKey}>
-                    {projectKey === PILOT_KEY ? "Content Generation Platform" : projectKey}
-                  </option>
+                {/* If the registry hasn't loaded, still show the project the
+                    page is scoped to rather than an empty selector. */}
+                {!projects.some((p) => p.key === projectKey) && (
+                  <option value={projectKey}>{projectLabel}</option>
                 )}
                 {projects.map((p) => (
                   <option key={p.key} value={p.key}>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ExternalLink, GitPullRequest } from "lucide-react";
 import StatusBadge from "@/components/testing/status-badge";
 import { relativeTime } from "@/components/testing/format";
+import { useProject } from "@/components/project-context";
 
 type RunSummary = {
   id: number;
@@ -22,20 +23,33 @@ type ToolPr = {
 };
 
 export default function InstallActivity() {
+  const { project } = useProject();
   const [runs, setRuns] = useState<RunSummary[]>([]);
   const [prs, setPrs] = useState<ToolPr[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    fetch("/api/tools/activity", { cache: "no-store" })
+    if (!project) return;
+    let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoaded(false);
+    fetch(`/api/tools/activity?project=${encodeURIComponent(project)}`, {
+      cache: "no-store",
+    })
       .then((r) => r.json())
       .then((d) => {
+        if (cancelled) return;
         setRuns(d.runs ?? []);
         setPrs(d.prs ?? []);
         setLoaded(true);
       })
-      .catch(() => setLoaded(true));
-  }, []);
+      .catch(() => {
+        if (!cancelled) setLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [project]);
 
   return (
     <div className="space-y-4">

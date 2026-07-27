@@ -3,6 +3,9 @@ import { loadIdeas } from "@/lib/queues";
 import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
+// loadIdeas paginates several label queries against GitHub; give it headroom
+// on a large repo rather than letting the platform's short default cut it off.
+export const maxDuration = 60;
 
 /** GET /api/ideas?project=<key> — all four Ideas tabs with their issues. */
 export async function GET(req: Request) {

@@ -1,14 +1,23 @@
 import { NextResponse } from "next/server";
-import { createComment, getOctokit, REPOS } from "@/lib/github";
+import { createComment, getOctokit } from "@/lib/github";
+import { resolveProject, ProjectError } from "@/lib/projects";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 /**
- * Act on an "Action needed" issue.
+ * Act on an "Action needed" issue, in the caller's project.
  * Body:
- *   { action: "close", number }
- *   { action: "comment", number, body, wake?: boolean }  // wake prepends "@claude "
+ *   { project, action: "close", number }
+ *   { project, action: "comment", number, body, wake?: boolean }  // wake prepends "@claude "
+ *
+ * `project` is required: this route writes to a repo, and defaulting to the
+ * pilot meant the Tools page could close or comment on the wrong project's
+ * issue whenever the switcher was pointed somewhere else.
  */
 export async function POST(req: Request) {
   let body: {
+    project?: string;
     action?: string;
     number?: number;
     body?: string;
@@ -26,11 +35,12 @@ export async function POST(req: Request) {
   }
 
   try {
+    const { repo } = await resolveProject(body.project);
+
     if (body.action === "close") {
-      const { owner, repo } = REPOS.primary;
       await getOctokit().rest.issues.update({
-        owner,
-        repo,
+        owner: repo.owner,
+        repo: repo.repo,
         issue_number: num,
         state: "closed",
       });
@@ -42,11 +52,14 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Write a message first." }, { status: 400 });
       }
       const finalBody = body.wake ? `@claude ${text}` : text;
-      await createComment(num, finalBody);
+      await createComment(num, finalBody, repo);
       return NextResponse.json({ ok: true });
     }
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
-  } catch {
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json(
       { error: "That didn't go through. Please try again." },
       { status: 500 },

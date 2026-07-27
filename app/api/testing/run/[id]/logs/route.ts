@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getJobLogTail } from "@/lib/testing";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,10 @@ export async function GET(req: Request) {
       repo,
     );
     return NextResponse.json(result);
-  } catch {
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json(
       { error: "Could not load logs." },
       { status: 500 },

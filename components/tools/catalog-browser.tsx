@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAiJob } from "@/components/map/use-ai-job";
 import {
   Search,
@@ -19,6 +19,7 @@ import {
   Users,
   HelpCircle,
 } from "lucide-react";
+import { useProject } from "@/components/project-context";
 
 /**
  * The one tool-catalog browser, used by two hosts:
@@ -125,6 +126,7 @@ export default function CatalogBrowser({
   selectedIds,
   onToggleSelect,
 }: { install?: InstallContext } & CatalogSelection) {
+  const { project: currentProject } = useProject();
   const selectedSet = useMemo(
     () => (selectedIds instanceof Set ? selectedIds : new Set(selectedIds ?? [])),
     [selectedIds],
@@ -150,9 +152,14 @@ export default function CatalogBrowser({
   } = useAiJob({ kind: "catalog-scan" });
   const reloadedScanId = useRef<string | null>(null);
 
-  async function load() {
+  // The catalog is global, but its "already requested" flags are read from ONE
+  // project's open install PRs — so the current project travels with the fetch.
+  const load = useCallback(async () => {
     try {
-      const r = await fetch("/api/tools/catalog", { cache: "no-store" });
+      const r = await fetch(
+        `/api/tools/catalog?project=${encodeURIComponent(currentProject)}`,
+        { cache: "no-store" },
+      );
       const d = await r.json();
       setEntries(d.entries ?? []);
       setRequestedIds(new Set<string>(d.requestedIds ?? []));
@@ -161,12 +168,12 @@ export default function CatalogBrowser({
     } finally {
       setLoaded(true);
     }
-  }
+  }, [currentProject]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [load]);
 
   function scan() {
     startScan("/api/tools/catalog/refresh", {});
@@ -178,7 +185,7 @@ export default function CatalogBrowser({
     if (!scanJob || scanJob.status !== "done" || reloadedScanId.current === scanJob.id) return;
     reloadedScanId.current = scanJob.id;
     load();
-  }, [scanJob]);
+  }, [scanJob, load]);
 
   const scanning = scanSubmitting || scanJob?.status === "running";
   const scanResult =
@@ -518,6 +525,7 @@ function DetailModal({
   install: InstallContext;
   onClose: () => void;
 }) {
+  const { project: currentProject } = useProject();
   const meta = TYPE_META[entry.type];
   const tier = tierOf(entry);
   const flags = entry.safetyFlags ?? [];
@@ -536,8 +544,11 @@ function DetailModal({
         url: entry.url,
         target_agent: install.mode === "agent" ? install.agentId : "all",
         notes: notes.trim() ? notes.trim() : `From the tool catalog: ${entry.name} (${meta.label}).`,
+        // The install always names its repo. In agent mode the host already
+        // knows which project the drawer is showing; in "all agents" mode it's
+        // whatever the switcher is on (the route no longer defaults to a repo).
+        project: install.mode === "agent" ? install.project : currentProject,
       };
-      if (install.mode === "agent") payload.project = install.project;
       const res = await fetch("/api/tools/install", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -29,7 +29,15 @@ export type Project = {
   addedAt: string;
 };
 
-/** The pilot — also the fallback if the registry file can't be read. */
+/**
+ * The pilot — the first project the loop ever ran on.
+ *
+ * It is NOT a fallback. Nothing here silently substitutes it for a project
+ * that wasn't named or a registry that wouldn't load: doing that quietly
+ * pointed writes at the pilot's repo from the wrong screen. It survives as a
+ * seed value for the one place a hard default is genuinely needed (the app
+ * shell's initial selection when the registry is unreadable).
+ */
 export const PILOT_PROJECT: Project = {
   key: "content-generation-platform",
   owner: "ApagPlayz",
@@ -63,21 +71,40 @@ function parseRegistry(raw: string | null): Project[] | null {
   }
 }
 
-/** All registered projects (cached ~60s). Falls back to the pilot alone. */
+/**
+ * All registered projects (cached ~60s).
+ *
+ * A failed or unparseable read is an ERROR, not "the pilot" — collapsing to a
+ * one-project list made a GitHub outage look like the owner had deleted every
+ * other project, and pointed the whole UI at the pilot's repo. If we still
+ * hold a previously-read list we serve that (stale beats wrong); otherwise we
+ * throw and the caller surfaces it.
+ */
 export async function listProjects(force = false): Promise<Project[]> {
   if (!force && registryCache && Date.now() - registryCache.at < REGISTRY_TTL_MS) {
     return registryCache.projects;
   }
   let projects: Project[] | null = null;
+  let readError: unknown = null;
   try {
     const raw = await getFileContent(REGISTRY_PATH, undefined, DASHBOARD_REPO);
     projects = parseRegistry(raw);
+    if (projects === null) readError = new Error(`${REGISTRY_PATH} is missing or malformed`);
   } catch (err) {
-    console.error("projects: registry read failed", err);
+    readError = err;
   }
-  const result = projects && projects.length > 0 ? projects : [PILOT_PROJECT];
-  registryCache = { at: Date.now(), projects: result };
-  return result;
+
+  if (projects === null) {
+    console.error("projects: registry read failed", readError);
+    if (registryCache) return registryCache.projects; // stale, but real
+    throw new ProjectError(
+      "Couldn't read the project list from GitHub. Refresh in a moment.",
+      502,
+    );
+  }
+
+  registryCache = { at: Date.now(), projects };
+  return projects;
 }
 
 /** Register a new project (commits config/projects.json to the dashboard repo). */
@@ -98,14 +125,26 @@ export async function addProject(project: Omit<Project, "addedAt">): Promise<Pro
   return full;
 }
 
-/** Resolve a registry key (or default: the pilot) to a project + RepoConfig. */
+/**
+ * Resolve a registry key to a project + RepoConfig.
+ *
+ * A MISSING key is a caller bug, not a request for the pilot: this used to
+ * default to the pilot, so any screen that forgot to pass its project silently
+ * read — and wrote to — the pilot's repo. It now throws `ProjectError` with
+ * status 400 (missing) or 404 (unknown), which every route already maps onto
+ * its error JSON. UI code that legitimately has no selection yet should use
+ * {@link defaultProjectKey} instead.
+ */
 export async function resolveProject(
   key?: string | null,
 ): Promise<{ project: Project; repo: RepoConfig }> {
+  const wanted = (key ?? "").trim();
+  if (!wanted) {
+    throw new ProjectError("No project was specified for this request.", 400);
+  }
   const projects = await listProjects();
-  const wanted = key || PILOT_PROJECT.key;
   const project = projects.find((p) => p.key === wanted);
-  if (!project) throw new ProjectError("Unknown project.");
+  if (!project) throw new ProjectError("Unknown project.", 404);
   return { project, repo: { owner: project.owner, repo: project.repo } };
 }
 
@@ -114,6 +153,25 @@ export async function resolveProjectFromUrl(
   reqUrl: string,
 ): Promise<{ project: Project; repo: RepoConfig }> {
   return resolveProject(new URL(reqUrl).searchParams.get("project"));
+}
+
+/**
+ * The project to show when nothing has been chosen yet — the owner's saved
+ * selection if it still exists, else the FIRST registered project (not the
+ * pilot). For server-rendered screens that read the selection cookie; API
+ * routes should require an explicit project instead.
+ */
+export async function defaultProjectKey(preferred?: string | null): Promise<string> {
+  let projects: Project[];
+  try {
+    projects = await listProjects();
+  } catch {
+    return preferred?.trim() || PILOT_PROJECT.key;
+  }
+  const wanted = (preferred ?? "").trim();
+  return (
+    projects.find((p) => p.key === wanted)?.key ?? projects[0]?.key ?? PILOT_PROJECT.key
+  );
 }
 
 /* ------------------------------------------------------------------ */

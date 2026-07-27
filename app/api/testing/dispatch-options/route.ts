@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { redraftIssueOptions, claudePrOptions } from "@/lib/testing";
 import { listWorkflowFiles } from "@/lib/github";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,13 @@ export async function GET(req: Request) {
       listWorkflowFiles({ repo }),
     ]);
     return NextResponse.json({ redraftIssues, claudePrs, installed });
-  } catch {
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json(
+        { redraftIssues: [], claudePrs: [], installed: null, error: err.message },
+        { status: err.httpStatus },
+      );
+    }
     return NextResponse.json(
       {
         redraftIssues: [],

@@ -4,6 +4,7 @@ import {
   type AgentCapabilities,
   type SharedCapabilities,
 } from "@/lib/tools";
+import { resolveProject } from "@/lib/projects";
 import PromoteChip from "@/components/tools/promote-chip";
 import AddToolForm from "@/components/tools/add-tool-form";
 import RequestChange from "@/components/tools/request-change";
@@ -184,12 +185,22 @@ function AgentCard({
   );
 }
 
-export default async function CapabilityInventory() {
+/**
+ * Reads one project's agent setup. `projectKey` is required and resolved here
+ * (inside the Suspense boundary, so the rest of the page still streams) — the
+ * inventory used to read the pilot's workflows whatever the switcher said.
+ */
+export default async function CapabilityInventory({
+  projectKey,
+}: {
+  projectKey: string;
+}) {
   let agents: AgentCapabilities[] = [];
   let shared: SharedCapabilities = { builtinTools: [], mcpServers: [], skills: [] };
   let error = false;
   try {
-    ({ agents, shared } = await loadCapabilityInventory());
+    const { repo } = await resolveProject(projectKey);
+    ({ agents, shared } = await loadCapabilityInventory(repo));
   } catch {
     error = true;
   }

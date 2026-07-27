@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getWorkflowRuns } from "@/lib/github";
 import { listRunJobs, toRunSummary } from "@/lib/testing";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +28,9 @@ export async function GET(req: Request) {
     const steps = jobs.flatMap((j) => j.steps);
     return NextResponse.json({ latest, history, steps });
   } catch (err: unknown) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     const status =
       typeof err === "object" && err !== null && "status" in err
         ? (err as { status?: number }).status

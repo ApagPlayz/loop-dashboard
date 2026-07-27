@@ -5,7 +5,12 @@ import PageHeader from "@/components/page-header";
 import StatCard from "@/components/stat-card";
 import { PROJECT_COOKIE } from "@/components/project-context";
 import { getFileContent, type RepoConfig } from "@/lib/github";
-import { resolveProject } from "@/lib/projects";
+import {
+  resolveProject,
+  defaultProjectKey,
+  ProjectError,
+  type Project,
+} from "@/lib/projects";
 
 // Always fetch fresh from GitHub on each request.
 export const dynamic = "force-dynamic";
@@ -53,7 +58,20 @@ async function loadMetrics(repo: RepoConfig): Promise<{
 export default async function MetricsPage() {
   const cookieStore = await cookies();
   const cookieKey = cookieStore.get(PROJECT_COOKIE)?.value;
-  const { project, repo } = await resolveProject(cookieKey);
+  // resolveProject requires an explicit key (no silent pilot default), so fall
+  // back to the same "first registered project" rule the app shell uses.
+  //
+  // Both defaultProjectKey and resolveProject read the registry from GitHub and
+  // THROW (ProjectError) when it can't be read or holds no projects. Uncaught,
+  // that white-screens the whole page for what is usually a transient blip, so
+  // degrade to a friendly notice instead.
+  let project: Project;
+  let repo: RepoConfig;
+  try {
+    ({ project, repo } = await resolveProject(await defaultProjectKey(cookieKey)));
+  } catch (err) {
+    return <MetricsUnavailable error={err} />;
+  }
 
   const [{ snapshots, parseError }, dashboardMd] = await Promise.all([
     loadMetrics(repo),
@@ -157,6 +175,30 @@ export default async function MetricsPage() {
           </p>
         )}
       </section>
+    </>
+  );
+}
+
+/**
+ * Degraded state for when we can't even work out WHICH project to show —
+ * an unreadable/empty registry. Same dashed empty-state chrome the rest of the
+ * page uses, so it reads as "nothing here yet", not "the app broke".
+ */
+function MetricsUnavailable({ error }: { error: unknown }) {
+  // A 404 (project gone) reads differently from a 502 (GitHub blip); anything
+  // else is unexpected, so keep the wording generic.
+  const notFound = error instanceof ProjectError && error.httpStatus === 404;
+  return (
+    <>
+      <PageHeader
+        title="Metrics"
+        description="Live snapshot of the loop, read straight from the repo."
+      />
+      <div className="rounded-xl border border-dashed border-zinc-800 bg-zinc-900/50 p-6 text-sm text-zinc-500">
+        {notFound
+          ? "That project isn't in the registry any more. Pick another project from the switcher."
+          : "Couldn't read the project list from GitHub right now — reload in a moment."}
+      </div>
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getFileContent } from "@/lib/github";
 import { parseMetrics, splitMetrics } from "@/lib/testing";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,10 @@ export async function GET(req: Request) {
       return NextResponse.json({ noMetrics: true });
     }
     return NextResponse.json(splitMetrics(snapshots, date));
-  } catch {
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json(
       { error: "Could not load metrics." },
       { status: 500 },

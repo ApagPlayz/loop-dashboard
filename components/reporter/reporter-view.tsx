@@ -92,8 +92,11 @@ export default function ReporterView({
   const handledRefreshId = useRef<string | null>(null);
 
   // First-ever visit: no cached digest yet, so fetch (server builds it).
+  // A cached *partial* digest (cold build that skipped enrichment) also
+  // fetches — /api/reporter is the only reader that kicks off the full
+  // background refresh, and server-rendering would otherwise bypass it.
   useEffect(() => {
-    if (initialDigest) return;
+    if (initialDigest && !(initialDigest as { partial?: boolean }).partial) return;
     let cancelled = false;
     (async () => {
       setLoading(true);

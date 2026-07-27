@@ -1,5 +1,5 @@
 import { readEvidenceFile } from "@/lib/queues";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +42,9 @@ export async function GET(
       },
     });
   } catch (err) {
+    if (err instanceof ProjectError) {
+      return new Response(err.message, { status: err.httpStatus });
+    }
     const message =
       err instanceof Error ? err.message : "Could not read evidence.";
     return new Response(message, { status: 502 });

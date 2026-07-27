@@ -40,6 +40,7 @@ import PowerMenu from "./power-menu";
 import EditMenu from "./edit-menu";
 import LaunchButton from "./launch-button";
 import Modal from "./modal";
+import TemplateDriftChip from "./template-drift";
 import { useProject } from "@/components/project-context";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -263,6 +264,7 @@ export default function ProcessMap() {
             <Wrench className="h-3.5 w-3.5" /> Setup needed
           </button>
         )}
+        <TemplateDriftChip project={project} />
       </div>
 
       {statusError && (

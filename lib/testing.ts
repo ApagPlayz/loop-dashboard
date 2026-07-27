@@ -7,7 +7,7 @@
  * GITHUB_TOKEN is available.
  */
 
-import { getOctokit, REPOS, type RepoConfig } from "@/lib/github";
+import { getOctokit, type RepoConfig } from "@/lib/github";
 
 /* ------------------------------------------------------------------ */
 /* Workflow registry                                                   */
@@ -105,7 +105,7 @@ export const WORKFLOWS: WorkflowDef[] = [
     key: "tests",
     name: "Test suite",
     description:
-      "Runs the project's automated checks — install, lint, tests, and build — to confirm nothing is broken.",
+      "Runs the project's automated checks — install, lint, tests and build — to confirm nothing is broken. It works out what this repo is built with first, so a step that doesn't apply to this stack is skipped rather than failed.",
     runnable: true,
   },
   {
@@ -211,7 +211,7 @@ export type JobSummary = {
 
 export async function listRunJobs(
   runId: number,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<JobSummary[]> {
   const { owner, repo } = repoConfig;
   const res = await getOctokit().rest.actions.listJobsForWorkflowRun({
@@ -249,7 +249,7 @@ export type JobLogResult =
 export async function getJobLogTail(
   jobId: number,
   maxLines = 200,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<JobLogResult> {
   const { owner, repo } = repoConfig;
   const octokit = getOctokit();
@@ -294,7 +294,7 @@ export type Option = { value: string; label: string };
 
 /** Open issues labeled `redraft` or `proposal` — choices for the Redraft run. */
 export async function redraftIssueOptions(
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<Option[]> {
   const { owner, repo } = repoConfig;
   const octokit = getOctokit();
@@ -328,7 +328,7 @@ export async function redraftIssueOptions(
 
 /** Open PRs from `claude/` branches — choices for the Demo run. */
 export async function claudePrOptions(
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<Option[]> {
   const { owner, repo } = repoConfig;
   const res = await getOctokit().rest.pulls.list({
@@ -361,7 +361,7 @@ export type InstructionCommit = {
 export async function listWorkflowCommits(
   path: string,
   perPage = 15,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<InstructionCommit[]> {
   const { owner, repo } = repoConfig;
   const res = await getOctokit().rest.repos.listCommits({
@@ -394,7 +394,7 @@ export type FilePatch = {
 /** Get the per-file patches for a commit, limited to workflow files. */
 export async function getCommitWorkflowPatch(
   sha: string,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<{ message: string; files: FilePatch[] }> {
   const { owner, repo } = repoConfig;
   const res = await getOctokit().rest.repos.getCommit({

@@ -32,8 +32,14 @@ export async function GET(req: Request) {
 
   const job = latestJob(kind, (input) => {
     if (agentId && input.agentId !== agentId) return false;
-    // Jobs created before projects existed have no project field — treat as pilot.
-    if (project && (input.project ?? "content-generation-platform") !== project) return false;
+    // Project scope is matched EXACTLY, including "no project on either side"
+    // (reporter and catalog jobs are genuinely global, so they ask unscoped and
+    // must still be restorable). A job with no project key can only be a
+    // leftover from before jobs were scoped — at most an hour old, since jobs
+    // expire. Those are dropped rather than assigned to a guessed project:
+    // guessing cost one project's draft showing up under another, and the
+    // downside here is only that a stale draft has to be re-run.
+    if ((input.project ?? null) !== (project ?? null)) return false;
     return true;
   });
   return NextResponse.json({ job: job ? toPublicJob(job) : null });

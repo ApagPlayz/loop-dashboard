@@ -5,8 +5,10 @@
  * typed wrappers around the endpoints the dashboard needs. Feature agents
  * are expected to extend this file — keep the wrappers small and predictable.
  *
- * Every helper takes an optional `repo` argument (defaults to REPOS.primary),
- * so the same functions work once more repos are added to REPOS.
+ * Every helper takes a REQUIRED `repo` argument. There is deliberately no
+ * default: a hardcoded fallback repo meant any screen that forgot to pass its
+ * project silently read from — and wrote to — the pilot's repo. Callers resolve
+ * their repo first (see `resolveProject` in lib/projects.ts) and pass it in.
  */
 
 import { Octokit } from "octokit";
@@ -16,16 +18,6 @@ import { Octokit } from "octokit";
 /* ------------------------------------------------------------------ */
 
 export type RepoConfig = { owner: string; repo: string };
-
-/**
- * Registry of repos the dashboard controls. Add more entries here and every
- * helper below will work against them by passing the config as `repo`.
- */
-export const REPOS = {
-  primary: { owner: "ApagPlayz", repo: "content-generation-platform" },
-} as const satisfies Record<string, RepoConfig>;
-
-export type RepoKey = keyof typeof REPOS;
 
 /* ------------------------------------------------------------------ */
 /* Client                                                              */
@@ -52,14 +44,14 @@ export function getOctokit(): Octokit {
 
 /** List issues, optionally filtered by one or more labels. */
 export async function listIssues(
-  labels?: string | string[],
+  labels: string | string[] | undefined,
   opts: {
     state?: "open" | "closed" | "all";
     per_page?: number;
-    repo?: RepoConfig;
-  } = {},
+    repo: RepoConfig;
+  },
 ) {
-  const { owner, repo } = opts.repo ?? REPOS.primary;
+  const { owner, repo } = opts.repo;
   const res = await getOctokit().rest.issues.listForRepo({
     owner,
     repo,
@@ -75,7 +67,7 @@ export async function listIssues(
 export async function addLabel(
   issueNumber: number,
   labels: string | string[],
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ) {
   const res = await getOctokit().rest.issues.addLabels({
     owner: repo.owner,
@@ -90,7 +82,7 @@ export async function addLabel(
 export async function removeLabel(
   issueNumber: number,
   label: string,
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ) {
   const res = await getOctokit().rest.issues.removeLabel({
     owner: repo.owner,
@@ -101,69 +93,242 @@ export async function removeLabel(
   return res.data;
 }
 
-/** Default colors for labels this app may need to create on the fly. */
-const LABEL_COLORS: Record<string, string> = {
-  proposal: "0E8A16",
-  approved: "1D76DB",
-  redraft: "D93F0B",
+/**
+ * Replace an issue's labels with exactly `labels`, in ONE request.
+ *
+ * Prefer this over add+remove pairs for any queue transition: an add followed
+ * by a remove leaves the issue in a dual-label state for as long as the two
+ * calls take, and the dashboard and the Builder read that intermediate state
+ * differently (the UI still says "waiting" while the Builder starts building).
+ * `setLabels` is atomic, so no such window exists.
+ *
+ * Resilient to a label the repo doesn't have yet, the same way `createIssue`
+ * is. `declined` in particular exists on neither live repo, and a failed
+ * setLabels aborted the whole Decline action *before* the issue was closed —
+ * leaving the idea sitting in the queue as if nothing had happened. On a
+ * 404/422 we check which of the requested labels are genuinely missing, create
+ * exactly those, and retry once. If none were missing, the error was about
+ * something else and is rethrown untouched.
+ */
+export async function setIssueLabels(
+  issueNumber: number,
+  labels: string[],
+  repo: RepoConfig,
+) {
+  const octokit = getOctokit();
+  const set = () =>
+    octokit.rest.issues.setLabels({
+      owner: repo.owner,
+      repo: repo.repo,
+      issue_number: issueNumber,
+      labels,
+    });
+
+  try {
+    return (await set()).data;
+  } catch (err: unknown) {
+    if (labels.length === 0 || !mayBeMissingLabelError(err)) throw err;
+    const createdAny = await createMissingLabels(labels, repo);
+    if (!createdAny) throw err; // nothing was missing — not a label problem
+    return (await set()).data;
+  }
+}
+
+/**
+ * The loop's triage vocabulary: the labels the dashboard, the Scout and the
+ * Builder all agree on. Defined ONCE here so onboarding (which creates them on
+ * a new repo) and the on-the-fly creation below can never drift apart — they
+ * did: two colors for `declined` shipped at the same time.
+ */
+export const LOOP_LABELS: Record<string, { color: string; description: string }> = {
+  proposal: {
+    color: "0E8A16",
+    description: "Agent-proposed improvement awaiting your triage",
+  },
+  approved: {
+    color: "1D76DB",
+    description: "Owner-approved: builder loop may implement",
+  },
+  redraft: {
+    color: "D93F0B",
+    description: "Owner sent this proposal back for the agent to rewrite from feedback",
+  },
+  // The rejection channel: an explicit "no" the Scout can learn from. Grey on
+  // purpose — it reads as closed/inactive next to the green/blue/orange three.
+  declined: {
+    color: "6E7781",
+    description: "Owner said no — don't build it, and don't propose it again",
+  },
 };
+
+/** Default colors for labels this app may need to create on the fly. */
+const LABEL_COLORS: Record<string, string> = Object.fromEntries(
+  Object.entries(LOOP_LABELS).map(([name, { color }]) => [name, color]),
+);
+
+/** Colour used for a label we're asked to create but don't have an opinion on. */
+const FALLBACK_LABEL_COLOR = "ededed";
+
+/** Shape of the validation errors GitHub returns inside a 422 body. */
+type ValidationError = {
+  resource?: string;
+  field?: string;
+  code?: string;
+  message?: string;
+  value?: unknown;
+};
+
+/**
+ * True only when a 422 actually says the *labels* were the problem.
+ *
+ * Every kind of validation failure is a 422 — a body over the size limit, a
+ * blocked user, a repo with issues disabled. Creating labels on the back of
+ * any of those left junk labels on the repo and then failed anyway, so we
+ * inspect the error payload instead of guessing.
+ */
+function isMissingLabelError(err: unknown): boolean {
+  const e = err as { status?: number; response?: { data?: unknown } };
+  if (e?.status !== 422) return false;
+  const data = (e.response?.data ?? {}) as {
+    message?: string;
+    errors?: ValidationError[];
+  };
+  const errors = Array.isArray(data.errors) ? data.errors : [];
+  if (errors.some((x) => x?.field === "labels")) return true;
+  // Older/looser payloads only carry prose — fall back to reading it.
+  const prose = [data.message ?? "", ...errors.map((x) => x?.message ?? "")]
+    .join(" ")
+    .toLowerCase();
+  return prose.includes("label");
+}
+
+/**
+ * Could this failure be "one of those labels doesn't exist on the repo"?
+ *
+ * Broader than {@link isMissingLabelError} because the labels endpoints answer
+ * a missing label with either a 422 (validation) or a plain 404 (the label
+ * resource isn't there), and a 404 body carries no prose to key off. It is only
+ * a *maybe*: the caller confirms by checking which labels actually exist before
+ * creating anything, so a 404 that really meant "no such issue" creates nothing
+ * and the original error is rethrown.
+ */
+function mayBeMissingLabelError(err: unknown): boolean {
+  return isNotFound(err) || isMissingLabelError(err);
+}
+
+/**
+ * Create whichever of `labels` the repo doesn't have. Returns true if at least
+ * one was genuinely missing (i.e. a retry is worth attempting). Labels we can't
+ * confirm either way are left alone — guessing is how junk labels got created.
+ */
+async function createMissingLabels(
+  labels: string[],
+  repo: RepoConfig,
+): Promise<boolean> {
+  const octokit = getOctokit();
+  let missing = 0;
+  for (const name of labels) {
+    try {
+      await octokit.rest.issues.getLabel({
+        owner: repo.owner,
+        repo: repo.repo,
+        name,
+      });
+      continue; // already there
+    } catch (err: unknown) {
+      if (!isNotFound(err)) continue; // couldn't tell — don't touch it
+    }
+    missing++;
+    try {
+      await octokit.rest.issues.createLabel({
+        owner: repo.owner,
+        repo: repo.repo,
+        name,
+        color: LABEL_COLORS[name] ?? FALLBACK_LABEL_COLOR,
+        description: LOOP_LABELS[name]?.description,
+      });
+    } catch {
+      /* raced with someone else creating it — the retry will tell us */
+    }
+  }
+  return missing > 0;
+}
 
 /**
  * Create a new issue. Returns the created issue.
  *
- * Resilient to a missing label: if the create fails because one of the
+ * Resilient to a missing label: if the create fails *because* one of the
  * requested labels doesn't exist on the repo, the label is created (with a
- * sensible color) and the create is retried once.
+ * sensible color) and the create is retried once. Any other 422 is rethrown
+ * untouched.
+ *
+ * `opts.assignees` are applied best-effort after the issue exists, so the
+ * owner gets a GitHub notification for ideas filed from the dashboard the
+ * same way the Scout's `--assignee` flag notifies them. A failure to assign
+ * (org-owned repo, non-member login) never loses the filed idea.
  */
 export async function createIssue(
   title: string,
   body: string,
-  labels: string[] = [],
-  repo: RepoConfig = REPOS.primary,
+  labels: string[],
+  repo: RepoConfig,
+  opts: { assignees?: string[] } = {},
 ) {
   const octokit = getOctokit();
-  try {
-    const res = await octokit.rest.issues.create({
+  const create = () =>
+    octokit.rest.issues.create({
       owner: repo.owner,
       repo: repo.repo,
       title,
       body,
       labels,
     });
-    return res.data;
+
+  let issue;
+  try {
+    issue = (await create()).data;
   } catch (err: unknown) {
-    // A missing label surfaces as a 422 validation error. Create any labels
-    // the repo is missing, then retry the create exactly once.
-    const status = (err as { status?: number })?.status;
-    if (status !== 422 || labels.length === 0) throw err;
+    if (labels.length === 0 || !isMissingLabelError(err)) throw err;
     for (const name of labels) {
       try {
         await octokit.rest.issues.createLabel({
           owner: repo.owner,
           repo: repo.repo,
           name,
-          color: LABEL_COLORS[name] ?? "ededed",
+          color: LABEL_COLORS[name] ?? FALLBACK_LABEL_COLOR,
+          description: LOOP_LABELS[name]?.description,
         });
       } catch {
         /* already exists or not the problem — ignore and let the retry decide */
       }
     }
-    const res = await octokit.rest.issues.create({
-      owner: repo.owner,
-      repo: repo.repo,
-      title,
-      body,
-      labels,
-    });
-    return res.data;
+    issue = (await create()).data;
   }
+
+  const assignees = (opts.assignees ?? []).filter(Boolean);
+  if (assignees.length > 0) {
+    try {
+      await octokit.rest.issues.addAssignees({
+        owner: repo.owner,
+        repo: repo.repo,
+        issue_number: issue.number,
+        assignees,
+      });
+    } catch (err) {
+      console.warn(
+        `github: couldn't assign issue #${issue.number} to ${assignees.join(", ")}`,
+        err,
+      );
+    }
+  }
+  return issue;
 }
 
 /** Create a comment on an issue or PR. */
 export async function createComment(
   issueNumber: number,
   body: string,
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ) {
   const res = await getOctokit().rest.issues.createComment({
     owner: repo.owner,
@@ -183,10 +348,10 @@ export async function listPRs(
   opts: {
     state?: "open" | "closed" | "all";
     per_page?: number;
-    repo?: RepoConfig;
-  } = {},
+    repo: RepoConfig;
+  },
 ) {
-  const { owner, repo } = opts.repo ?? REPOS.primary;
+  const { owner, repo } = opts.repo;
   const res = await getOctokit().rest.pulls.list({
     owner,
     repo,
@@ -202,10 +367,10 @@ export async function mergePR(
   opts: {
     merge_method?: "merge" | "squash" | "rebase";
     commit_title?: string;
-    repo?: RepoConfig;
-  } = {},
+    repo: RepoConfig;
+  },
 ) {
-  const { owner, repo } = opts.repo ?? REPOS.primary;
+  const { owner, repo } = opts.repo;
   const res = await getOctokit().rest.pulls.merge({
     owner,
     repo,
@@ -226,10 +391,10 @@ export async function getWorkflowRuns(
     workflowId?: string | number;
     per_page?: number;
     branch?: string;
-    repo?: RepoConfig;
-  } = {},
+    repo: RepoConfig;
+  },
 ) {
-  const { owner, repo } = opts.repo ?? REPOS.primary;
+  const { owner, repo } = opts.repo;
   const octokit = getOctokit();
   if (opts.workflowId !== undefined) {
     const res = await octokit.rest.actions.listWorkflowRuns({
@@ -252,13 +417,13 @@ export async function getWorkflowRuns(
 
 /**
  * Trigger a `workflow_dispatch` event for a workflow file (e.g. "scout.yml").
- * `ref` is the git ref to run on (defaults to "main").
+ * `ref` is the git ref to run on (normally "main").
  */
 export async function dispatchWorkflow(
   workflowId: string | number,
-  ref = "main",
-  inputs: Record<string, string> = {},
-  repo: RepoConfig = REPOS.primary,
+  ref: string,
+  inputs: Record<string, string>,
+  repo: RepoConfig,
 ) {
   await getOctokit().rest.actions.createWorkflowDispatch({
     owner: repo.owner,
@@ -276,8 +441,8 @@ export async function dispatchWorkflow(
  */
 export async function repositoryDispatch(
   eventType: string,
-  payload: Record<string, unknown> = {},
-  repo: RepoConfig = REPOS.primary,
+  payload: Record<string, unknown>,
+  repo: RepoConfig,
 ) {
   await getOctokit().rest.repos.createDispatchEvent({
     owner: repo.owner,
@@ -295,7 +460,7 @@ export async function repositoryDispatch(
 /** List the artifacts produced by a workflow run. */
 export async function listRunArtifacts(
   runId: number,
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ) {
   const res = await getOctokit().rest.actions.listWorkflowRunArtifacts({
     owner: repo.owner,
@@ -308,7 +473,7 @@ export async function listRunArtifacts(
 /** Download an artifact as a zip. Returns the raw zip bytes as a Buffer. */
 export async function downloadArtifact(
   artifactId: number,
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ): Promise<Buffer> {
   const res = await getOctokit().rest.actions.downloadArtifact({
     owner: repo.owner,
@@ -329,8 +494,8 @@ export async function downloadArtifact(
  */
 export async function getFileContent(
   path: string,
-  ref?: string,
-  repo: RepoConfig = REPOS.primary,
+  ref: string | undefined,
+  repo: RepoConfig,
 ): Promise<string | null> {
   try {
     const res = await getOctokit().rest.repos.getContent({
@@ -351,16 +516,50 @@ export async function getFileContent(
 }
 
 /**
+ * Read a text file AND the blob sha GitHub currently has for it. Returns
+ * `null` if the file does not exist.
+ *
+ * The sha is what makes a read-modify-write safe: hand it back to
+ * {@link commitFile} as `expectedSha` and GitHub rejects the write if anything
+ * landed on the file in between, instead of silently clobbering it.
+ */
+export async function getFileWithSha(
+  path: string,
+  ref: string | undefined,
+  repo: RepoConfig,
+): Promise<{ content: string; sha: string } | null> {
+  try {
+    const res = await getOctokit().rest.repos.getContent({
+      owner: repo.owner,
+      repo: repo.repo,
+      path,
+      ref,
+    });
+    const data = res.data;
+    if (Array.isArray(data) || data.type !== "file" || !("content" in data)) {
+      return null;
+    }
+    return {
+      content: Buffer.from(data.content, "base64").toString("utf-8"),
+      sha: data.sha,
+    };
+  } catch (err: unknown) {
+    if (isNotFound(err)) return null;
+    throw err;
+  }
+}
+
+/**
  * List the workflow filenames actually present in `.github/workflows/` on a
- * repo (defaults to the primary repo's `main`). This is how the dashboard tells
+ * repo (`ref` defaults to the default branch). This is how the dashboard tells
  * whether a given capability (e.g. the demo-evidence or tool-install workflow)
  * is installed on a project — it queries reality rather than assuming. Returns
  * an empty array if the folder is missing or unreadable.
  */
 export async function listWorkflowFiles(
-  opts: { ref?: string; repo?: RepoConfig } = {},
+  opts: { ref?: string; repo: RepoConfig },
 ): Promise<string[]> {
-  const repo = opts.repo ?? REPOS.primary;
+  const repo = opts.repo;
   try {
     const res = await getOctokit().rest.repos.getContent({
       owner: repo.owner,
@@ -380,31 +579,48 @@ export async function listWorkflowFiles(
 
 /**
  * Create or update a text file directly on a branch (defaults to "main") via
- * the contents API. Looks up the existing blob sha automatically when updating.
+ * the contents API.
+ *
+ * `expectedSha` is the optimistic-concurrency hook, and callers that did a
+ * read-modify-write should always pass it:
+ *   - a string  → write only if the blob still has that sha. We do NOT look the
+ *                 sha up ourselves, so there is no window between the caller's
+ *                 read and this write for someone else's save to slip into.
+ *                 GitHub answers a stale sha with a 409, which the caller maps
+ *                 onto its own "someone else changed this" error.
+ *   - `null`    → the caller read the file as ABSENT and means to create it.
+ *                 GitHub 422s if it exists after all.
+ *   - omitted   → legacy behaviour: look the sha up here (last-write-wins).
+ *                 Fine for append-only/registry writes, not for edits a person
+ *                 based on something they were shown.
  */
 export async function commitFile(
   path: string,
   content: string,
   message: string,
-  opts: { branch?: string; repo?: RepoConfig } = {},
+  opts: { branch?: string; repo: RepoConfig; expectedSha?: string | null },
 ) {
-  const repo = opts.repo ?? REPOS.primary;
+  const repo = opts.repo;
   const branch = opts.branch ?? "main";
   const octokit = getOctokit();
 
   let sha: string | undefined;
-  try {
-    const existing = await octokit.rest.repos.getContent({
-      owner: repo.owner,
-      repo: repo.repo,
-      path,
-      ref: branch,
-    });
-    if (!Array.isArray(existing.data) && "sha" in existing.data) {
-      sha = existing.data.sha;
+  if (opts.expectedSha !== undefined) {
+    sha = opts.expectedSha ?? undefined;
+  } else {
+    try {
+      const existing = await octokit.rest.repos.getContent({
+        owner: repo.owner,
+        repo: repo.repo,
+        path,
+        ref: branch,
+      });
+      if (!Array.isArray(existing.data) && "sha" in existing.data) {
+        sha = existing.data.sha;
+      }
+    } catch (err: unknown) {
+      if (!isNotFound(err)) throw err;
     }
-  } catch (err: unknown) {
-    if (!isNotFound(err)) throw err;
   }
 
   const res = await octokit.rest.repos.createOrUpdateFileContents({

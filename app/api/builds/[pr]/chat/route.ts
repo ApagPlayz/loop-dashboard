@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { aiChatCall, assistantAvailable, AiError, type ChatMessage } from "@/lib/map-ai";
 import { loadPRDetail } from "@/lib/queues";
 import { getOctokit, type RepoConfig } from "@/lib/github";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 import { localCheckoutForRepo } from "@/lib/local-folders";
 
 export const dynamic = "force-dynamic";
@@ -133,6 +133,9 @@ Answer the owner's questions plainly and honestly — be direct about correctnes
     });
     return NextResponse.json({ reply });
   } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     if (err instanceof AiError) {
       return NextResponse.json({ error: err.message }, { status: err.httpStatus });
     }

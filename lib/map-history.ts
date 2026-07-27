@@ -7,7 +7,7 @@
  * history — a restore is always a new commit on top.
  */
 
-import { getOctokit, REPOS, type RepoConfig } from "./github";
+import { getOctokit, type RepoConfig } from "./github";
 
 export const WORKFLOWS_DIR = ".github/workflows";
 
@@ -25,9 +25,9 @@ export type CommitSummary = {
 /** Commits on main touching a path (a single file, or the workflows dir). */
 export async function listCommitsForPath(
   path: string,
-  opts: { per_page?: number; repo?: RepoConfig } = {},
+  opts: { per_page?: number; repo: RepoConfig },
 ): Promise<CommitSummary[]> {
-  const { owner, repo } = opts.repo ?? REPOS.primary;
+  const { owner, repo } = opts.repo;
   const res = await getOctokit().rest.repos.listCommits({
     owner,
     repo,
@@ -53,7 +53,7 @@ export type FilePatch = {
 export async function getCommitPatches(
   sha: string,
   pathPrefix: string,
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ): Promise<{ patches: FilePatch[]; url: string }> {
   const res = await getOctokit().rest.repos.getCommit({
     owner: repo.owner,
@@ -89,7 +89,7 @@ export type TreeChange = {
 export async function atomicCommit(
   changes: TreeChange[],
   message: string,
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ): Promise<{ sha: string; url: string }> {
   if (changes.length === 0) throw new Error("No changes to commit.");
   const octokit = getOctokit();
@@ -145,7 +145,7 @@ export async function atomicCommit(
 /** Map of workflow filename → content for a given ref (commit sha or branch). */
 export async function snapshotWorkflows(
   ref: string,
-  repo: RepoConfig = REPOS.primary,
+  repo: RepoConfig,
 ): Promise<Map<string, string>> {
   const octokit = getOctokit();
   const { owner, repo: name } = repo;

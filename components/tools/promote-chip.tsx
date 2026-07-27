@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { PlusCircle, Check } from "lucide-react";
+import { useProject } from "@/components/project-context";
 
 const TONE: Record<string, string> = {
   mcp: "border-sky-500/30 bg-sky-500/10 text-sky-300",
@@ -22,6 +23,7 @@ export default function PromoteChip({
   kind: "tool" | "mcp" | "skill";
   fromAgent: string;
 }) {
+  const { project } = useProject();
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
 
   async function promote() {
@@ -30,7 +32,7 @@ export default function PromoteChip({
       const res = await fetch("/api/tools/promote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, kind, fromAgent }),
+        body: JSON.stringify({ project, name, kind, fromAgent }),
       });
       setState(res.ok ? "done" : "error");
     } catch {

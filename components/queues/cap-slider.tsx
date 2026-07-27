@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
 const STEPS: Array<number | "unlimited"> = [10, 25, 50, 100, "unlimited"];
 
 function nearestStepIndex(value: number | "unlimited"): number {
@@ -30,14 +32,42 @@ function nearestStepIndex(value: number | "unlimited"): number {
 export default function CapSlider({
   value,
   onChange,
+  onNormalize,
   disabled = false,
 }: {
   value: number | "unlimited";
+  /** The owner dragged the slider. This IS an edit. */
   onChange: (next: number | "unlimited") => void;
+  /**
+   * The incoming value wasn't one of our stops and got snapped. This is NOT
+   * an edit the owner made, so the parent must apply it to its baseline as
+   * well as its draft — otherwise the panel reads as dirty on page load.
+   * Required on purpose: routing this through `onChange` is the bug.
+   */
+  onNormalize: (next: number | "unlimited") => void;
   disabled?: boolean;
 }) {
   const index = nearestStepIndex(value);
-  const display = STEPS[index] === "unlimited" ? "Unlimited" : STEPS[index];
+  const snapped = STEPS[index];
+  const display = snapped === "unlimited" ? "Unlimited" : snapped;
+
+  // A stored value that isn't one of our stops (e.g. a hand-edited config with
+  // 30) would otherwise DISPLAY as 25 while 30 stayed saved. Push the snapped
+  // value up once so what's shown and what would be saved always agree — via
+  // `onNormalize`, not `onChange`, so nobody's Save button lights up over a
+  // change they didn't make. The callback is read through a ref so an inline
+  // parent callback doesn't re-trigger (and cancel) this on every render.
+  const onNormalizeRef = useRef(onNormalize);
+  useEffect(() => {
+    onNormalizeRef.current = onNormalize;
+  });
+  useEffect(() => {
+    if (snapped === value) return;
+    // Defer so we don't call the parent's setState synchronously in the effect
+    // body (same pattern as the other panels here).
+    const t = setTimeout(() => onNormalizeRef.current(snapped), 0);
+    return () => clearTimeout(t);
+  }, [value, snapped]);
 
   return (
     <div>

@@ -2,24 +2,29 @@
  * Baseline-loop onboarding — the single code path that turns an EXISTING
  * GitHub repo into a loop-controlled project.
  *
- * It copies the baseline set of workflows + config from the pilot, seeds a
- * fresh LEARNINGS.md and empty metrics, creates the three idea labels, and
- * registers the project in config/projects.json. It is reused verbatim by:
+ * Everything installed comes from ONE place: the editable new-project template
+ * in this repo (config/loop-template/workflows/ + config/loop-template/files/).
+ * There is deliberately no live-pilot fallback — a silent fallback is how the
+ * pilot's own state leaked into new projects. If the template can't be read, or
+ * is empty, onboarding fails loudly and nothing is written.
+ *
+ * On top of the template it seeds a fresh LEARNINGS.md, an empty metrics file,
+ * a product brief (docs/loop-brief.md) and a minimal CLAUDE.md pointing at it,
+ * creates the idea labels, and registers the project in config/projects.json.
+ * It is reused verbatim by:
  *   - /api/map/projects/add        (pick an existing GitHub repo)
  *   - /api/projects/local-init     (push a local folder, then onboard it)
  * so the two never drift apart.
  */
 
-import { getOctokit, getFileContent, type RepoConfig } from "./github";
-import { atomicCommit, snapshotWorkflows, WORKFLOWS_DIR, type TreeChange } from "./map-history";
-import { listProjects, addProject, DASHBOARD_REPO, PILOT_PROJECT, type Project } from "./projects";
-import { listTemplateWorkflows } from "./loop-template";
-import { DEFAULT_LOOP_CONFIG, LOOP_CONFIG_PATH } from "./loop-config";
+import { getOctokit, getFileContent, LOOP_LABELS, type RepoConfig } from "./github";
+import { atomicCommit, WORKFLOWS_DIR, type TreeChange } from "./map-history";
+import { listProjects, addProject, DASHBOARD_REPO, type Project } from "./projects";
+import { listTemplateWorkflows, listTemplateFiles, TEMPLATE_FILE_TARGETS } from "./loop-template";
+import { DEFAULT_LOOP_CONFIG, LOOP_CONFIG_PATH, serializeLoopConfig } from "./loop-config";
 
-const PILOT_REPO: RepoConfig = { owner: PILOT_PROJECT.owner, repo: PILOT_PROJECT.repo };
-
-/** Non-workflow baseline files copied verbatim from the pilot. */
-const COPY_FILES = [".mcp.json", "docs/DASHBOARD-CONTRACT.md", "scripts/loop-metrics.mjs"];
+/** Where the product brief lives in a target repo (must match the template). */
+const BRIEF_PATH = TEMPLATE_FILE_TARGETS["loop-brief.md"];
 
 /** Fresh seeds — never copied from the pilot (its content is pilot-specific). */
 const FRESH_LEARNINGS = `# Learnings
@@ -38,16 +43,28 @@ nothing is added here without the owner merging it.
 Nothing learned yet — this loop is brand new.
 `;
 
-const LOOP_LABELS = ["proposal", "approved", "redraft"] as const;
-// Colors/descriptions as on the pilot — used if reading the pilot's labels fails.
-const LABEL_FALLBACK: Record<string, { color: string; description: string }> = {
-  proposal: { color: "0E8A16", description: "Agent-proposed improvement awaiting your triage" },
-  approved: { color: "1D76DB", description: "Owner-approved: builder loop may implement" },
-  redraft: {
-    color: "D93F0B",
-    description: "Owner sent this proposal back for the agent to rewrite from feedback",
-  },
-};
+/**
+ * A minimal root CLAUDE.md, seeded only when the repo has none. Three agent
+ * prompts tell agents to read CLAUDE.md, so an empty repo left them with
+ * nothing; this points them at the brief that actually carries the product
+ * context.
+ */
+const FRESH_CLAUDE_MD = `# Working in this repo
+
+**Read \`${BRIEF_PATH}\` before you do anything.** It is the product brief: what this
+product is, what the owner is currently trying to achieve, what is off-limits, and how the
+owner likes to be pitched. If it still contains placeholder text, say so instead of
+guessing.
+
+Also read:
+
+- \`LEARNINGS.md\` — mistakes this loop has already made. Don't repeat them.
+- \`docs/DASHBOARD-CONTRACT.md\` — the handshakes between the owner's dashboard and this
+  repo's workflows. Change one side, change the other.
+
+Repo-specific conventions (build commands, code layout, house style) belong in this file —
+add them as you learn them.
+`;
 
 export type OnboardResult = {
   project: Project;
@@ -113,31 +130,57 @@ export async function installBaselineLoop(
     );
   }
 
-  // ----- gather the baseline workflows ---------------------------------
-  // Preferred source: the editable new-project template (config/loop-template/
-  // in the dashboard repo). Fallback: a live snapshot of the pilot, so a
-  // missing or emptied template can never block adding a project.
+  // ----- gather the baseline from the template -------------------------
+  // The ONLY source is config/loop-template/ in the dashboard repo. There is
+  // no pilot fallback on purpose: silently cloning the pilot is how its
+  // project-specific state leaked into new repos. A broken template is an
+  // error the owner has to see, not something to paper over.
   let workflows: Map<string, string>;
+  let templateFiles: Map<string, string>;
   try {
-    workflows = await listTemplateWorkflows();
+    [workflows, templateFiles] = await Promise.all([listTemplateWorkflows(), listTemplateFiles()]);
   } catch (err) {
-    console.error("onboard: template read failed, falling back to the pilot", err);
-    workflows = new Map();
+    console.error("onboard: template read failed", err);
+    throw new OnboardError(
+      "Couldn't read the new-project template from GitHub, so nothing was installed. Try again in a moment.",
+      502,
+    );
   }
   if (workflows.size === 0) {
-    workflows = await snapshotWorkflows("main", PILOT_REPO);
+    throw new OnboardError(
+      "The new-project template has no workflows, so there's nothing to install. Seed it on the Process Map first (Template → Seed), then add this project.",
+      409,
+    );
   }
+  const missingAssets = Object.keys(TEMPLATE_FILE_TARGETS).filter((name) => !templateFiles.has(name));
+  if (missingAssets.length > 0) {
+    throw new OnboardError(
+      `The new-project template is missing ${missingAssets.join(", ")} — onboarding would install a broken loop (e.g. a metrics workflow with no script). Restore config/loop-template/files/ in the dashboard repo first.`,
+      409,
+    );
+  }
+
   const files = new Map<string, string>();
   for (const [name, content] of workflows) {
     files.set(`${WORKFLOWS_DIR}/${name}`, content);
   }
-  for (const path of COPY_FILES) {
-    const content = await getFileContent(path, "main", PILOT_REPO);
-    if (content !== null) files.set(path, content);
+  for (const [name, content] of templateFiles) {
+    const target = TEMPLATE_FILE_TARGETS[name];
+    if (target) files.set(target, content);
   }
   files.set("LEARNINGS.md", FRESH_LEARNINGS);
   files.set("metrics/loop-metrics.json", "[]\n");
-  files.set(LOOP_CONFIG_PATH, JSON.stringify(DEFAULT_LOOP_CONFIG, null, 2) + "\n");
+  // Written through the same serializer every later save uses, so a brand-new
+  // project's file is byte-identical to one the dashboard has re-saved — a
+  // hand-rolled JSON.stringify here meant the very first save always looked
+  // like someone else had edited the file.
+  files.set(LOOP_CONFIG_PATH, serializeLoopConfig(DEFAULT_LOOP_CONFIG));
+
+  // A repo with no CLAUDE.md leaves three agent prompts reading nothing, so
+  // seed a minimal one that points at the brief. The "skip anything the repo
+  // already has" pass below means an existing CLAUDE.md is never overwritten.
+  // (The brief itself, docs/loop-brief.md, comes from the template's files/.)
+  files.set("CLAUDE.md", FRESH_CLAUDE_MD);
 
   // ----- skip anything the target repo already has --------------------
   const installed: string[] = [];
@@ -172,18 +215,11 @@ export async function installBaselineLoop(
   }
 
   // ----- labels -------------------------------------------------------
+  // LOOP_LABELS lives in lib/github.ts so this and the on-the-fly creation in
+  // `setIssueLabels` can't disagree about a label's colour (they did).
   const labels: Record<string, string> = {};
-  for (const name of LOOP_LABELS) {
+  for (const [name, { color, description }] of Object.entries(LOOP_LABELS)) {
     try {
-      let color = LABEL_FALLBACK[name].color;
-      let description = LABEL_FALLBACK[name].description;
-      try {
-        const pilotLabel = (await octokit.rest.issues.getLabel({ ...PILOT_REPO, name })).data;
-        color = pilotLabel.color;
-        description = pilotLabel.description ?? description;
-      } catch {
-        /* use fallback */
-      }
       await octokit.rest.issues.createLabel({ owner, repo: repoName, name, color, description });
       labels[name] = "created";
     } catch (err: unknown) {

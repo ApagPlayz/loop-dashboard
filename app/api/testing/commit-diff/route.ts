@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCommitWorkflowPatch } from "@/lib/testing";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,10 @@ export async function GET(req: Request) {
     const { repo } = await resolveProjectFromUrl(req.url);
     const data = await getCommitWorkflowPatch(sha, repo);
     return NextResponse.json(data);
-  } catch {
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json(
       { error: "Could not load the change." },
       { status: 500 },

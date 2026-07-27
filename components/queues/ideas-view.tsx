@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PenLine } from "lucide-react";
 import type { IdeasPayload, IdeaSummary } from "@/lib/queues";
-import type { Project } from "@/lib/projects";
 import { useProject } from "@/components/project-context";
 import { TabBar, ErrorPanel, EmptyState, Spinner } from "./ui";
 import { ToastProvider } from "./toast";
 import IdeaCard from "./idea-card";
 import CustomIdea from "./custom-idea";
 import AutomationPanel from "./automation-panel";
+import ScoutSettings from "./scout-settings";
 
 type TabKey = "waiting" | "approved" | "redraft" | "closed";
 
@@ -24,7 +24,7 @@ const EMPTY_COPY: Record<TabKey, string> = {
   waiting: "Nothing waiting on you. The Scout will file new ideas here.",
   approved: "No approved ideas queued. Approve one and it lands here.",
   redraft: "Nothing being redrafted right now.",
-  closed: "No recently closed ideas.",
+  closed: "No recently closed or declined ideas.",
 };
 
 export default function IdeasView() {
@@ -36,50 +36,73 @@ export default function IdeasView() {
 }
 
 function IdeasInner() {
-  const [data, setData] = useState<IdeasPayload | null>(null);
+  // The loaded payload is stamped with the project it belongs to, so a
+  // project switch can never render the previous project's cards (which,
+  // before this, could put an Approve button over the same-numbered issue in
+  // the WRONG repo).
+  const [loaded, setLoaded] = useState<{ project: string; payload: IdeasPayload } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>("waiting");
   const [showCustom, setShowCustom] = useState(false);
-  const { project } = useProject();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { project, current } = useProject();
 
-  // Project labels for the "Viewing: <project>" indicator.
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch("/api/map/projects");
-        const j = await res.json().catch(() => ({}));
-        if (res.ok && Array.isArray(j.projects)) setProjects(j.projects);
-      } catch {
-        /* label just falls back to the raw key */
-      }
-    })();
-  }, []);
+  // Every fetch takes a ticket. Only the holder of the CURRENT ticket may touch
+  // state — without this, switching project A → B while A was in flight let A's
+  // slower response land last and set loaded = {A, …}. The `loaded.project`
+  // check below then hid it, so the screen sat on data = null, loading = false,
+  // error = null: permanently empty tabs with no spinner and no retry.
+  const reqIdRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const data = loaded && loaded.project === project ? loaded.payload : null;
 
   const load = useCallback(async () => {
     if (!project) return;
+    const forProject = project;
+    const myId = ++reqIdRef.current;
+    // Superseded request: stop it on the wire too, not just at the state gate.
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    // Drop any payload belonging to a different project before refetching, so
+    // nothing stale can be rendered (or acted on) under the new one.
+    setLoaded((prev) => (prev && prev.project === forProject ? prev : null));
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/ideas?project=${encodeURIComponent(project)}`);
-      const payload = await res.json();
+      const res = await fetch(
+        `/api/ideas?project=${encodeURIComponent(forProject)}`,
+        { signal: controller.signal },
+      );
+      // A non-JSON failure (500 HTML page) must not become a SyntaxError.
+      const payload = await res.json().catch(() => ({}));
+      if (reqIdRef.current !== myId) return; // superseded — discard silently
       if (!res.ok) throw new Error(payload.error ?? "Failed to load ideas");
-      setData(payload as IdeasPayload);
+      setLoaded({ project: forProject, payload: payload as IdeasPayload });
     } catch (err) {
+      if (reqIdRef.current !== myId) return; // superseded — discard silently
       setError(err instanceof Error ? err.message : "Failed to load ideas");
     } finally {
-      setLoading(false);
+      // Only the latest request may clear the spinner.
+      if (reqIdRef.current === myId) setLoading(false);
     }
   }, [project]);
 
   useEffect(() => {
     // Defer so we don't call setState synchronously inside the effect body.
+    // `load` itself drops any payload from the previous project first.
     const t = setTimeout(load, 0);
     return () => clearTimeout(t);
   }, [load]);
 
-  const projectLabel = projects.find((p) => p.key === project)?.label ?? project;
+  // Unmount only — a switch is already handled inside `load`.
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  const projectLabel = current?.label ?? project;
 
   const toolbar = (
     <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -105,32 +128,38 @@ function IdeasInner() {
     </div>
   );
 
-  const automationPanel = (
-    <AutomationPanel
-      project={project}
-      projectLabel={projectLabel}
-      waitingCount={data?.waiting?.length ?? 0}
-    />
+  const panels = (
+    <>
+      <AutomationPanel
+        project={project}
+        projectLabel={projectLabel}
+        waitingCount={data?.waiting?.length ?? 0}
+      />
+      <ScoutSettings project={project} projectLabel={projectLabel} />
+    </>
   );
-
-  if (loading && !data) {
-    return (
-      <div>
-        {toolbar}
-        {automationPanel}
-        <div className="flex items-center gap-2 py-10 text-sm text-zinc-500">
-          <Spinner /> Loading ideas…
-        </div>
-      </div>
-    );
-  }
 
   if (error && !data) {
     return (
       <div>
         {toolbar}
-        {automationPanel}
+        {panels}
         <ErrorPanel message={error} onRetry={load} />
+      </div>
+    );
+  }
+
+  // No data and no error means a fetch is running, or is about to on the tick
+  // right after a project switch. Show the spinner rather than falling through
+  // to four empty tabs — this state never means "nothing here".
+  if (!data) {
+    return (
+      <div>
+        {toolbar}
+        {panels}
+        <div className="flex items-center gap-2 py-10 text-sm text-zinc-500">
+          <Spinner /> Loading ideas…
+        </div>
       </div>
     );
   }
@@ -148,19 +177,32 @@ function IdeasInner() {
     count: lists[key].length,
   }));
 
-  const current = lists[tab];
+  const visible = lists[tab];
 
   return (
     <div>
       {toolbar}
-      {automationPanel}
+      {panels}
+      {loading && (
+        <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500">
+          <Spinner /> Refreshing…
+        </div>
+      )}
       <TabBar tabs={tabs} active={tab} onChange={setTab} />
-      {current.length === 0 ? (
+      {visible.length === 0 ? (
         <EmptyState message={EMPTY_COPY[tab]} />
       ) : (
         <div className="space-y-3">
-          {current.map((idea) => (
-            <IdeaCard key={idea.number} idea={idea} project={project} onChanged={load} />
+          {visible.map((idea) => (
+            <IdeaCard
+              // Keyed by project AND number: two projects can hold the same
+              // issue number, and React would otherwise reuse the card (and
+              // its chat/comment state) across the switch.
+              key={`${project}:${idea.number}`}
+              idea={idea}
+              project={project}
+              onChanged={load}
+            />
           ))}
         </div>
       )}

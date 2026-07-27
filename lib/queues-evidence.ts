@@ -18,7 +18,7 @@
  */
 
 import { unzipSync } from "fflate";
-import { getOctokit, downloadArtifact, REPOS, type RepoConfig } from "@/lib/github";
+import { getOctokit, downloadArtifact, type RepoConfig } from "@/lib/github";
 import type { EvidenceItem } from "@/lib/queues";
 
 export type EvidenceManifest = {
@@ -70,7 +70,7 @@ function cacheSet(key: string, value: Unzipped) {
 
 async function fetchAndUnzip(
   prNumber: number,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<Unzipped | null> {
   const { owner, repo } = repoConfig;
   const key = cacheKey(repoConfig, prNumber);
@@ -129,7 +129,7 @@ async function fetchAndUnzip(
 /** Return the parsed manifest for a PR, or null if no usable artifact exists. */
 export async function loadEvidenceManifest(
   prNumber: number,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<EvidenceManifest | null> {
   const bundle = await fetchAndUnzip(prNumber, repoConfig);
   return bundle?.manifest ?? null;
@@ -139,7 +139,7 @@ export async function loadEvidenceManifest(
 export async function readEvidenceFile(
   prNumber: number,
   filePath: string,
-  repoConfig: RepoConfig = REPOS.primary,
+  repoConfig: RepoConfig,
 ): Promise<{ bytes: Uint8Array; contentType: string } | null> {
   const bundle = await fetchAndUnzip(prNumber, repoConfig);
   if (!bundle) return null;

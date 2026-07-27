@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { repositoryDispatch, listWorkflowFiles, REPOS, type RepoConfig } from "@/lib/github";
+import { repositoryDispatch, listWorkflowFiles, type RepoConfig } from "@/lib/github";
 import { TARGET_AGENTS } from "@/lib/tools";
 import { resolveProject, ProjectError } from "@/lib/projects";
 
@@ -8,9 +8,13 @@ export const runtime = "nodejs";
 
 const TOOL_INSTALL_WORKFLOW = "claude-tool-install.yml";
 
-/** Resolve the repo an install should target: a named project, else the pilot. */
+/**
+ * Resolve the repo an install should target. `project` is REQUIRED — an
+ * unnamed project used to fall back to the pilot, so an install fired from any
+ * other project's screen landed on the pilot's repo. `resolveProject` throws a
+ * 400 when the key is missing.
+ */
 async function repoForProject(project?: string | null): Promise<RepoConfig> {
-  if (!project) return REPOS.primary;
   const { repo } = await resolveProject(project);
   return repo;
 }
@@ -38,9 +42,9 @@ export async function GET(req: Request) {
 }
 
 /**
- * POST /api/tools/install  Body: { url, target_agent, notes?, project? }.
- * Fires a `tool-install` repository_dispatch on the target project's repo (the
- * pilot by default) that the Tool-installer workflow listens for.
+ * POST /api/tools/install  Body: { url, target_agent, notes?, project }.
+ * Fires a `tool-install` repository_dispatch on the named project's repo that
+ * the Tool-installer workflow listens for. `project` is required.
  */
 export async function POST(req: Request) {
   let body: { url?: string; target_agent?: string; notes?: string; project?: string } = {};

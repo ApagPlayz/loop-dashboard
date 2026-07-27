@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { KeyRound, ExternalLink, Check, Send } from "lucide-react";
 import { relativeTime } from "@/components/testing/format";
+import { useProject } from "@/components/project-context";
 
 type ActionIssue = {
   number: number;
@@ -21,6 +22,7 @@ function IssueCard({
   issue: ActionIssue;
   onDone: (n: number) => void;
 }) {
+  const { project } = useProject();
   const [comment, setComment] = useState("");
   const [wake, setWake] = useState(true);
   const [busy, setBusy] = useState<"" | "close" | "comment">("");
@@ -36,7 +38,7 @@ function IssueCard({
       const res = await fetch("/api/tools/issue-action", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, number: issue.number, ...extra }),
+        body: JSON.stringify({ project, action, number: issue.number, ...extra }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -129,20 +131,28 @@ function IssueCard({
 }
 
 export default function NeedsYou() {
+  const { project } = useProject();
   const [issues, setIssues] = useState<ActionIssue[] | null>(null);
 
   const load = useCallback(async () => {
+    if (!project) return;
     try {
-      const res = await fetch("/api/tools/needs-you", { cache: "no-store" });
+      const res = await fetch(
+        `/api/tools/needs-you?project=${encodeURIComponent(project)}`,
+        { cache: "no-store" },
+      );
       const data = await res.json();
       setIssues(data.issues ?? []);
     } catch {
       setIssues([]);
     }
-  }, []);
+  }, [project]);
 
   useEffect(() => {
+    // Switching project must clear the previous project's tasks immediately —
+    // showing them under a new heading is exactly the bug this scoping fixes.
     // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIssues(null);
     load();
     const t = setInterval(load, 30000);
     return () => clearInterval(t);

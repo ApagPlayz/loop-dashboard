@@ -13,6 +13,7 @@ import {
   Check,
   ChevronDown,
 } from "lucide-react";
+import { useProject } from "@/components/project-context";
 
 /* ---------- types (mirror lib/tool-fit.ts wire shapes) ---------- */
 
@@ -94,6 +95,10 @@ function phaseLabel(p: Progress): string {
 /* ---------- per-row install control ---------- */
 
 function InstallRow({ tool }: { tool: ToolScore }) {
+  // The scan can be pointed at ANY repo, but the install always goes to the
+  // project currently selected in the switcher — stated explicitly, never
+  // defaulted server-side.
+  const { project } = useProject();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -106,7 +111,7 @@ function InstallRow({ tool }: { tool: ToolScore }) {
       const res = await fetch("/api/tools/install", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: tool.url, target_agent: "all" }),
+        body: JSON.stringify({ project, url: tool.url, target_agent: "all" }),
       });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error ?? "Couldn't start the install.");
@@ -116,7 +121,7 @@ function InstallRow({ tool }: { tool: ToolScore }) {
     } finally {
       setBusy(false);
     }
-  }, [tool.url]);
+  }, [tool.url, project]);
 
   if (done) {
     return (

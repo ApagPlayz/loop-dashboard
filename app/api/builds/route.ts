@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { loadBuilds } from "@/lib/queues";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +11,9 @@ export async function GET(req: Request) {
     const data = await loadBuilds(repo);
     return NextResponse.json(data);
   } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "GitHub request failed." },
       { status: 502 },

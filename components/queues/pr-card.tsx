@@ -5,6 +5,7 @@ import {
   ChevronDown,
   ChevronRight,
   GitPullRequest,
+  GitPullRequestDraft,
   GitMerge,
   XCircle,
   ExternalLink,
@@ -73,7 +74,9 @@ export default function PRCard({
     setError(null);
     try {
       const res = await fetch(`/api/builds/${pr.number}${projectQuery}`);
-      const data = await res.json();
+      // Not every failure comes back as JSON (a 500 from an unhandled throw is
+      // an HTML page); a bare .json() turned that into a useless SyntaxError.
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Failed to load PR");
       setDetail(data as PRDetail);
     } catch (err) {
@@ -100,7 +103,7 @@ export default function PRCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, ...opts }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error ?? "Action failed");
       return true;
     } catch (err) {
@@ -203,6 +206,7 @@ export default function PRCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <StatePill pr={pr} />
+            {pr.draft && pr.state === "open" && <DraftPill />}
             <span className="text-xs text-zinc-500">#{pr.number}</span>
           </div>
           <p className="mt-1.5 font-medium leading-snug text-zinc-100">{pr.title}</p>
@@ -535,6 +539,21 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
     <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
       {children}
     </h4>
+  );
+}
+
+/**
+ * A draft PR is the Builder still working — it's listed so nothing is hidden,
+ * but it doesn't count towards "needs your review" (see builds-view.tsx).
+ */
+function DraftPill() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-full bg-zinc-700/40 px-2 py-0.5 text-xs font-medium text-zinc-400"
+      title="Still a draft — the Builder hasn't marked it ready for review yet."
+    >
+      <GitPullRequestDraft className="h-3 w-3" /> Draft
+    </span>
   );
 }
 

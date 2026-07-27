@@ -6,6 +6,10 @@ import { loadCatalog, shortlistForText, type CatalogEntry, type ToolType } from 
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+// This route stays synchronous — one turn, one answer — so the platform's
+// limit has to cover the AI budget below plus the catalog/checkout lookups.
+// Without this it was killed mid-turn in the cloud at the default timeout.
+export const maxDuration = 180;
 
 /** Longer budget when the assistant is actually reading code (multi-turn). */
 const CODE_CHAT_TIMEOUT_MS = 150_000;

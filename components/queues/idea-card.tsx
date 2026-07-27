@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -18,9 +18,11 @@ import IdeaChat from "./idea-chat";
 import { useIdeaChat } from "./use-idea-chat";
 import { useToast } from "./toast";
 
-type ActionKind = "approve" | "unapprove" | "redraft" | "reject";
+type ActionKind = "approve" | "unapprove" | "redraft" | "decline";
 
 function labelBadge(labels: string[]) {
+  if (labels.includes("declined"))
+    return { text: "Declined", cls: "bg-red-500/15 text-red-300" };
   if (labels.includes("proposal"))
     return { text: "Waiting for you", cls: "bg-amber-500/15 text-amber-300" };
   if (labels.includes("approved"))
@@ -44,10 +46,28 @@ export default function IdeaCard({
   const [comments, setComments] = useState<ThreadComment[] | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
   const [commentsError, setCommentsError] = useState<string | null>(null);
-  const [panel, setPanel] = useState<"feedback" | "reject" | null>(null);
+  const [panel, setPanel] = useState<"feedback" | "decline" | null>(null);
   const [panelText, setPanelText] = useState("");
   const [busy, setBusy] = useState<ActionKind | null>(null);
   const chat = useIdeaChat(project, idea.number);
+
+  // Belt and braces: ideas-view keys cards by `${project}:${number}` so this
+  // component remounts on a switch, but if a card is ever reused for a
+  // DIFFERENT issue, none of the previous issue's thread or half-typed
+  // feedback may survive into it.
+  const identity = `${project}:${idea.number}`;
+  const identityRef = useRef(identity);
+  useEffect(() => {
+    if (identityRef.current === identity) return;
+    identityRef.current = identity;
+    setComments(null);
+    setCommentsError(null);
+    setLoadingComments(false);
+    setPanel(null);
+    setPanelText("");
+    setBusy(null);
+    setOpen(false);
+  }, [identity]);
 
   const badge = labelBadge(idea.labels);
   const isProposal = idea.labels.includes("proposal") && idea.state === "open";
@@ -142,9 +162,11 @@ export default function IdeaCard({
     }
   }
 
-  async function submitReject() {
-    if (await act("reject", { text: withChat(panelText.trim()) || undefined })) {
-      toast.success("Idea rejected and closed.");
+  async function submitDecline() {
+    if (await act("decline", { text: withChat(panelText.trim()) || undefined })) {
+      toast.success(
+        "Declined. The Scout sees this as a “no” and won't keep proposing it.",
+      );
       setPanel(null);
       setPanelText("");
       chat.clear();
@@ -251,14 +273,14 @@ export default function IdeaCard({
               </div>
               <button
                 onClick={() => {
-                  setPanel(panel === "reject" ? null : "reject");
+                  setPanel(panel === "decline" ? null : "decline");
                   setPanelText("");
                 }}
                 disabled={busy !== null}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-red-900 px-4 py-2.5 text-sm font-medium text-red-300 transition hover:bg-red-950/40 disabled:opacity-50"
               >
                 <X className="h-4 w-4" />
-                Reject
+                Decline
               </button>
             </div>
           )}
@@ -276,25 +298,42 @@ export default function IdeaCard({
             </div>
           )}
 
-          {/* Feedback / reject text panel */}
+          {/* Feedback / decline text panel */}
           {panel && (
             <div className="mt-3 rounded-xl border border-zinc-800 bg-zinc-950 p-3">
               <label className="mb-1.5 block text-xs font-medium text-zinc-400">
                 {panel === "feedback"
                   ? "What should the agent change? (required)"
-                  : "Reason for rejecting (optional)"}
+                  : "Why not? One line is enough (optional)"}
               </label>
-              <textarea
-                value={panelText}
-                onChange={(e) => setPanelText(e.target.value)}
-                rows={4}
-                placeholder={
-                  panel === "feedback"
-                    ? "e.g. Good idea, but scope it to just the sports channel first…"
-                    : "e.g. Duplicate of #12"
-                }
-                className="w-full resize-y rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-600 focus:outline-none"
-              />
+              {panel === "feedback" ? (
+                <textarea
+                  value={panelText}
+                  onChange={(e) => setPanelText(e.target.value)}
+                  rows={4}
+                  placeholder="e.g. Good idea, but scope it to just the sports channel first…"
+                  className="w-full resize-y rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-600 focus:outline-none"
+                />
+              ) : (
+                <input
+                  value={panelText}
+                  onChange={(e) => setPanelText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      void submitDecline();
+                    }
+                  }}
+                  placeholder="e.g. Duplicate of #12 — or: we're not touching billing"
+                  className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:border-emerald-600 focus:outline-none"
+                />
+              )}
+              {panel === "decline" && (
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  This closes the idea as a real &ldquo;no&rdquo; — the Scout reads declined
+                  ideas so it stops proposing the same thing.
+                </p>
+              )}
               <div className="mt-2 flex justify-end gap-2">
                 <button
                   onClick={() => {
@@ -306,7 +345,7 @@ export default function IdeaCard({
                   Cancel
                 </button>
                 <button
-                  onClick={panel === "feedback" ? submitFeedback : submitReject}
+                  onClick={panel === "feedback" ? submitFeedback : submitDecline}
                   disabled={busy !== null}
                   className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 ${
                     panel === "feedback"
@@ -314,8 +353,8 @@ export default function IdeaCard({
                       : "bg-red-600 hover:bg-red-500"
                   }`}
                 >
-                  {busy === "redraft" || busy === "reject" ? <Spinner /> : null}
-                  {panel === "feedback" ? "Send back for redraft" : "Reject & close"}
+                  {busy === "redraft" || busy === "decline" ? <Spinner /> : null}
+                  {panel === "feedback" ? "Send back for redraft" : "Decline & close"}
                 </button>
               </div>
             </div>

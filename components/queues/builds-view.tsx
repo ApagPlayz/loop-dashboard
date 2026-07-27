@@ -44,7 +44,9 @@ function BuildsInner() {
       const res = await fetch(
         `/api/builds?project=${encodeURIComponent(project)}`,
       );
-      const payload = await res.json();
+      // A 500 from an unhandled route throw isn't JSON — bare .json() would
+      // replace the real error with a SyntaxError about "<".
+      const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload.error ?? "Failed to load builds");
       setData(payload as BuildsPayload);
     } catch (err) {
@@ -85,17 +87,35 @@ function BuildsInner() {
     closed: data?.closed ?? [],
   };
 
+  // Draft PRs stay LISTED (badged on the row) but must not inflate the
+  // "Needs your review" count — a draft is the Builder still working, not
+  // something waiting on the owner. That's the same rule the Builder uses for
+  // its own cap, so the server hands us the number as `capCount`.
+  const counts: Record<TabKey, number> = {
+    needsReview: data?.capCount ?? lists.needsReview.filter((p) => !p.draft).length,
+    merged: lists.merged.length,
+    closed: lists.closed.length,
+  };
+
   const tabs = (Object.keys(TAB_LABELS) as TabKey[]).map((key) => ({
     key,
     label: TAB_LABELS[key],
-    count: lists[key].length,
+    count: counts[key],
   }));
 
   const current = lists[tab];
+  const draftCount = lists.needsReview.filter((p) => p.draft).length;
 
   return (
     <div>
       <TabBar tabs={tabs} active={tab} onChange={setTab} />
+      {tab === "needsReview" && draftCount > 0 && (
+        <p className="mb-3 text-xs text-zinc-500">
+          {draftCount === 1
+            ? "1 draft PR is still being built — listed below, but not counted as waiting on you."
+            : `${draftCount} draft PRs are still being built — listed below, but not counted as waiting on you.`}
+        </p>
+      )}
       {current.length === 0 ? (
         <EmptyState message={EMPTY_COPY[tab]} />
       ) : (

@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
-import { addLabel, removeLabel, createComment } from "@/lib/github";
-import { listThreadComments, closeIssue } from "@/lib/queues";
+import {
+  createComment,
+  setIssueLabels,
+  dispatchWorkflow,
+  type RepoConfig,
+} from "@/lib/github";
+import { listThreadComments, closeIssue, getIssue } from "@/lib/queues";
 import { resolveProject, resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
@@ -28,17 +33,69 @@ export async function GET(
 }
 
 type ActionBody = {
-  action: "approve" | "unapprove" | "redraft" | "reject";
+  /** `reject` is the legacy name for `decline` and behaves identically. */
+  action: "approve" | "unapprove" | "redraft" | "decline" | "reject";
   text?: string;
   project?: string;
 };
 
+/** Every label this route owns — anything else on the issue is left alone. */
+const QUEUE_LABELS = ["proposal", "approved", "redraft", "declined"] as const;
+
+/**
+ * The exact label set an issue should end up with after `action`, computed
+ * from its CURRENT labels so the write is a single atomic `setLabels` rather
+ * than an add + remove pair. Non-queue labels (`bug`, `area/*`, …) survive.
+ */
+function nextLabels(current: string[], keep: string): string[] {
+  const out = current.filter(
+    (l) => !(QUEUE_LABELS as readonly string[]).includes(l) || l === keep,
+  );
+  if (!out.includes(keep)) out.push(keep);
+  return out;
+}
+
+/**
+ * Wake a workflow explicitly instead of trusting the label write to do it.
+ *
+ * Re-applying a label the issue ALREADY carries emits no `issues: labeled`
+ * event, so "approve an already-approved idea" and "send an idea back a second
+ * time" were silent no-ops that waited on a cron GitHub drops regularly.
+ * `alreadyHad` says whether we are in that case: when the label is genuinely
+ * new the label event starts the workflow and dispatching too would just queue
+ * a duplicate agent run, so we only dispatch when nothing else will.
+ *
+ * Best-effort either way — a repo that doesn't have that workflow file must
+ * not fail the action the owner actually asked for.
+ */
+async function wake(
+  workflow: string,
+  repo: RepoConfig,
+  alreadyHad: boolean,
+  inputs: Record<string, string> = {},
+): Promise<boolean> {
+  if (!alreadyHad) return false;
+  try {
+    await dispatchWorkflow(workflow, "main", inputs, repo);
+    return true;
+  } catch (err) {
+    console.warn(`ideas: couldn't dispatch ${workflow} on ${repo.owner}/${repo.repo}`, err);
+    return false;
+  }
+}
+
 /**
  * POST /api/ideas/[number] — mutate an idea.
- *  approve   : optional comment (e.g. an included chat transcript), add "approved", remove "proposal"
- *  unapprove : add "proposal", remove "approved"
- *  redraft   : comment owner feedback, add "redraft", remove "proposal"
- *  reject    : optional comment, close (not_planned)
+ *  approve   : optional comment (e.g. an included chat transcript), labels →
+ *              `approved`, then dispatch the Builder
+ *  unapprove : labels → `proposal`
+ *  redraft   : required feedback comment, labels → `redraft`, then dispatch
+ *              the Redraft agent
+ *  decline   : optional reason comment, labels → `declined`, close as
+ *              `not_planned`. This is the loop's only "no" — the `declined`
+ *              label is what makes a rejection legible to the Scout and keeps
+ *              the idea in the Closed tab instead of vanishing.
+ *  reject    : alias of `decline`, kept for older clients.
  *
  * Body carries a `project` field so the mutation targets the right repo.
  */
@@ -59,7 +116,7 @@ export async function POST(
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  let repo;
+  let repo: RepoConfig;
   try {
     ({ repo } = await resolveProject(body.project));
   } catch (err) {
@@ -69,69 +126,66 @@ export async function POST(
     throw err;
   }
 
+  const action = body.action === "reject" ? "decline" : body.action;
+  const text = (body.text ?? "").trim();
+
+  if (action === "redraft" && !text) {
+    return NextResponse.json(
+      { error: "Feedback is required to send an idea back." },
+      { status: 400 },
+    );
+  }
+  if (!["approve", "unapprove", "redraft", "decline"].includes(action)) {
+    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
+  }
+
   try {
-    switch (body.action) {
+    const current = (await getIssue(issueNumber, repo)).labels;
+
+    switch (action) {
       case "approve": {
-        const text = (body.text ?? "").trim();
-        if (text) {
-          await createComment(issueNumber, text, repo);
-        }
-        await addLabel(issueNumber, "approved", repo);
-        await removeLabel(issueNumber, "proposal", repo).catch(ignoreMissingLabel);
-        return NextResponse.json({ ok: true });
+        if (text) await createComment(issueNumber, text, repo);
+        await setIssueLabels(issueNumber, nextLabels(current, "approved"), repo);
+        const dispatched = await wake(
+          "claude-builder.yml",
+          repo,
+          current.includes("approved"),
+        );
+        return NextResponse.json({ ok: true, dispatched });
       }
       case "unapprove": {
-        await addLabel(issueNumber, "proposal", repo);
-        await removeLabel(issueNumber, "approved", repo).catch(ignoreMissingLabel);
+        await setIssueLabels(issueNumber, nextLabels(current, "proposal"), repo);
         return NextResponse.json({ ok: true });
       }
       case "redraft": {
-        const text = (body.text ?? "").trim();
-        if (!text) {
-          return NextResponse.json(
-            { error: "Feedback is required to send an idea back." },
-            { status: 400 },
-          );
-        }
         await createComment(
           issueNumber,
           `**Owner feedback for redraft:**\n\n${text}`,
           repo,
         );
-        await addLabel(issueNumber, "redraft", repo);
-        await removeLabel(issueNumber, "proposal", repo).catch(ignoreMissingLabel);
-        return NextResponse.json({ ok: true });
+        await setIssueLabels(issueNumber, nextLabels(current, "redraft"), repo);
+        const dispatched = await wake(
+          "claude-redraft.yml",
+          repo,
+          current.includes("redraft"),
+          { issue_number: String(issueNumber) },
+        );
+        return NextResponse.json({ ok: true, dispatched });
       }
-      case "reject": {
-        const text = (body.text ?? "").trim();
+      case "decline": {
         if (text) {
-          await createComment(issueNumber, text, repo);
+          await createComment(issueNumber, `**Declined by the owner:**\n\n${text}`, repo);
         }
+        await setIssueLabels(issueNumber, nextLabels(current, "declined"), repo);
         await closeIssue(issueNumber, "not_planned", repo);
         return NextResponse.json({ ok: true });
       }
-      default:
-        return NextResponse.json(
-          { error: "Unknown action" },
-          { status: 400 },
-        );
     }
+
+    return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   } catch (err) {
     return NextResponse.json({ error: msg(err) }, { status: 502 });
   }
-}
-
-function ignoreMissingLabel(err: unknown) {
-  // Removing a label that isn't present returns 404 — harmless here.
-  if (
-    typeof err === "object" &&
-    err !== null &&
-    "status" in err &&
-    (err as { status?: number }).status === 404
-  ) {
-    return;
-  }
-  throw err;
 }
 
 function msg(err: unknown): string {

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getDigest, refreshDigest } from "@/lib/reporter";
 
 export const dynamic = "force-dynamic";
@@ -27,11 +27,21 @@ export function runSharedRefresh(): ReturnType<typeof refreshDigest> {
   return refreshPromise;
 }
 
-/** Fire-and-forget: kick off (or join) the shared refresh, never throws. */
+/**
+ * Fire-and-forget: kick off (or join) the shared refresh, never throws.
+ *
+ * Scheduled through `after()` so the pull keeps running once the response has
+ * been sent — on serverless a bare floating promise can be frozen the instant
+ * the JSON goes out, which would leave the refresh half-done. Must therefore
+ * only be called from inside a request (it is: the GET below is the only
+ * caller; the cron route awaits `runSharedRefresh` directly).
+ */
 export function triggerBackgroundRefresh(reason: string): void {
-  runSharedRefresh().catch((e) => {
-    console.error(`reporter: background refresh (${reason}) failed`, e);
-  });
+  after(() =>
+    runSharedRefresh().catch((e) => {
+      console.error(`reporter: background refresh (${reason}) failed`, e);
+    }),
+  );
 }
 
 /** GET /api/reporter — the cached digest (builds once if empty). */
@@ -40,8 +50,17 @@ export async function GET() {
     const digest = await getDigest();
 
     const ageMs = Date.now() - Date.parse(digest.lastUpdated);
-    if (!Number.isFinite(ageMs) || ageMs > STALE_MS) {
+    // A cold-built digest is partial (budgeted pull, no enrichment) yet stamps
+    // `lastUpdated` = now, so the staleness check below can never catch it —
+    // it would look current for the next 6 hours while its insights are still
+    // missing. Trigger the full refresh straight away instead. `else if` so a
+    // digest only ever schedules one refresh, and a complete digest still goes
+    // purely by age. Both branches share the single-flight guard above, so a
+    // concurrent cold build / cron tick joins the same run rather than stacking.
+    if (digest.partial) {
       // Fire-and-forget: never block the response on a fresh pull.
+      triggerBackgroundRefresh("partial-on-load");
+    } else if (!Number.isFinite(ageMs) || ageMs > STALE_MS) {
       triggerBackgroundRefresh("stale-on-load");
     }
 

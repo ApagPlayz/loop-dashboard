@@ -28,6 +28,22 @@ const KEY_STEPS: { label: string; match: RegExp }[] = [
   { label: "Build", match: /build/i },
 ];
 
+/**
+ * The step to show for one row.
+ *
+ * repo-tests.yml is stack-aware: it carries a Node path AND a Python path, and
+ * skips whichever doesn't apply ("Install dependencies (Node)", "Test (Node)",
+ * "Install dependencies (Python)", "Test (Python)"…). Taking the FIRST name
+ * match meant a Python-only repo read its results off the skipped Node steps
+ * and showed nothing but dashes while its real tests were passing. So: prefer
+ * a step that actually ran, and only fall back to a skipped one when that is
+ * genuinely all there is (which is the honest answer — that row didn't run).
+ */
+function pickStep(steps: Step[], match: RegExp): Step | undefined {
+  const hits = steps.filter((s) => match.test(s.name));
+  return hits.find((s) => s.conclusion !== "skipped") ?? hits[0];
+}
+
 function StepIcon({ tone }: { tone: string }) {
   const cls = "h-4 w-4";
   if (tone === "success") return <CheckCircle2 className={`${cls} text-emerald-400`} />;
@@ -153,7 +169,7 @@ export default function TestSuite({ project }: { project: string }) {
         {/* Per-step rows */}
         <div className="mt-4 divide-y divide-zinc-800 rounded-lg border border-zinc-800">
           {KEY_STEPS.map((ks) => {
-            const step = steps.find((s) => ks.match.test(s.name));
+            const step = pickStep(steps, ks.match);
             const tone = step
               ? statusMeta(step.status, step.conclusion).tone
               : "neutral";

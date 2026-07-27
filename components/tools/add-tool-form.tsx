@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Wrench, CheckCircle2, Sparkles } from "lucide-react";
+import { useProject } from "@/components/project-context";
 
 const AGENTS: { value: string; label: string; blurb: string }[] = [
   { value: "all", label: "All agents", blurb: "Every agent gets it" },
@@ -14,6 +15,8 @@ const AGENTS: { value: string; label: string; blurb: string }[] = [
 ];
 
 export default function AddToolForm({ allMode = false }: { allMode?: boolean }) {
+  // The install fires at the CURRENT project's repo — never an implicit default.
+  const { project } = useProject();
   const [url, setUrl] = useState("");
   const [target, setTarget] = useState("all");
   const [notes, setNotes] = useState("");
@@ -44,6 +47,7 @@ export default function AddToolForm({ allMode = false }: { allMode?: boolean }) 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          project,
           url: url.trim(),
           target_agent: allMode ? "all" : target,
           notes,

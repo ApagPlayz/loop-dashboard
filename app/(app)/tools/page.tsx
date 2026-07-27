@@ -1,6 +1,9 @@
 import { Suspense } from "react";
+import { cookies } from "next/headers";
 import { KeyRound, Activity, LayoutGrid, Compass } from "lucide-react";
 import PageHeader from "@/components/page-header";
+import { PROJECT_COOKIE } from "@/components/project-context";
+import { defaultProjectKey } from "@/lib/projects";
 import AddToolForm from "@/components/tools/add-tool-form";
 import FitScan from "@/components/tools/fit-scan";
 import ToolCatalogModal from "@/components/tools/tool-catalog-modal";
@@ -11,7 +14,15 @@ import CapabilityInventory from "@/components/tools/capability-inventory";
 // Inventory reads live YAML from GitHub on each request.
 export const dynamic = "force-dynamic";
 
-export default function ToolsPage() {
+export default async function ToolsPage() {
+  // The inventory is a server component, so it can't read useProject(); it gets
+  // the same selection off the cookie the switcher writes (same rule as Metrics:
+  // the saved project if it still exists, else the first registered one).
+  const cookieStore = await cookies();
+  const projectKey = await defaultProjectKey(
+    cookieStore.get(PROJECT_COOKIE)?.value,
+  );
+
   return (
     <>
       <PageHeader
@@ -64,7 +75,7 @@ export default function ToolsPage() {
             The tools each agent is allowed to use, read straight from its setup.
           </p>
           <Suspense fallback={<p className="text-sm text-zinc-500">Reading agent setup…</p>}>
-            <CapabilityInventory />
+            <CapabilityInventory projectKey={projectKey} />
           </Suspense>
         </section>
       </div>

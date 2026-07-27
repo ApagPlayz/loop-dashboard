@@ -2,12 +2,14 @@
 
 import { useState } from "react";
 import { MessageSquarePlus, ExternalLink } from "lucide-react";
+import { useProject } from "@/components/project-context";
 
 /**
  * "Request a change" box for shared tools — opens a plain issue on the target
  * repo whose body starts with @claude so the mention agent handles it.
  */
 export default function RequestChange() {
+  const { project } = useProject();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ url?: string; error?: string } | null>(
@@ -22,7 +24,7 @@ export default function RequestChange() {
       const res = await fetch("/api/tools/request-change", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ request: text.trim() }),
+        body: JSON.stringify({ project, request: text.trim() }),
       });
       const data = await res.json();
       if (res.ok) {

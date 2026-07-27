@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { WORKFLOWS, listWorkflowCommits } from "@/lib/testing";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,10 @@ export async function GET(req: Request) {
     return NextResponse.json({
       groups: groups.filter((g) => g.commits.length > 0),
     });
-  } catch {
+  } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json(
       { error: "Could not load instruction history." },
       { status: 500 },

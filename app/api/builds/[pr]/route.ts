@@ -8,7 +8,7 @@ import {
   getOctokit,
 } from "@/lib/github";
 import { loadPRDetail, closePR, getIssue, reopenIssue } from "@/lib/queues";
-import { resolveProjectFromUrl } from "@/lib/projects";
+import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +27,9 @@ export async function GET(
     const detail = await loadPRDetail(prNumber, repo);
     return NextResponse.json(detail);
   } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json({ error: msg(err) }, { status: 502 });
   }
 }
@@ -73,9 +76,12 @@ export async function POST(
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
-  const { repo } = await resolveProjectFromUrl(req.url);
-
   try {
+    // Inside the try: resolveProjectFromUrl THROWS a ProjectError for a missing
+    // (400) / unknown (404) project or an unreadable registry (502). Outside it,
+    // that throw escaped the handler as an opaque 500 with no message.
+    const { repo } = await resolveProjectFromUrl(req.url);
+
     switch (body.action) {
       case "merge": {
         try {
@@ -172,20 +178,43 @@ export async function POST(
         if (idea.state === "closed") {
           await reopenIssue(ideaNumber, repo);
         }
+        // Re-adding a label the issue ALREADY carries emits no `issues:
+        // labeled` event, so on an idea that was still `approved` this whole
+        // action used to be silent and the rebuild waited on a cron GitHub
+        // drops regularly. Drop the label first so the re-add is a real event,
+        // then dispatch the Builder explicitly as well — belt and braces,
+        // because the Builder's own gate skips ideas that already have an open
+        // `claude/` PR, and we have just closed this one.
+        for (const stale of ["approved", "proposal", "redraft", "declined"]) {
+          await removeLabel(ideaNumber, stale, repo).catch(ignoreMissingLabel);
+        }
         await addLabel(ideaNumber, "approved", repo);
-        await removeLabel(ideaNumber, "proposal", repo).catch(ignoreMissingLabel);
         await createComment(
           ideaNumber,
           "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
           repo,
         );
 
-        return NextResponse.json({ ok: true, requeued: ideaNumber });
+        let dispatched = true;
+        try {
+          await dispatchWorkflow("claude-builder.yml", "main", {}, repo);
+        } catch (err) {
+          dispatched = false;
+          console.warn(
+            `builds: couldn't dispatch claude-builder.yml on ${repo.owner}/${repo.repo}`,
+            err,
+          );
+        }
+
+        return NextResponse.json({ ok: true, requeued: ideaNumber, dispatched });
       }
       default:
         return NextResponse.json({ error: "Unknown action" }, { status: 400 });
     }
   } catch (err) {
+    if (err instanceof ProjectError) {
+      return NextResponse.json({ error: err.message }, { status: err.httpStatus });
+    }
     return NextResponse.json({ error: msg(err) }, { status: 502 });
   }
 }

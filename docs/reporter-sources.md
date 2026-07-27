@@ -5,6 +5,18 @@ were wired up). Every endpoint below was live-verified (curl/WebFetch).
 Feeds the automated "Claude Code Reporter" digest: Claude Code development, Claude models/capabilities,
 agentic automation, vibe coding, and new MCP servers / skills / plugins.
 
+## What the Reporter is (and isn't)
+
+The Reporter is a **global Claude-ecosystem digest — reading material, not an input to the loop.**
+It pulls the same 11 ecosystem-wide sources for everyone, takes no project parameter, and knows
+nothing about the repos registered in `config/projects.json`. Nothing it produces is filtered by,
+attributed to, or connected to a project: no digest item ever becomes a proposal issue, reaches the
+Scout's prompt, or influences what gets built. Improvement ideas come from the Scout agent reading
+the target repo at runtime (see `config/loop-template/workflows/claude-scout.yml`); the two systems
+are entirely separate. Treat the News tab as "what happened in Claude-land this week", and don't
+read per-project relevance into it. (Making it project-aware — per-repo `interests[]`, "file this as
+a proposal" — is an open idea, not a thing that exists.)
+
 ## Implemented sources (live in `lib/reporter-sources.ts`)
 
 Every fetcher below is registered in `pullAllSources()` and reports a `SourceStatus`, so a single
@@ -13,7 +25,7 @@ source failing degrades gracefully (it shows as failed in the UI strip; the rest
 | Fetcher | Endpoint | Category | Notes |
 |---------|----------|----------|-------|
 | `pullClaudeCodeReleases` | GitHub Releases API + raw `CHANGELOG.md` | `code-release` | Ground truth; CHANGELOG versions newer than the newest release are pinned as brand-new |
-| `pullMcpRegistry` | `https://registry.modelcontextprotocol.io/v0/servers` | `mcp` | Incremental via `updated_since` |
+| `pullMcpRegistry` | `https://registry.modelcontextprotocol.io/v0/servers` | `mcp` | Fixed 45-day window: `updated_since` is computed as `now − 45d` on every pull, **not** resumed from a stored cursor |
 | `pullAwesomeClaudeCode` | raw `THE_RESOURCES_TABLE_NEW.csv` | `mcp` / `skill-plugin` | Best curated feed; last-45-days window |
 | `pullHackerNews` | HN Algolia `search_by_date` + `items/{id}` | `community` | **Now also pulls the top ~5 comments** (`items/{objectID}` → `children[].text`, HTML-stripped, ≤500 chars) into `discussion` for the top ~15 kept stories, as real sentiment input. `discussionUrl` = HN thread |
 | `pullAnthropicNews` | community RSS mirror (`taobojlen/anthropic-rss-feed`) | `news` | Anthropic-only announcements |
@@ -58,7 +70,33 @@ the raw discussion text is never persisted or shown.
 - **X accounts** — @AnthropicAI, @claudeai, @claude_news, @alexalbert__ — no clean free API; manual/occasional only.
 - **YouTube @claude channel** — RSS via `youtube.com/feeds/videos.xml?channel_id=...`.
 
-## Recommended pull strategy
+## Actual pull strategy (what the code does)
+
+- **No incremental state. Every pull is a full fixed-window re-read**, on every run, of every
+  source: 45 days (MCP registry, awesome-claude-code, Anthropic Engineering), 30 days (Simon
+  Willison), 21 days (TLDR AI, Reddit), 14 days (Hacker News), whatever the feed returns
+  (releases/CHANGELOG, Anthropic news, AlphaSignal, GitHub Discussions). There are no per-source
+  cursors or checkpoints — a version of this existed, was written to the cache and never read by
+  anything, and was deleted in July 2026. Fixed windows are the deliberate choice here: they're
+  self-healing, and the cache they'd have to be stored in isn't durable (below).
+- **Dedupe happens after the pull, not during it** (`lib/reporter.ts`): by canonical URL, except
+  `code-release` items which collapse by version number. Re-reading the same window every run is
+  therefore free of duplicates; a merge with the cached digest preserves dates, summaries and
+  AI-derived insights that a fresh pull hasn't re-derived.
+- **All 11 sources run in parallel** and every failure degrades to a `SourceStatus` in the UI strip
+  — one dead source never sinks the digest.
+- **The cache is best-effort, not storage** (`lib/reporter-store.ts`): an in-memory copy backed by a
+  JSON file under `os.tmpdir()`. Locally that survives for the life of the dev server; on Vercel
+  it's per-lambda-instance and gone on every cold start. So a cold request builds the digest under
+  an 8-second pull budget and skips AI enrichment (`getDigest`), while the full job — no budget,
+  plus enrichment — runs on the 6-hourly Vercel cron and on "Refresh now" (`refreshDigest`).
+- **Rate limits:** `GITHUB_TOKEN` is used when present (also required for the GitHub Discussions
+  source, which reports `ok:false` without it).
+
+## Original recommended strategy (2026-07-15 research — aspirational, not implemented)
+
+Kept for reference. The checkpoint-based incremental design below was never built; see the actual
+strategy above for what runs.
 
 - **Tier 1 (every run — cheap, structured):** sources #1–5 (GitHub API + registries). Diff against last-seen checkpoints (release id / CSV row ID / `updatedAt`).
 - **Tier 2 (every run — query fan-out):** HN Algolia with rotating queries; Reddit if reachable.
