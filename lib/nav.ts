@@ -7,6 +7,7 @@
  */
 
 import {
+  LayoutDashboard,
   Workflow,
   Lightbulb,
   GitPullRequest,
@@ -30,6 +31,7 @@ export type NavItem = {
 
 export const NAV_ITEMS: NavItem[] = [
   // This project — follows the global project switcher.
+  { href: "/", label: "Overview", icon: LayoutDashboard, scope: "project" },
   { href: "/map", label: "Process Map", icon: Workflow, scope: "project" },
   { href: "/ideas", label: "Ideas", icon: Lightbulb, scope: "project" },
   { href: "/builds", label: "Pull Requests", icon: GitPullRequest, scope: "project" },

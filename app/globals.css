@@ -20,8 +20,60 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-inter);
   --font-mono: var(--font-geist-mono);
+}
+
+/* ------------------------------------------------------------------ *
+ * New design system (navy/Inter) — Phase 2 will migrate existing pages
+ * to these; new work should prefer these tokens over raw zinc-* classes.
+ *
+ * This block ADDS to (it does not replace) the zinc/emerald convention
+ * documented above. Until the migration lands, expect a deliberate seam:
+ * pages built before the rebrand still render zinc surfaces, new pages
+ * (starting with the Overview at "/") render navy ones.
+ *
+ * Surfaces build up: ds-bg (page) → ds-panel (card) → ds-panel-2 (nested).
+ * Tailwind utilities generated from these: bg-ds-panel, border-ds-border,
+ * text-ds-muted, text-ds-accent, tracking-ds-tight, … (opacity modifiers
+ * such as bg-ds-accent/10 work as usual).
+ *
+ * Type: Inter. 600 + tight tracking for headings, 400 for body, 500 +
+ * uppercase + wide tracking for small labels/eyebrows. Geist Mono stays
+ * the monospace face (code, SHAs, branch names).
+ * ------------------------------------------------------------------ */
+
+:root {
+  --ds-bg: #0a0e16; /* page background            */
+  --ds-panel: #0f1420; /* cards / sidebar surfaces   */
+  --ds-panel-2: #141b2b; /* nested surfaces            */
+  --ds-border: #212a3d; /* hairlines, card borders    */
+  --ds-text: #e7eaf2; /* primary text               */
+  --ds-muted: #9aa4bb; /* secondary text             */
+  --ds-faint: #5f6a85; /* captions, least emphasis   */
+  --ds-accent: #34d399; /* emerald accent (emerald-400 hue, as today) */
+  --ds-warning: #f2b155; /* semantic amber            */
+  --ds-danger: #f87171; /* semantic red — matches the red-400 the app
+                            already uses for error text */
+}
+
+@theme inline {
+  --color-ds-bg: var(--ds-bg);
+  --color-ds-panel: var(--ds-panel);
+  --color-ds-panel-2: var(--ds-panel-2);
+  --color-ds-border: var(--ds-border);
+  --color-ds-text: var(--ds-text);
+  --color-ds-muted: var(--ds-muted);
+  --color-ds-faint: var(--ds-faint);
+  --color-ds-accent: var(--ds-accent);
+  --color-ds-warning: var(--ds-warning);
+  --color-ds-danger: var(--ds-danger);
+
+  /* Letter-spacing scale that goes with Inter. */
+  --tracking-ds-tight: -0.015em; /* large headings          */
+  --tracking-ds-heading: -0.01em; /* smaller headings        */
+  --tracking-ds-label: 0.05em; /* small caps labels       */
+  --tracking-ds-eyebrow: 0.09em; /* eyebrows / section caps */
 }
 
 html {
