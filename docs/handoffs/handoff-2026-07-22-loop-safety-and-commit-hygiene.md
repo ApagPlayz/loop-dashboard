@@ -1,5 +1,7 @@
 # Handoff — Loop safety, commit hygiene, News/Tools/Builds features (2026-07-22)
 
+> **SUPERSEDED by `handoff-2026-07-28-audit-fixes-verification-and-redesign-pick.md` (2026-07-28)** — read that file instead; this one is kept for history.
+
 ## TL;DR
 - Branch `main`, **working tree CLEAN and fully pushed** (`main...origin/main`, 0 uncommitted). This is new — the whole prior backlog of uncommitted work is now committed.
 - This session shipped 5 dashboard features (all committed+pushed, `npm run build` green): News/reporter sentiment overhaul, agent-aware tool-fit, a PR **conflict + "Rebuild fresh"** action, **Scout/Builder dedup**, and a **stale-PR "behind main" warning**. Plus resolved a big scare: nothing was being committed (now fixed) and clarified that a real "pause the loop" already exists.
