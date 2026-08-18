@@ -20,7 +20,7 @@ import { snapshotWorkflows } from "./map-history";
 import { aiStructuredCall, AiError, type ChatMessage } from "./map-ai";
 import { listTemplateWorkflows, isValidTemplateFileName } from "./loop-template";
 import { resolveProject } from "./projects";
-import { localCheckoutForRepo } from "./local-folders";
+import { localCheckoutForRepo, getCheckoutStatus, type CheckoutStatus } from "./local-folders";
 import type { FileChange } from "./map-types";
 
 /** How long one chat turn may run (background job; big edits are slow). */
@@ -77,6 +77,50 @@ function transcriptOf(messages: ChatMessage[]): string {
 }
 
 /**
+ * Plain-English drift summary for a local checkout, told to the model so it
+ * knows (and can tell the owner) whether "the local code" and "what's on
+ * GitHub" are actually the same thing right now. See {@link CheckoutStatus}.
+ */
+function describeCheckoutDrift(status: CheckoutStatus): string {
+  if (!status.isGitRepo) {
+    return "This local checkout is not (or is no longer) a readable git repository, so its relationship to GitHub could not be determined. Treat anything read from it with extra caution.";
+  }
+
+  const notes: string[] = [];
+  if (status.upstream) {
+    if (status.ahead) {
+      notes.push(
+        `${status.ahead} commit${status.ahead === 1 ? "" : "s"} ahead of ${status.upstream} and NOT pushed — GitHub does not have ${status.ahead === 1 ? "this change" : "these changes"} yet.`,
+      );
+    }
+    if (status.behind) {
+      notes.push(
+        `${status.behind} commit${status.behind === 1 ? "" : "s"} behind ${status.upstream} — GitHub already has change${status.behind === 1 ? "" : "s"} this checkout doesn't have yet.`,
+      );
+    }
+  } else {
+    notes.push("No upstream tracking branch is configured, so it can't be compared to GitHub automatically.");
+  }
+  if (status.dirty) {
+    notes.push(
+      `${status.dirtyFileCount} file${status.dirtyFileCount === 1 ? "" : "s"} on disk with uncommitted changes — not committed, so definitely not on GitHub.`,
+    );
+  }
+  if (status.remoteStale === true) {
+    notes.push(
+      `This machine's own record of ${status.upstream} is out of date (hasn't fetched recently), so even the ahead/behind counts above may understate the real difference.`,
+    );
+  } else if (status.remoteStale === null && status.upstream) {
+    notes.push(`Couldn't verify just now whether this machine's record of ${status.upstream} is current.`);
+  }
+
+  if (notes.length === 0) {
+    return `This checkout is on branch "${status.branch ?? "(unknown)"}" and appears to match ${status.upstream}: no unpushed commits, nothing missing, no uncommitted changes.`;
+  }
+  return `This checkout is on branch "${status.branch ?? "(unknown)"}". Drift vs GitHub: ${notes.join(" ")}`;
+}
+
+/**
  * Run one chat turn: reply to the owner's latest message, with drafted file
  * changes when they asked for a concrete edit. Throws {@link AiError} (or
  * ProjectError from target resolution) with plain-English messages.
@@ -91,6 +135,8 @@ export async function runProcessChat(
   let current: Map<string, string>;
   /** Local checkout of the target project's code (PROJECT mode only). */
   let checkout: string | null = null;
+  /** How that checkout compares to GitHub right now (only when checkout is set). */
+  let checkoutStatus: CheckoutStatus | null = null;
   try {
     if (isTemplate) {
       current = await listTemplateWorkflows();
@@ -98,6 +144,7 @@ export async function runProcessChat(
       const { repo } = await resolveProject(target);
       current = await snapshotWorkflows("main", repo);
       checkout = await localCheckoutForRepo(repo.owner, repo.repo);
+      if (checkout) checkoutStatus = await getCheckoutStatus(checkout);
     }
   } catch (err) {
     if (err instanceof AiError) throw err;
@@ -111,8 +158,10 @@ export async function runProcessChat(
 You may MODIFY existing workflow files, ADD brand-new ones, and REMOVE ones (to remove a file, include it in changes with newContent set to an empty string). Filenames must be plain names ending in .yml (custom agents should be named claude-<something>.yml so the map picks them up).`
     : `You are editing ONE PROJECT's live loop: the workflow files on the repo's main branch. You may ONLY modify the existing files listed below. You must NOT add or remove files — if the request truly needs a brand-new workflow file, explain in the reply that new agents can be added on the template page (or by asking Claude in a chat session), and draft only whatever parts CAN be done by editing existing files.`;
 
-  const codeAccess = !isTemplate && checkout
-    ? `\n\nIn addition to the workflow YAML above, you CAN read this project's ACTUAL source code: it is checked out locally and you have read-only tools (Read, Grep, Glob) rooted at its repository. Before proposing a workflow change based on a claim about how the app behaves, verify that claim against the real code rather than guessing from the YAML or the conversation alone.`
+  const codeAccess = !isTemplate && checkout && checkoutStatus
+    ? `\n\nIn addition to the workflow YAML above, you can read a LOCAL checkout of this project's code on the owner's machine: read-only tools (Read, Grep, Glob) rooted at its repository. Before proposing a workflow change based on a claim about how the app behaves, verify that claim against this code rather than guessing from the YAML or the conversation alone.
+
+IMPORTANT — this local checkout is not guaranteed to match what's on GitHub, which is what every OTHER view in this dashboard (PRs, issues, the loop itself) reads. ${describeCheckoutDrift(checkoutStatus)} If there is meaningful drift (unpushed commits, missing commits, uncommitted changes, or an unverified/stale record of GitHub), say so plainly in your reply whenever it's relevant — in plain language a non-technical owner can follow, e.g. "heads up: this checkout has changes on disk that haven't been pushed to GitHub yet, so the dashboard's PR/issue views won't show them." Never call this the project's "actual" or "real" source code without that caveat when drift exists — it's what's on THIS MACHINE right now, which may differ from GitHub.`
     : "";
 
   const system = `You are the maintenance engineer for an autonomous agent loop built on GitHub Actions, chatting with the loop's owner. ${LOOP_DESCRIPTION}

@@ -12,6 +12,15 @@ type WorkflowPower = {
   isMention: boolean;
 };
 
+type PauseRecord = { disabled: string[]; pausedAt: string } | null;
+
+type PowerResponse = {
+  ok?: boolean;
+  changed?: string[];
+  needsConfirmation?: boolean;
+  wouldEnable?: string[];
+};
+
 /**
  * The loop power menu: master pause/resume plus per-workflow switches for the
  * selected project. Opens as a bottom sheet on mobile / small panel on desktop.
@@ -57,9 +66,14 @@ function PowerSheet({
 }) {
   const [workflows, setWorkflows] = useState<WorkflowPower[] | null>(null);
   const [loopPaused, setLoopPaused] = useState(false);
+  const [pauseRecord, setPauseRecord] = useState<PauseRecord>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // "master" | file
   const [confirmingPause, setConfirmingPause] = useState(false);
+  // Set only when a resume was attempted and the server came back with no
+  // usable pre-pause record — i.e. it needs an explicit "enable everything
+  // currently off" confirmation before it will touch anything.
+  const [confirmingBlanketResume, setConfirmingBlanketResume] = useState(false);
 
   const load = useCallback(async () => {
     setError(null);
@@ -69,6 +83,7 @@ function PowerSheet({
       if (!res.ok) throw new Error(j.error ?? "Couldn't read the switches.");
       setWorkflows(j.workflows ?? []);
       setLoopPaused(!!j.loopPaused);
+      setPauseRecord(j.pauseRecord ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't read the switches.");
     }
@@ -80,7 +95,7 @@ function PowerSheet({
     load();
   }, [load]);
 
-  async function post(body: unknown, busyKey: string) {
+  async function post(body: unknown, busyKey: string): Promise<PowerResponse | null> {
     setBusy(busyKey);
     setError(null);
     try {
@@ -89,17 +104,35 @@ function PowerSheet({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "Couldn't flip the switch.");
+      const j: PowerResponse = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((j as { error?: string }).error ?? "Couldn't flip the switch.");
+      if (j.needsConfirmation) return j; // nothing changed yet — caller decides what to show
       await load();
       onChanged();
+      return j;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't flip the switch.");
+      return null;
     } finally {
       setBusy(null);
       setConfirmingPause(false);
     }
   }
+
+  async function handleResumeClick() {
+    const j = await post({ action: "resume" }, "master");
+    if (j?.needsConfirmation) setConfirmingBlanketResume(true);
+  }
+
+  async function confirmBlanketResume() {
+    setConfirmingBlanketResume(false);
+    await post({ action: "resume", confirmBlanket: true }, "master");
+  }
+
+  // What a blanket resume would enable, computed from the switches already
+  // on screen — shown before the owner ever clicks anything, per the "be
+  // honest about what Resume will do" requirement.
+  const wouldEnable = (workflows ?? []).filter((w) => !w.enabled).map((w) => w.file);
 
   return (
     <Modal onClose={onClose} className="h-[95vh] w-[95vw] sm:h-auto sm:max-h-[85vh] sm:w-[90vw] sm:max-w-[560px]">
@@ -130,7 +163,11 @@ function PowerSheet({
             </p>
             <p className="mt-1 text-xs leading-relaxed text-zinc-400">
               {loopPaused
-                ? "Switch it back on and the agents pick up where they left off."
+                ? pauseRecord
+                  ? pauseRecord.disabled.length > 0
+                    ? `Resume switches back on exactly what pause turned off: ${pauseRecord.disabled.join(", ")}. Anything you turned off on purpose stays off.`
+                    : "Pause didn't need to turn anything off last time — resuming won't touch any switch you've set individually."
+                  : "We don't have a record of exactly what pause turned off (it may have been paused before this feature existed, or paused directly on GitHub). Resuming will ask you to confirm before touching anything."
                 : "Pausing switches every agent off. Nothing is deleted — agents just stop running until you switch back on. Anything already running finishes."}
             </p>
             {!loopPaused && !confirmingPause && (
@@ -167,15 +204,43 @@ function PowerSheet({
                 </div>
               </div>
             )}
-            {loopPaused && (
+            {loopPaused && !confirmingBlanketResume && (
               <button
                 disabled={busy !== null}
-                onClick={() => post({ action: "resume" }, "master")}
+                onClick={handleResumeClick}
                 className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-semibold text-zinc-950 hover:bg-emerald-400 disabled:opacity-50"
               >
                 {busy === "master" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                 Resume loop
               </button>
+            )}
+            {loopPaused && confirmingBlanketResume && (
+              <div className="mt-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-200">
+                <p>
+                  No record of what pause turned off, so this would switch ON every workflow
+                  that's currently off — including anything you disabled on purpose:
+                </p>
+                <p className="mt-1.5 font-mono text-[11px] text-amber-100">
+                  {wouldEnable.length > 0 ? wouldEnable.join(", ") : "(nothing is currently off)"}
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    disabled={busy !== null}
+                    onClick={confirmBlanketResume}
+                    className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-2.5 py-1.5 font-semibold text-zinc-950 hover:bg-amber-400 disabled:opacity-50"
+                  >
+                    {busy === "master" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Yes, turn them all back on
+                  </button>
+                  <button
+                    disabled={busy !== null}
+                    onClick={() => setConfirmingBlanketResume(false)}
+                    className="rounded-lg border border-zinc-700 px-2.5 py-1.5 text-zinc-300 hover:bg-zinc-800"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
           </div>
 

@@ -104,6 +104,137 @@ const checkoutCache = new Map<string, { at: number; path: string | null }>();
 const CHECKOUT_TTL_MS = 60_000;
 
 /**
+ * How a local checkout's git state compares to its remote-tracking branch —
+ * i.e. whether "read the local checkout" and "read GitHub" describe the same
+ * codebase right now. Deliberately NOT cached alongside {@link checkoutCache}:
+ * that cache is only for the (slow, filesystem-scanning) path lookup, and its
+ * 60s TTL would be fine for "which folder is this repo in" but wrong for
+ * "is it dirty right now" — this is recomputed on every call.
+ */
+export type CheckoutStatus = {
+  /** False when the path isn't a git repo at all (or git couldn't read it). */
+  isGitRepo: boolean;
+  /** Current branch name; null when detached HEAD or unreadable. */
+  branch: string | null;
+  /** Upstream tracking ref, e.g. "origin/main"; null when none is configured. */
+  upstream: string | null;
+  /** Commits on HEAD not on the upstream tracking ref. Null when there's no upstream. */
+  ahead: number | null;
+  /** Commits on the upstream tracking ref not on HEAD. Null when there's no upstream. */
+  behind: number | null;
+  /** Whether the working tree has uncommitted changes (modified, staged, or untracked). */
+  dirty: boolean;
+  /** Number of files `git status --porcelain` reports as changed. */
+  dirtyFileCount: number;
+  /**
+   * Whether the LOCAL remote-tracking ref (refs/remotes/<remote>/<branch>) is
+   * itself out of date with what's actually on the remote right now — i.e.
+   * whether `ahead`/`behind` above might be understating true divergence
+   * because this machine hasn't fetched recently. Checked with a read-only
+   * `git ls-remote` (never writes local refs, never fetches objects). Null
+   * when the check couldn't complete (no upstream, offline, timeout) — treat
+   * that as "unknown", never as "not stale".
+   */
+  remoteStale: boolean | null;
+};
+
+const NOT_A_GIT_REPO: CheckoutStatus = {
+  isGitRepo: false,
+  branch: null,
+  upstream: null,
+  ahead: null,
+  behind: null,
+  dirty: false,
+  dirtyFileCount: 0,
+  remoteStale: null,
+};
+
+/** Run a git command in `dir`, returning trimmed stdout or null on any failure/timeout. */
+async function runGit(dir: string, args: string[], timeoutMs = 5_000): Promise<string | null> {
+  try {
+    const { stdout } = await exec("git", ["-C", dir, ...args], { timeout: timeoutMs });
+    return stdout.trim();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Read-only drift inspection for a local checkout: branch, ahead/behind vs
+ * its upstream, working-tree dirtiness, and (unless `checkRemote` is false)
+ * whether the local remote-tracking ref itself is stale.
+ *
+ * Never mutates anything — no `git fetch`, `pull`, `checkout`, or `reset`.
+ * The only network call this makes, if any, is a single `git ls-remote`
+ * (lists refs; does not download objects or write local state), guarded by
+ * a short timeout so a slow/offline network degrades to `remoteStale: null`
+ * instead of hanging the caller. Everything else is a fast local `git`
+ * read (branch, rev-list, status) with no network involved.
+ */
+export async function getCheckoutStatus(
+  dir: string,
+  opts: { checkRemote?: boolean } = {},
+): Promise<CheckoutStatus> {
+  if (!(await pathExists(path.join(dir, ".git")))) return NOT_A_GIT_REPO;
+
+  const branch = await runGit(dir, ["rev-parse", "--abbrev-ref", "HEAD"]);
+  if (branch === null) return NOT_A_GIT_REPO; // .git exists but git couldn't read it
+
+  const upstream = await runGit(dir, [
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{u}",
+  ]);
+
+  let ahead: number | null = null;
+  let behind: number | null = null;
+  if (upstream) {
+    const counts = await runGit(dir, ["rev-list", "--left-right", "--count", "@{u}...HEAD"]);
+    if (counts) {
+      const [behindRaw, aheadRaw] = counts.split(/\s+/);
+      const b = Number(behindRaw);
+      const a = Number(aheadRaw);
+      if (Number.isFinite(b) && Number.isFinite(a)) {
+        behind = b;
+        ahead = a;
+      }
+    }
+  }
+
+  const statusOut = await runGit(dir, ["status", "--porcelain"]);
+  const dirtyFileCount = statusOut
+    ? statusOut.split("\n").filter((line) => line.trim().length > 0).length
+    : 0;
+
+  let remoteStale: boolean | null = null;
+  if (opts.checkRemote !== false && upstream) {
+    const slash = upstream.indexOf("/");
+    if (slash > 0) {
+      const remoteName = upstream.slice(0, slash);
+      const remoteBranch = upstream.slice(slash + 1);
+      const [localSha, lsRemoteOut] = await Promise.all([
+        runGit(dir, ["rev-parse", `refs/remotes/${remoteName}/${remoteBranch}`]),
+        runGit(dir, ["ls-remote", remoteName, `refs/heads/${remoteBranch}`], 4_000),
+      ]);
+      const remoteSha = lsRemoteOut?.split(/\s+/)[0] || null;
+      if (localSha && remoteSha) remoteStale = remoteSha !== localSha;
+    }
+  }
+
+  return {
+    isGitRepo: true,
+    branch: branch === "HEAD" ? null : branch, // "HEAD" from rev-parse means detached
+    upstream,
+    ahead,
+    behind,
+    dirty: dirtyFileCount > 0,
+    dirtyFileCount,
+    remoteStale,
+  };
+}
+
+/**
  * Absolute path to the local checkout of a GitHub repo (owner/repo), found by
  * scanning the projects directory and matching each folder's origin remote.
  * Returns null when no matching checkout exists on this machine (e.g. running

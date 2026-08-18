@@ -1,5 +1,7 @@
 # Handoff — Audit fixes shipped & live-verified; loop back ON; redesign pick pending (2026-07-28)
 
+> **SUPERSEDED by `handoff-2026-08-03-redesign-shipped-to-pr-and-merge-backlog.md` (2026-08-03)** — read that file instead; this one is kept for history. Its audit/rollout detail is still the best reference for *what was fixed on 2026-07-27*. Two of its instructions are now known to be WRONG and were corrected in the newer handoff: (a) its "Next steps 1" says to comment on issue #49 — #49 is closed and the Builder has no `issue_comment` trigger, so that route reaches nothing; the redesign was instead filed as new issue #126 and built as PR #127. (b) Its "Running & resumable" PIDs are stale — 1135 and 89187 are both dead.
+
 ## TL;DR
 - Branch `main`, **clean and pushed** (`8c5386c`). A full audit of the loop's idea-sourcing was run, ~40 fixes implemented by parallel agents, adversarially verified, committed, and **rolled out live to both target repos** (byte-verified).
 - End-to-end verified in the real UI: power toggle, approve→build (produced live PR #122), new Scout stand-down gate, drift chip, launcher.
