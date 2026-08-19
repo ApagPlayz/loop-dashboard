@@ -215,7 +215,7 @@ They are different tools and both should exist:
 
 - **`docs/loop-brief.md` is the long-form context**, read _in the repo_ by every agent
   (Scout, Builder, Auditor, Retro, Redraft) as part of doing its job. It has room for
-  nuance: what the product is, how the owner works, what evidence convinces him.
+  nuance: what the product is, how the owner works, what evidence convinces them.
 - **The `scout` block is the structured knob set**, injected _into the Scout's prompt_ by
   the gate step before the agent starts. It is short, machine-read, and editable from the
   dashboard on a phone.

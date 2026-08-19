@@ -33,7 +33,7 @@ context** every agent reads here in the repo. The `scout` block (`productSummary
 Scout's gate step injects straight into its prompt, edited from the dashboard.
 
 **If the two conflict, the `scout` block wins for the Scout's behavior** — it is what the
-owner most recently typed, and the Scout is told it is him speaking directly. Every other
+owner most recently typed, and the Scout is told it is the owner speaking directly. Every other
 agent only ever sees this file, so this file governs for them. A conflict is a bug, not a
 setting: when you spot one, propose the fix to this file in your next PR. Full detail in
 `docs/DASHBOARD-CONTRACT.md` § 6.

@@ -143,3 +143,60 @@ was. But there is no pass over *already-filed* issues, so C1 stands regardless.
   (not `Supply Chain Project`, which is not a git repo at all).
 - When resuming this loop later, enable workflows individually rather than using master Resume
   — at least until D1 lands.
+
+---
+
+## Rollout log — 2026-08-18
+
+### Dashboard repo (`ApagPlayz/loop-dashboard`, private)
+Pushed to `main`:
+- `dbedb6d` Security: gate the @mention agent behind a permission check
+- `3c76b2d` Make the loop see hand-made work, not just its own paper trail
+
+Verified before push: `tsc --noEmit` clean, `npm run build` succeeds, all 10 workflow YAMLs
+parse, gate scripts pass `bash -n`, `node --check` on `loop-metrics.mjs`.
+
+### SECURITY FINDING (found during rollout, now fixed)
+
+**`ApagPlayz/content-generation-platform` is PUBLIC and its `claude-mention.yml` was
+ungated and active.** The job's only condition was a bare substring match for `@claude` in a
+comment or issue body. It carried `contents: write`, `actions: write`, `pull-requests: write`,
+`issues: write` and `--allowedTools "Bash,BashOutput,KillShell,Read,Write,Edit,Glob,Grep,Task,
+TodoWrite,WebSearch,WebFetch"`, following instructions taken straight from the comment.
+
+Any GitHub account could have commented `@claude …` on any issue and obtained arbitrary code
+execution with repo write access. `actions: write` compounds it — workflows could be rewritten.
+
+The fix already existed as uncommitted work in the dashboard tree from a previous session and
+had never been committed or rolled out. `supply-chain-optimizer` had already been hardened live
+with an equivalent (differently-worded) gate; the content platform had not.
+
+**Fixed 2026-08-18** — the fail-closed `authorize` job (separate `contents: read` job, accepts
+only ADMIN or MAINTAIN, refuses identities that cannot be permission-checked) is now live on
+content-generation-platform, byte-verified against the template.
+
+### Target repos — what was rolled out
+
+| Repo | File | Status |
+|---|---|---|
+| content-generation-platform | `.github/workflows/claude-mention.yml` | **Rolled out** — security gate |
+| content-generation-platform | `scripts/loop-metrics.mjs` | Rolled out — reporting only, no behaviour change |
+| content-generation-platform | `claude-scout.yml`, `claude-builder.yml` | **Held** — see below |
+| supply-chain-optimizer | `claude-builder.yml`, `claude-scout.yml`, `scripts/loop-metrics.mjs` | Rolled out — loop paused, zero risk |
+| supply-chain-optimizer | `claude-mention.yml` | **Deliberately NOT rolled out** — its live copy already has an equivalent gate PLUS repo-specific content (the "Re-check the PR" step) that the template lacks. Rolling out the template would have clobbered it. |
+
+All five rolled-out files byte-verified against the template after push. `supply-chain-optimizer`
+confirmed still fully paused afterwards; no workflow runs were triggered by the pushes.
+
+**Why Scout/Builder were held on content-generation-platform:** its `docs/loop-brief.md` is also
+100% placeholder, so the new stand-down guard would have halted a live, actively-shipping loop.
+The owner chose to have the brief drafted first so the loop never stops. That draft is the
+open item.
+
+### Pre-rollout check worth repeating
+Before overwriting any target-repo file, diff it against the template at the *previous* commit
+first. Four of five files were byte-identical (safe to overwrite); the fifth had live
+repo-specific work that a blind rollout would have destroyed. There is no automated
+rollout-to-existing-repo path in the dashboard — `applyTemplateChanges` writes only to the
+dashboard repo, and `computeTemplateDrift` is read-only — so rollout is manual and this check
+is manual too.

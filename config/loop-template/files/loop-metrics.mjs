@@ -88,7 +88,7 @@ const ignoredIdeas = openIdeas
 const pct = (n, d) => (d ? Math.round((n / d) * 100) : null);
 
 // Cycle time: how long a PR sat waiting on the owner. This is the review bottleneck,
-// and it is the number most likely to reveal that the loop is outrunning him.
+// and it is the number most likely to reveal that the loop is outrunning them.
 //
 // Batch size. DORA's research ties large changesets to instability, so a rising median
 // PR size alongside a falling merge rate is the loop going bad. Watch these together.
