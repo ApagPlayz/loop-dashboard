@@ -1,6 +1,6 @@
 # Handoff — Redesign pick resolved & built (PR #127 green); merge backlog is now the bottleneck (2026-08-03)
 
-## TL;DR
+> **SUPERSEDED by `handoff-2026-08-19-loop-change-detection-rollout-and-brief-pending.md` (2026-08-19)** — read that file instead; this one is kept for history. Still useful here: the CGP 13-PR merge-backlog detail and the Builder selection-logic notes. Known stale since: supply-chain's loop is now intentionally paused (not merely missing a token), and the "byte-identical to live repos" claim about the template no longer holds — both mention workflows have since diverged deliberately.
 - Branch `main`, **clean, in sync with `origin/main`** at `3863407`. **No dashboard code changed this session** — this was diagnosis + unblocking the content platform.
 - The owner's redesign pick was resolved: **"warm creator" = Style 2 "Warm Creator"**, **light default** + dark toggle. Filed as issue **#126** (`approved`) on `content-generation-platform`; the Builder picked it up in ~1 min and opened **PR #127**, now **MERGEABLE/CLEAN with audit+demo+test all passing**.
 - **Single next action: merge PR #127**, then pull + restart the Content Engine so the new look is actually visible.
