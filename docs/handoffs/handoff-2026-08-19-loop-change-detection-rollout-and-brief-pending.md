@@ -4,7 +4,7 @@
 - The loop's blindness to hand-made work is **fixed and live**: Builder/Scout now check real code before acting, both refuse to run on an unconfigured brief, metrics count human PRs, Resume no longer blanket-enables, chat admits local-checkout drift. Dashboard `main` clean & pushed at `b405f32`.
 - **supply-chain-optimizer's loop is OFF on purpose** (owner's decision, mid-repair — see memory `supply-chain-loop-intentionally-paused`). Do not resume or "fix" it.
 - A live **security hole was closed**: content-generation-platform (public repo) had an ungated `@claude` mention workflow = arbitrary code execution for anyone. Gate now live.
-- **Single next action:** get the owner's yes/no on the 5 drafted goals in the CGP loop-brief (draft at scratchpad `cgp-loop-brief.md` — copy below if scratchpad is gone), land it in the repo, then roll the new Scout/Builder to CGP.
+- **Single next action:** get the owner's yes/no on the 5 drafted goals in the CGP loop-brief (draft committed at `docs/drafts/cgp-loop-brief-draft-2026-08-18.md`), land it in the repo, then roll the new Scout/Builder to CGP.
 - **Owner pushed the supply-chain commits** (2026-08-19: local == origin at `fed1bb6`) — the "25 unpushed commits" blocker from this session is RESOLVED.
 - Separate deliverable completed: elderly-care market research, fully filed in `~/Documents/Claude Projects/elderly care/` (self-contained, not this repo's concern).
 
@@ -18,7 +18,7 @@ Arc: make the autonomous loop *trustworthy alongside a hands-on owner* — it mu
   - content-generation-platform: security-gated `claude-mention.yml`, new `scripts/loop-metrics.mjs`.
 - **Deliberately NOT rolled out:** new Scout/Builder to content-generation-platform — its `docs/loop-brief.md` is still 100% placeholder and the new guard would halt its live, shipping loop. Owner chose "draft the brief first, then roll out."
 - **Also deliberately not rolled out:** template `claude-mention.yml` to supply-chain — its live copy has an equivalent gate PLUS repo-specific content (a "Re-check the PR" step) the template lacks. Overwriting would destroy it.
-- **CGP brief draft** exists at scratchpad `cgp-loop-brief.md` (99 lines, no placeholders). If the scratchpad was purged, regenerate via the agent prompt pattern in this session or re-draft from the CGP codebase; the 5 goals awaiting approval: (1) make loop work visible in the product, (2) keep Warm Creator look consistent, (3) shrink the review queue, (4) nothing bad auto-publishes, (5) bounded/honest spend.
+- **CGP brief draft** is committed at `docs/drafts/cgp-loop-brief-draft-2026-08-18.md` (99 lines, no placeholders). The 5 goals awaiting approval: (1) make loop work visible in the product, (2) keep Warm Creator look consistent, (3) shrink the review queue, (4) nothing bad auto-publishes, (5) bounded/honest spend.
 
 ## Verified vs assumed
 **Verified:**
