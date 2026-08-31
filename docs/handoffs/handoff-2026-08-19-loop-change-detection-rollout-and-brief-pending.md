@@ -1,5 +1,7 @@
 # Handoff — Loop change-detection fixes shipped & rolled out; CGP brief awaiting approval (2026-08-19)
 
+> **SUPERSEDED by `handoff-2026-08-31-aws-bedrock-migration-phases-0-3.md` (2026-08-31)** — read that file instead; this one is kept for history.
+
 ## TL;DR
 - The loop's blindness to hand-made work is **fixed and live**: Builder/Scout now check real code before acting, both refuse to run on an unconfigured brief, metrics count human PRs, Resume no longer blanket-enables, chat admits local-checkout drift. Dashboard `main` clean & pushed at `b405f32`.
 - **supply-chain-optimizer's loop is OFF on purpose** (owner's decision, mid-repair — see memory `supply-chain-loop-intentionally-paused`). Do not resume or "fix" it.
