@@ -11,7 +11,11 @@ export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // Always-public paths.
-  if (pathname === "/login" || pathname === "/api/login") {
+  // /api/health is unauthenticated on purpose: it's the ALB/ECS health
+  // check target. Without this, the health check hits a protected path,
+  // gets redirected to /login, and the target is marked permanently
+  // unhealthy. See docs/plans/aws-bedrock-multitenant-plan-2026-08-31.md §2.2.
+  if (pathname === "/login" || pathname === "/api/login" || pathname === "/api/health") {
     return NextResponse.next();
   }
 

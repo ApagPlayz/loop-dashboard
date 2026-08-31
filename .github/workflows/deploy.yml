@@ -1,0 +1,94 @@
+# ---------------------------------------------------------------------------
+# NOT YET RUNNABLE. This workflow deploys the dashboard container to ECS
+# Fargate, and it needs an AWS account, an ECR repo, an ECS cluster/service,
+# and an OIDC-trusted IAM role that do not exist yet (Phase 2 provisioning,
+# see docs/plans/aws-bedrock-multitenant-plan-2026-08-31.md §2.3). Until
+# those are created and the repo variables/secrets below are set, this
+# workflow will fail at the "configure-aws-credentials" step. That's
+# expected — leave it in place, don't delete it, and don't try to make it
+# pass by inventing values.
+#
+# What someone needs to supply before this can run (see the placeholders
+# marked below):
+#   - vars.AWS_REGION            e.g. "us-east-1"
+#   - vars.AWS_ACCOUNT_ID        the target AWS account
+#   - vars.AWS_DEPLOY_ROLE_ARN   an IAM role trusting this repo's GitHub OIDC
+#                                 provider, with permission to push to ECR
+#                                 and call ecs:UpdateService
+#   - vars.ECR_REPOSITORY        e.g. "loop-dashboard"
+#   - vars.ECS_CLUSTER           the ECS cluster name
+#   - vars.ECS_SERVICE           the ECS service name
+#
+# Set repo variables (not secrets — none of these are sensitive) under
+# Settings -> Secrets and variables -> Actions -> Variables. No long-lived
+# AWS access keys are used anywhere in this workflow: auth is GitHub OIDC ->
+# short-lived STS credentials, via aws-actions/configure-aws-credentials.
+# ---------------------------------------------------------------------------
+
+name: Deploy to ECS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write # required for GitHub OIDC -> AWS STS
+  contents: read
+
+concurrency:
+  group: deploy-to-ecs
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }} # PLACEHOLDER — set as a repo variable, e.g. "us-east-1"
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }} # PLACEHOLDER — e.g. "loop-dashboard"
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }} # PLACEHOLDER — the ECS cluster name
+  ECS_SERVICE: ${{ vars.ECS_SERVICE }} # PLACEHOLDER — the ECS service name
+
+jobs:
+  build-and-deploy:
+    name: Build, push, and deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # PLACEHOLDER — arn:aws:iam::<AWS_ACCOUNT_ID>:role/<deploy-role-name>
+          # Must trust token.actions.githubusercontent.com scoped to this repo.
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+            -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
+            .
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+
+      - name: Force a new ECS deployment
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$ECS_SERVICE" \
+            --force-new-deployment \
+            --region "$AWS_REGION"
+
+      - name: Wait for service stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --region "$AWS_REGION"

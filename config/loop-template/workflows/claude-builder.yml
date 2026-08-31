@@ -73,6 +73,34 @@ jobs:
           echo "cap=$cap" >> "$GITHUB_OUTPUT"
           echo "autonomous=$autonomous" >> "$GITHUB_OUTPUT"
 
+      # ── AI provider: subscription (default) vs Bedrock ──────────────────────────
+      # Per-project switch, stored in .github/loop-config.json → "aiProvider". Missing
+      # file, missing field, or an unrecognized value all fall back to "subscription" —
+      # today's behaviour — so a repo that hasn't opted in is completely unaffected.
+      # "bedrock" runs this agent's inference on AWS Bedrock in the CUSTOMER's own AWS
+      # account via GitHub OIDC → an IAM role, instead of the owner's Claude subscription.
+      # See docs/bedrock-setup.md for what the customer has to set up first. (The Scout
+      # is the one exception — it reads its own scout.aiProvider key and defaults away
+      # from Bedrock even when this project-wide key is "bedrock", because Bedrock has
+      # no WebSearch tool; see claude-scout.yml for why.)
+      - name: Resolve AI provider
+        id: ai
+        run: |
+          provider=$(jq -r '.aiProvider // "subscription"' .github/loop-config.json 2>/dev/null || echo subscription)
+          case "$provider" in
+            subscription|bedrock) ;;
+            *)
+              echo "::warning::Unknown aiProvider '$provider' in .github/loop-config.json — falling back to 'subscription'. Valid values: subscription, bedrock."
+              provider=subscription
+              ;;
+          esac
+          region=$(jq -r '.bedrockRegion // "us-west-2"' .github/loop-config.json 2>/dev/null || echo us-west-2)
+          case "$region" in ''|null) region=us-west-2 ;; esac
+          echo "AI provider: $provider$( [ "$provider" = bedrock ] && echo " (region: $region)" )"
+          echo "provider=$provider" >> "$GITHUB_OUTPUT"
+          echo "use_bedrock=$([ "$provider" = "bedrock" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "region=$region" >> "$GITHUB_OUTPUT"
+
       # Cheap pre-flight in plain bash so we never boot an expensive agent for nothing.
       - name: Check the queue
         id: gate
@@ -184,16 +212,16 @@ jobs:
             echo "go=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - if: steps.gate.outputs.go == 'true'
+      - if: steps.gate.outputs.go == 'true' && steps.ai.outputs.use_bedrock != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
-          claude_args: |
+          claude_args: &builder_claude_args |
             --model opus
             --max-turns 80
             --allowedTools "Bash,BashOutput,KillShell,Read,Write,Edit,Glob,Grep,Task,TodoWrite,WebSearch,WebFetch"
-          prompt: |
+          prompt: &builder_prompt |
             You are the BUILDER for ${{ github.repository }}. You open exactly ONE pull request
             this run, then stop.
 
@@ -332,3 +360,20 @@ jobs:
 
             Never push to main. Never merge your own PR. Never report tests green that you did
             not watch pass.
+
+      # BEDROCK MODE — opt-in via .github/loop-config.json → "aiProvider": "bedrock".
+      # See docs/bedrock-setup.md for the customer-side AWS setup this depends on.
+      - name: Configure AWS credentials (OIDC) for Bedrock
+        if: steps.gate.outputs.go == 'true' && steps.ai.outputs.use_bedrock == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ steps.ai.outputs.region }}
+
+      - if: steps.gate.outputs.go == 'true' && steps.ai.outputs.use_bedrock == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          use_bedrock: "true"
+          show_full_output: true
+          claude_args: *builder_claude_args
+          prompt: *builder_prompt

@@ -54,7 +54,7 @@ Ideas move through labels: a new idea is a "proposal"; the owner can mark it "ap
 - Projects switcher: the dashboard can steer more than one project; there's a switcher to change which project you're looking at.
 - Add-a-project onboarding: a wizard to connect a new project, with a checklist of what's needed — typically things like a GitHub OAuth token stored as a secret and a GitHub App connected so the loop can run on that repo.
 - Power menu (pause/resume): a control to pause the whole loop and resume it later — handy when you want the agents to stop proposing/building for a while.
-- AI drafting is free on the owner's Mac because the dashboard talks to the Claude app they're already logged into; in the cloud it would need an API key.
+- AI drafting is free on the owner's Mac because the dashboard talks to the Claude app they're already logged into. When the dashboard runs in the cloud instead, the same features run through AWS Bedrock (billed to the owner's AWS account, no key to store) or, failing that, an Anthropic API key. Either way the dashboard picks automatically — there's nothing to switch by hand.
 
 If someone asks who you are: you're the dashboard's help assistant, powered by Claude, here to explain how everything works.`;
 

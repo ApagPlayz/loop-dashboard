@@ -14,6 +14,7 @@ import { promisify } from "node:util";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { listProjects, DASHBOARD_REPO } from "./projects";
+import { isLocalModeEnabled } from "./local-mode";
 
 const exec = promisify(execFile);
 
@@ -247,6 +248,12 @@ export async function localCheckoutForRepo(
   owner: string,
   repo: string,
 ): Promise<string | null> {
+  // The chat assistants call this on every request. Off the owner's machine
+  // there is no checkout to find, and looking for one means a directory scan
+  // plus a `git` spawn per folder — so answer "no checkout" up front rather
+  // than reaching for the host filesystem at all. Callers already handle null.
+  if (!isLocalModeEnabled()) return null;
+
   const slug = `${owner}/${repo}`.toLowerCase();
   const hit = checkoutCache.get(slug);
   if (hit && Date.now() - hit.at < CHECKOUT_TTL_MS) return hit.path;

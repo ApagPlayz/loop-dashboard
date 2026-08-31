@@ -83,15 +83,39 @@ jobs:
           echo "closed=$closed" >> "$GITHUB_OUTPUT"
           echo "ideas=$ideas" >> "$GITHUB_OUTPUT"
 
-      - if: steps.gate.outputs.go == 'true'
+      # ── AI provider: subscription (default) vs Bedrock ──────────────────────────
+      # Per-project switch, stored in .github/loop-config.json → "aiProvider". Missing
+      # file, missing field, or an unrecognized value all fall back to "subscription" —
+      # today's behaviour. "bedrock" runs this agent's inference on AWS Bedrock in the
+      # CUSTOMER's own AWS account via GitHub OIDC → an IAM role. See
+      # docs/bedrock-setup.md for the customer-side AWS setup this depends on.
+      - name: Resolve AI provider
+        id: ai
+        run: |
+          provider=$(jq -r '.aiProvider // "subscription"' .github/loop-config.json 2>/dev/null || echo subscription)
+          case "$provider" in
+            subscription|bedrock) ;;
+            *)
+              echo "::warning::Unknown aiProvider '$provider' in .github/loop-config.json — falling back to 'subscription'. Valid values: subscription, bedrock."
+              provider=subscription
+              ;;
+          esac
+          region=$(jq -r '.bedrockRegion // "us-west-2"' .github/loop-config.json 2>/dev/null || echo us-west-2)
+          case "$region" in ''|null) region=us-west-2 ;; esac
+          echo "AI provider: $provider$( [ "$provider" = bedrock ] && echo " (region: $region)" )"
+          echo "provider=$provider" >> "$GITHUB_OUTPUT"
+          echo "use_bedrock=$([ "$provider" = "bedrock" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "region=$region" >> "$GITHUB_OUTPUT"
+
+      - if: steps.gate.outputs.go == 'true' && steps.ai.outputs.use_bedrock != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          claude_args: |
+          claude_args: &retro_claude_args |
             --model opus
             --max-turns 50
             --allowedTools "Bash,BashOutput,KillShell,Read,Write,Edit,Glob,Grep,Task,TodoWrite,WebSearch,WebFetch"
-          prompt: |
+          prompt: &retro_prompt |
             You are the RETRO for ${{ github.repository }}'s autonomous improvement loop.
             You improve the loop itself. You do not touch product code.
 
@@ -204,6 +228,22 @@ jobs:
 
             If there is no real lesson, open no PR. Most weeks should produce no PR. Inventing
             a lesson to look useful is the failure this retro exists to catch.
+
+      # BEDROCK MODE — opt-in via .github/loop-config.json → "aiProvider": "bedrock".
+      # See docs/bedrock-setup.md for the customer-side AWS setup this depends on.
+      - name: Configure AWS credentials (OIDC) for Bedrock
+        if: steps.gate.outputs.go == 'true' && steps.ai.outputs.use_bedrock == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ steps.ai.outputs.region }}
+
+      - if: steps.gate.outputs.go == 'true' && steps.ai.outputs.use_bedrock == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          use_bedrock: "true"
+          claude_args: *retro_claude_args
+          prompt: *retro_prompt
 
       - name: Nothing to retro on
         if: steps.gate.outputs.go != 'true'

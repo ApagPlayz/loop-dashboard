@@ -64,6 +64,45 @@ jobs:
           echo "Idea queue cap: $cap"
           echo "cap=$cap" >> "$GITHUB_OUTPUT"
 
+      # ── AI provider: subscription (default) vs Bedrock — SCOUT-SPECIFIC ────────────
+      # Every other agent in this loop reads the project-wide `.aiProvider` key. The
+      # Scout deliberately does NOT: it reads its OWN `scout.aiProvider` key instead,
+      # and defaults to "subscription" even when the rest of the loop is on Bedrock.
+      #
+      # Why: Anthropic's own docs state plainly, "The WebSearch tool is not available
+      # on Amazon Bedrock" (code.claude.com/docs/en/amazon-bedrock, section "Configure
+      # Claude Code" — verified 2026-08-31). The Scout's evidence floor two steps below
+      # REQUIRES a dated external source whenever the motivation comes from outside this
+      # repo, and WebSearch is the tool that finds one. Losing it silently would not
+      # make the Scout fail loudly — it would just make it quietly worse at half its job.
+      # WebFetch (also in this agent's --allowedTools) is a client-side tool and is NOT
+      # listed as Bedrock-unavailable, so it should still work — but that is unverified
+      # until watched on a real Bedrock run, per plan risk R1. Do not assume it.
+      #
+      # Set `{ "scout": { "aiProvider": "bedrock" } }` in .github/loop-config.json only
+      # once you have accepted that tradeoff. See docs/bedrock-setup.md.
+      - name: Resolve AI provider
+        id: ai
+        run: |
+          provider=$(jq -r '.scout.aiProvider // "subscription"' .github/loop-config.json 2>/dev/null || echo subscription)
+          case "$provider" in
+            subscription|bedrock) ;;
+            *)
+              echo "::warning::Unknown scout.aiProvider '$provider' in .github/loop-config.json — falling back to 'subscription'. Valid values: subscription, bedrock."
+              provider=subscription
+              ;;
+          esac
+          region=$(jq -r '.bedrockRegion // "us-west-2"' .github/loop-config.json 2>/dev/null || echo us-west-2)
+          case "$region" in ''|null) region=us-west-2 ;; esac
+          if [ "$provider" = "bedrock" ]; then
+            echo "Scout AI provider: bedrock (region: $region) — WebSearch is unavailable; the Scout's evidence floor is degraded on purpose, see the comment above this step."
+          else
+            echo "Scout AI provider: subscription (default) — WebSearch stays available."
+          fi
+          echo "provider=$provider" >> "$GITHUB_OUTPUT"
+          echo "use_bedrock=$([ "$provider" = "bedrock" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "region=$region" >> "$GITHUB_OUTPUT"
+
       # Cheap pre-flight in plain bash so we never boot an expensive agent for nothing.
       - name: Check the proposal pool and triage health
         id: gate
@@ -385,16 +424,16 @@ jobs:
             echo "GITEOF"
           } >> "$GITHUB_OUTPUT"
 
-      - if: steps.gate.outputs.go == 'true'
+      - if: steps.gate.outputs.go == 'true' && steps.ai.outputs.use_bedrock != 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
-          claude_args: |
+          claude_args: &scout_claude_args |
             --model opus
             --max-turns 50
             --allowedTools "Bash,BashOutput,KillShell,Read,Glob,Grep,Task,TodoWrite,WebSearch,WebFetch"
-          prompt: |
+          prompt: &scout_prompt |
             You are the SCOUT for ${{ github.repository }}. You never write or change code.
             You find work that is worth doing, and you make the case for it.
 
@@ -584,6 +623,23 @@ jobs:
             owner's review time. Fewer, better proposals win. If you found nothing worth doing
             this hour, file NOTHING and say so. Filing filler to look productive is the exact
             failure mode that kills this system.
+
+      # BEDROCK MODE — opt-in only, see docs/bedrock-setup.md and the "Resolve AI provider"
+      # step above for why the Scout defaults away from this path.
+      - name: Configure AWS credentials (OIDC) for Bedrock
+        if: steps.gate.outputs.go == 'true' && steps.ai.outputs.use_bedrock == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ steps.ai.outputs.region }}
+
+      - if: steps.gate.outputs.go == 'true' && steps.ai.outputs.use_bedrock == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          use_bedrock: "true"
+          show_full_output: true
+          claude_args: *scout_claude_args
+          prompt: *scout_prompt
 
       # A green tick does not mean the task succeeded. Prove it.
       #

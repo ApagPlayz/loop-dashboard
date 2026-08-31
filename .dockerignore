@@ -1,0 +1,12 @@
+.next
+node_modules
+.git
+docs
+.env*
+.playwright-mcp
+*.png
+npm-debug.log*
+README.md
+tsconfig.tsbuildinfo
+.claude
+.github

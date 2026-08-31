@@ -7,6 +7,7 @@ import { getOctokit, type RepoConfig } from "@/lib/github";
 import { installBaselineLoop, OnboardError } from "@/lib/onboard";
 import { ProjectError } from "@/lib/projects";
 import { resolveScannedFolder, kebabCase, type LocalFolder } from "@/lib/local-folders";
+import { isLocalModeEnabled, localModeDisabledResponse } from "@/lib/local-mode";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -68,8 +69,13 @@ function errText(err: unknown): string {
  *
  * Body: { folder: string, label?: string }
  * Returns: { ok, steps, project, commitUrl?, installed, skipped, labels }
+ *
+ * LOCAL-ONLY: this git-inits, commits and pushes a folder on the host, so it
+ * 404s unless LOOP_DASHBOARD_LOCAL_MODE is on.
  */
 export async function POST(req: Request) {
+  if (!isLocalModeEnabled()) return localModeDisabledResponse();
+
   const token = process.env.GITHUB_TOKEN ?? "";
   const steps: Step[] = [];
 

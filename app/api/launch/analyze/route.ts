@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { resolveProject, ProjectError } from "@/lib/projects";
 import { startLaunchAnalysisJob, latestLaunchJobForProject } from "@/lib/launcher-jobs";
+import { isLocalModeEnabled, localModeDisabledResponse } from "@/lib/local-mode";
 
 export const dynamic = "force-dynamic";
 // The analysis spawns the local Claude CLI as a child process — Node runtime.
@@ -10,8 +11,12 @@ export const runtime = "nodejs";
  * GET /api/launch/analyze?project=<key>
  * The newest analysis job for a project (running or finished) — lets the
  * launch chip re-attach to an analysis the owner walked away from.
+ *
+ * LOCAL-ONLY: 404s unless LOOP_DASHBOARD_LOCAL_MODE is on.
  */
 export async function GET(req: Request) {
+  if (!isLocalModeEnabled()) return localModeDisabledResponse();
+
   const url = new URL(req.url);
   const key = url.searchParams.get("project");
   try {
@@ -30,8 +35,12 @@ export async function GET(req: Request) {
  * POST /api/launch/analyze  Body: { project }
  * Start a background job in which Claude analyzes the project's local folder
  * and creates its launcher. Returns { jobId } to poll.
+ *
+ * LOCAL-ONLY: 404s unless LOOP_DASHBOARD_LOCAL_MODE is on.
  */
 export async function POST(req: Request) {
+  if (!isLocalModeEnabled()) return localModeDisabledResponse();
+
   let body: { project?: string } = {};
   try {
     body = (await req.json()) as typeof body;

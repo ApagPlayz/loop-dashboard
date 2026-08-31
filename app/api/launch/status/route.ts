@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 import { launcherStatus } from "@/lib/launchers";
+import { isLocalModeEnabled, localModeDisabledResponse } from "@/lib/local-mode";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,8 +10,12 @@ export const runtime = "nodejs";
  * GET /api/launch/status?project=
  * Whether the project has a launcher and whether the product is running.
  * Returns { configured, running, url?, kind?, analyzedAt?, notes? }.
+ *
+ * LOCAL-ONLY: 404s unless LOOP_DASHBOARD_LOCAL_MODE is on.
  */
 export async function GET(req: Request) {
+  if (!isLocalModeEnabled()) return localModeDisabledResponse();
+
   try {
     const { project } = await resolveProjectFromUrl(req.url);
     const status = await launcherStatus(project.key);

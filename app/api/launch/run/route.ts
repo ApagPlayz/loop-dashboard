@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { resolveProject, ProjectError } from "@/lib/projects";
 import { AiError } from "@/lib/map-ai";
 import { launchProject } from "@/lib/launchers";
+import { isLocalModeEnabled, localModeDisabledResponse } from "@/lib/local-mode";
 
 export const dynamic = "force-dynamic";
 // Launching runs `open` on the owner's Mac — Node runtime.
@@ -11,8 +12,12 @@ export const runtime = "nodejs";
  * POST /api/launch/run  Body: { project }
  * Launch the product via its generated .command file. If it's already
  * answering, returns { alreadyRunning: true, url } and the client just opens it.
+ *
+ * LOCAL-ONLY: 404s unless LOOP_DASHBOARD_LOCAL_MODE is on.
  */
 export async function POST(req: Request) {
+  if (!isLocalModeEnabled()) return localModeDisabledResponse();
+
   let body: { project?: string } = {};
   try {
     body = (await req.json()) as typeof body;

@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { aiChatCall, assistantAvailable, AiError, type ChatMessage } from "@/lib/map-ai";
+import {
+  aiChatCall,
+  assistantAvailable,
+  assistantCanReadCode,
+  AiError,
+  type ChatMessage,
+} from "@/lib/map-ai";
 import { loadPRDetail } from "@/lib/queues";
 import { getOctokit, type RepoConfig } from "@/lib/github";
 import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
@@ -35,7 +41,7 @@ export async function POST(
 ) {
   if (!assistantAvailable()) {
     return NextResponse.json(
-      { error: "AI chat needs the local Claude CLI, which isn't available right now." },
+      { error: "AI chat needs an AI backend (local Claude app, AWS Bedrock, or an Anthropic API key)." },
       { status: 503 },
     );
   }
@@ -103,7 +109,12 @@ export async function POST(
       ? `Auditor verdict: ${detail.verdict.verdict}`
       : "Auditor verdict: none yet";
 
-    const codeAccess = checkout
+    // Only the CLI backend can actually run the read-only tools against a
+    // checkout; the hosted backends (Bedrock / Anthropic API) answer from the
+    // diff alone, so don't promise them tools they won't have.
+    const canReadCode = checkout !== null && assistantCanReadCode();
+
+    const codeAccess = canReadCode
       ? `You CAN read this project's ACTUAL source code: it is checked out locally (on its \`${detail.baseRef}\` branch) and you have read-only tools (Read, Grep, Glob) rooted at its repository. USE THEM together with the diff below. The diff is the source of truth for what THIS PR changes; the local checkout is the surrounding code as it currently stands. Before making ANY claim about what the PR does, whether it's correct, or how it interacts with the rest of the app, read the real files and cite the specific paths. Never assert behaviour from the PR's description alone — descriptions can be wrong or aspirational. If you can't verify something, say so instead of guessing.`
       : `You are NOT connected to this project's code on this machine (its local checkout isn't available here); you only have the PR's diff and text below, no tools. Reason from the diff — it is the source of truth for what changed. If a question needs wider codebase context you don't have, say so plainly instead of guessing.`;
 
@@ -127,9 +138,9 @@ Answer the owner's questions plainly and honestly — be direct about correctnes
     const reply = await aiChatCall({
       system,
       messages,
-      timeoutMs: checkout ? CODE_CHAT_TIMEOUT_MS : CHAT_TIMEOUT_MS,
-      cwd: checkout ?? undefined,
-      tools: checkout ? READONLY_TOOLS : undefined,
+      timeoutMs: canReadCode ? CODE_CHAT_TIMEOUT_MS : CHAT_TIMEOUT_MS,
+      cwd: canReadCode ? (checkout ?? undefined) : undefined,
+      tools: canReadCode ? READONLY_TOOLS : undefined,
     });
     return NextResponse.json({ reply });
   } catch (err) {

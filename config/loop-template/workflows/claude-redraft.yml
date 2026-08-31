@@ -129,15 +129,40 @@ jobs:
           echo "Issue to redraft: #$ISSUE_NUMBER"
           echo "issue_number=$ISSUE_NUMBER" >> "$GITHUB_OUTPUT"
 
-      - uses: anthropics/claude-code-action@v1
+      # ── AI provider: subscription (default) vs Bedrock ──────────────────────────
+      # Per-project switch, stored in .github/loop-config.json → "aiProvider". Missing
+      # file, missing field, or an unrecognized value all fall back to "subscription" —
+      # today's behaviour. "bedrock" runs this agent's inference on AWS Bedrock in the
+      # CUSTOMER's own AWS account via GitHub OIDC → an IAM role. See
+      # docs/bedrock-setup.md for the customer-side AWS setup this depends on.
+      - name: Resolve AI provider
+        id: ai
+        run: |
+          provider=$(jq -r '.aiProvider // "subscription"' .github/loop-config.json 2>/dev/null || echo subscription)
+          case "$provider" in
+            subscription|bedrock) ;;
+            *)
+              echo "::warning::Unknown aiProvider '$provider' in .github/loop-config.json — falling back to 'subscription'. Valid values: subscription, bedrock."
+              provider=subscription
+              ;;
+          esac
+          region=$(jq -r '.bedrockRegion // "us-west-2"' .github/loop-config.json 2>/dev/null || echo us-west-2)
+          case "$region" in ''|null) region=us-west-2 ;; esac
+          echo "AI provider: $provider$( [ "$provider" = bedrock ] && echo " (region: $region)" )"
+          echo "provider=$provider" >> "$GITHUB_OUTPUT"
+          echo "use_bedrock=$([ "$provider" = "bedrock" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "region=$region" >> "$GITHUB_OUTPUT"
+
+      - if: steps.ai.outputs.use_bedrock != 'true'
+        uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           show_full_output: true
-          claude_args: |
+          claude_args: &redraft_claude_args |
             --model opus
             --max-turns 40
             --allowedTools "Bash,BashOutput,KillShell,Read,Glob,Grep,Task,TodoWrite,WebSearch,WebFetch"
-          prompt: |
+          prompt: &redraft_prompt |
             You are the REDRAFTER for ${{ github.repository }}. You take a proposal the owner
             sent back and rewrite it into a stronger one that honors his feedback. You never
             write or change product code — you only reshape the idea. (You have no file-writing
@@ -229,6 +254,23 @@ jobs:
 
             A redraft that improves the wording but forgets to flip the labels is a failure: the
             idea silently drops out of the queue and the owner never sees it again.
+
+      # BEDROCK MODE — opt-in via .github/loop-config.json → "aiProvider": "bedrock".
+      # See docs/bedrock-setup.md for the customer-side AWS setup this depends on.
+      - name: Configure AWS credentials (OIDC) for Bedrock
+        if: steps.ai.outputs.use_bedrock == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ steps.ai.outputs.region }}
+
+      - if: steps.ai.outputs.use_bedrock == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          use_bedrock: "true"
+          show_full_output: true
+          claude_args: *redraft_claude_args
+          prompt: *redraft_prompt
 
       # A green tick does not mean the labels flipped. The failure mode warned about above —
       # a lovely rewrite that never runs `gh issue edit --remove-label` — orphans the idea

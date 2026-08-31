@@ -110,15 +110,56 @@ jobs:
             echo "Mention is not on an existing PR — nothing to re-check afterward."
           fi
 
-      - uses: anthropics/claude-code-action@v1
+      # ── AI provider: subscription (default) vs Bedrock ──────────────────────────
+      # Per-project switch, stored in .github/loop-config.json → "aiProvider". Missing
+      # file, missing field, or an unrecognized value all fall back to "subscription" —
+      # today's behaviour. "bedrock" runs this agent's inference on AWS Bedrock in the
+      # CUSTOMER's own AWS account via GitHub OIDC → an IAM role. See
+      # docs/bedrock-setup.md for the customer-side AWS setup this depends on.
+      - name: Resolve AI provider
+        id: ai
+        run: |
+          provider=$(jq -r '.aiProvider // "subscription"' .github/loop-config.json 2>/dev/null || echo subscription)
+          case "$provider" in
+            subscription|bedrock) ;;
+            *)
+              echo "::warning::Unknown aiProvider '$provider' in .github/loop-config.json — falling back to 'subscription'. Valid values: subscription, bedrock."
+              provider=subscription
+              ;;
+          esac
+          region=$(jq -r '.bedrockRegion // "us-west-2"' .github/loop-config.json 2>/dev/null || echo us-west-2)
+          case "$region" in ''|null) region=us-west-2 ;; esac
+          echo "AI provider: $provider$( [ "$provider" = bedrock ] && echo " (region: $region)" )"
+          echo "provider=$provider" >> "$GITHUB_OUTPUT"
+          echo "use_bedrock=$([ "$provider" = "bedrock" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+          echo "region=$region" >> "$GITHUB_OUTPUT"
+
+      - if: steps.ai.outputs.use_bedrock != 'true'
+        uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           track_progress: true
-          claude_args: |
+          claude_args: &mention_claude_args |
             --model opus
             --max-turns 40
             --allowedTools "Bash,BashOutput,KillShell,Read,Write,Edit,Glob,Grep,Task,TodoWrite,WebSearch,WebFetch"
             --append-system-prompt "The person you are replying to is NON-TECHNICAL and is reading on a phone. Answer in plain English, short paragraphs, no jargon. If you changed code, push a claude/ branch and open a PR — never push to main. Read LEARNINGS.md before you start and obey it. If the owner asks you to change what an issue should cover, EDIT THE ISSUE BODY to match — do not just reply in a comment. The Builder plans from the body, so scope changes that live only in a comment can be missed."
+
+      # BEDROCK MODE — opt-in via .github/loop-config.json → "aiProvider": "bedrock".
+      # See docs/bedrock-setup.md for the customer-side AWS setup this depends on.
+      - name: Configure AWS credentials (OIDC) for Bedrock
+        if: steps.ai.outputs.use_bedrock == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ steps.ai.outputs.region }}
+
+      - if: steps.ai.outputs.use_bedrock == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          use_bedrock: "true"
+          track_progress: true
+          claude_args: *mention_claude_args
 
       # This agent's push uses the default GITHUB_TOKEN identity, which GitHub's own
       # recursion-prevention rule silently excludes from ever triggering
