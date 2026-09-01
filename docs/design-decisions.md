@@ -145,3 +145,50 @@ nothing to replace it.
 **Delete when:** the EventBridge rule (`0 */6 * * *` → `/api/reporter/cron`) is live.
 
 **When:** 2026-08-31.
+
+---
+
+## 9. ML stays in TypeScript — no Python runtime, no SageMaker
+
+**Decided:** implement machine learning inside the existing Node/TypeScript app, using
+`@huggingface/transformers` (transformers.js) with a local ONNX embedding model. No second
+runtime.
+
+**Why:** the data is small — roughly 124 documents and 46 labelled outcomes. Every idea
+currently on the list (duplicate detection, retrieval, evaluation harnesses) is served by
+embeddings plus cosine similarity and honest metrics, none of which need the Python
+ecosystem. A second runtime means a second Dockerfile, a second deploy target, a second
+dependency tree, and a second thing to break — on a project that as of today has no AWS
+account, no database, and no deployment.
+
+**Rejected:** a Python service (scikit-learn/PyTorch) and SageMaker. Standing up a training
+cluster for a 44-row problem is not a credential — at this data scale it signals not knowing
+when to leave the heavy tool alone.
+
+**Revisit when:** the proposal-acceptance model has real labels (see `backlog.md` — it needs
+the unused `declined`/`redraft` labels wired to a reason capture first). Adding Python *at
+the point the data justifies it* is a better story than adding it up front.
+
+**Design note:** the embedding layer takes an `EMBEDDING_BACKEND` switch (`local` now,
+`bedrock` stubbed), deliberately mirroring the existing `cli | api | bedrock` pattern in
+`lib/map-ai.ts`. Swapping to a Bedrock-hosted embedding model later is one file, and rerunning
+the same evaluation against both gives a backend comparison for free.
+
+**When:** 2026-09-01.
+
+---
+
+## 10. Testing: Vitest, targeted at the security and parsing code first
+
+**Decided:** add Vitest and start with tests on the auth crypto (`lib/auth.ts`) and the AI
+response-parsing paths (`lib/map-ai.ts`), rather than chasing coverage across 31k lines.
+
+**Why:** these are pure functions with no network calls, so they are cheap to test, and they
+are where a bug is both most likely and most expensive — a broken signature check is a
+security hole, and a broken JSON parser silently corrupts every AI feature. Tests here also
+*prove* the security claims the project makes about itself rather than merely asserting them.
+
+**Rejected:** Jest (heavier, slower with ESM/TypeScript here), and broad UI/component testing
+(higher effort, lower value at this stage).
+
+**When:** 2026-09-01.

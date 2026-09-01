@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/bedrock-sdk": "^0.33.3",
+    "@huggingface/transformers": "^4.2.0",
     "@xyflow/react": "^12.11.2",
     "fflate": "^0.8.3",
     "lucide-react": "^1.24.0",
@@ -28,6 +31,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.11"
   }
 }

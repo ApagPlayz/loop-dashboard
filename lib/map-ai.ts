@@ -382,7 +382,7 @@ function runCli(
 }
 
 /** Strip markdown fences / prose and parse the first {...} JSON object. */
-function parseLoose(text: string): unknown {
+export function parseLoose(text: string): unknown {
   const cleaned = text.replace(/```(?:json)?/g, "");
   const first = cleaned.indexOf("{");
   const last = cleaned.lastIndexOf("}");
@@ -602,7 +602,7 @@ Write your next reply to the owner's most recent message. Reply with plain text 
 /* ------------------------------------------------------------------ */
 
 /** Map an Anthropic/Bedrock HTTP status onto a user-presentable AiError. */
-function httpStatusError(status: number, model: string): AiError {
+export function httpStatusError(status: number, model: string): AiError {
   if (status === 401 || status === 403) {
     return new AiError(
       "The AI service rejected our credentials. Check ANTHROPIC_API_KEY (api backend) or the AWS role's Bedrock permissions (bedrock backend).",
@@ -622,7 +622,7 @@ function httpStatusError(status: number, model: string): AiError {
 }
 
 /** Map a Messages-API stop_reason onto an AiError, or null when it's fine. */
-function stopReasonError(stopReason: string | null | undefined): AiError | null {
+export function stopReasonError(stopReason: string | null | undefined): AiError | null {
   if (stopReason === "max_tokens") {
     return new AiError(
       "The requested change was too large to draft in one go. Try asking for a smaller, more focused change.",
