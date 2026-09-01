@@ -37,13 +37,25 @@ auto-issued per-run token. Nothing to rotate.
 
 ---
 
-## 1. Add a test suite — highest value per hour
+## 1. Add a test suite — DONE 2026-09-01
 
-There is currently **no test framework, no test files, no `test` script**. This is the
-first thing a reviewer notices, and manual `tsc` + smoke tests is a weak answer.
+Vitest added; **47 tests passing** (`npm test`), `tsc` clean. Files: `vitest.config.mts`,
+`tests/lib/auth.test.ts` (20), `tests/lib/map-ai.test.ts` (27). No network calls, process
+spawns, or filesystem access in any test. Three pure helpers in `lib/map-ai.ts` gained an
+`export` keyword; no logic changed. No bugs were uncovered — every assertion passed as
+written.
 
-**Plan:** add Vitest, then 15–20 tests targeting the two areas where a bug is both likely
-and expensive:
+Also done in the same pass: **Next.js upgraded 16.2.10 → 16.3.4**, closing 9 advisories
+(4 high: App Router middleware/proxy bypass, SSRF in Server Actions, SSRF via rewrites,
+DoS in Server Actions). Verified with tsc + tests + build.
+
+Still worth adding later: a regression test that `overlapHits` in `lib/dedup/baseline.ts`
+still matches `overlapScore` in `lib/tool-fit.ts` — if those drift, the whole
+baseline-vs-dense comparison silently becomes invalid. See `docs/ml-dedup.md` for the
+other four candidates.
+
+**Original plan, for reference** — 15–20 tests targeting the two areas where a bug is both
+likely and expensive:
 - **Auth crypto** (`lib/auth.ts`) — signature verification, tampered and expired cookies,
   `SESSION_KEY_VERSION` revocation, constant-time comparison under length mismatch.
 - **AI schema validation** (`lib/map-ai.ts`) — `parseLoose` fence-stripping and
@@ -92,7 +104,52 @@ handoff's summary. Findings below are measured.
   green run that did nothing is a lie. Do not quote this figure on a resume.
 - Cost, tokens, and model-used are **recorded nowhere**.
 
-### Build first: semantic duplicate detection over proposals (~25h)
+### Build first: semantic duplicate detection — BUILT 2026-09-01, blocked on labelling
+
+Steps 1–5 below are implemented and have been run end to end. See `docs/ml-dedup.md` for
+the run order and `docs/ml-practices.md` for the sourced background reading.
+
+- `scripts/ml/extract-corpus.mjs` → `data/corpus.jsonl` — **132 documents** (62 issues,
+  70 PRs). Re-runnable, byte-identical output.
+- `lib/dedup/baseline.ts` — the in-repo `overlap` scorer, a normalised variant, and a
+  hand-written Okapi BM25 (no dependency added).
+- `lib/dedup/embed.ts` + `scripts/ml/build-index.mjs` → `data/embeddings.json` — MiniLM,
+  384 dims, 3.5s warm for the whole corpus. `EMBEDDING_BACKEND` switch with `local` live
+  and `bedrock` a documented throw (no silent fallback).
+- `scripts/ml/generate-pairs.mjs` → `data/gold-pairs-unlabeled.jsonl` — 150 pairs across
+  5 strata, each row carrying its `inclusion_prob` so a corpus-level estimate is possible.
+- `scripts/ml/evaluate.mjs` → `metrics/dedup-eval.json` — threshold sweep, PR curve, AP,
+  ROC AUC, P@k/R@k, and 1000-replicate bootstrap CIs.
+
+**Nothing is claimed about baseline vs dense yet.** The eval file currently holds random
+labels and is stamped `synthetic-smoke-test`; it exists only to prove the harness runs.
+The harness was validated two ways: chance-level AUC across five random-label seeds, and
+exact AP = 1.000 recovery of a known rule.
+
+**Two corrections to the original assumptions:** the fp32 MiniLM model is **90 MB, not
+23 MB** (23 MB is the int8 variant, wired up as `EMBEDDING_DTYPE=q8` but unused), and
+**87 of 132 documents exceed MiniLM's context window and are truncated** — for two thirds
+of the corpus only the opening is encoded. Both are real limitations, not blockers.
+
+**One label-free finding:** dense and BM25 rank pairs meaningfully differently (Spearman
+0.51, top-100 Jaccard 0.49), so labelling will be able to separate them. Meanwhile raw
+`overlap` and BM25 correlate at ρ = 0.96 — they are nearly the same ranker on this data.
+
+**THE ONLY BLOCKER — roughly one hour of owner time:**
+```bash
+cp data/gold-pairs-unlabeled.jsonl data/gold-pairs.jsonl
+# fill in "label" on all 150 rows: duplicate | related | unrelated
+node scripts/ml/evaluate.mjs
+```
+Each row already carries both titles, both GitHub URLs, and all four scores. Rows are
+shuffled to prevent threshold drift. `evaluate.mjs` refuses to run on an incomplete file
+and names the first offending pair.
+
+Expect overlapping bootstrap intervals once labelled — 150 pairs is small. **Report the
+interval, not the point estimate.** Later: swap the encoder (`bge-small-en-v1.5` or
+`nomic-embed-text-v1.5` are current upgrades over MiniLM) and rerun the same eval.
+
+### Original plan, for reference (~25h)
 
 Needs no labels to start, has a baseline already in the repo to beat (`overlapScore` in
 `lib/tool-fit.ts`), is not blocked on AWS, and addresses a measured pathology — 19
