@@ -74,12 +74,76 @@ material is honestly claimable on a resume.
 
 ## 3. Machine learning work
 
-The owner wants genuine ML on this project — not more LLM API calls, which the project
-already does extensively. A brainstorming pass ran 2026-09-01; conclusions to be recorded
-here once reviewed. Key constraint to respect: this project has one active repo and ~51
-commits of history, so any idea requiring a large training set is a fantasy today. Prefer
-ideas whose training signal is **already being collected** (issue/PR outcomes, approval
-and rejection decisions, loop-metrics scorecards, retro learnings, tool-fit scores).
+The owner wants genuine ML — not more LLM API calls, which the project already does
+extensively. A brainstorming pass ran 2026-09-01 against the **live GitHub data**, not the
+handoff's summary. Findings below are measured.
+
+### Data problems that must be respected
+
+- **The `declined` and `redraft` labels have never been used — 0 issues each.** Every "no"
+  in this system is silence, not a recorded judgment. This blocks any acceptance model.
+- **Author leak:** all 24 human-authored PRs merged (100%); all 26 rejections are bot PRs.
+  A merge-prediction model trained on all 70 learns "is this a human?" and reports a fake
+  ~0.95 AUC.
+- **Date confound:** last merge was 2026-07-28 and the queue has been stalled since, so
+  "not merged" / "ignored" mostly means *filed after triage stopped*, not *bad idea*.
+- **"55/60 successful runs" is not a trustworthy metric.** Median Scout run is 15s, Builder
+  64s, Retro 560s — the short ones are stand-downs. `LEARNINGS.md` line 1 already says a
+  green run that did nothing is a lie. Do not quote this figure on a resume.
+- Cost, tokens, and model-used are **recorded nowhere**.
+
+### Build first: semantic duplicate detection over proposals (~25h)
+
+Needs no labels to start, has a baseline already in the repo to beat (`overlapScore` in
+`lib/tool-fit.ts`), is not blocked on AWS, and addresses a measured pathology — 19
+near-duplicate proposal pairs found, 23 proposals ignored past 7 days while Scout keeps
+filing.
+
+1. Extract every CGP issue + PR to `data/corpus.jsonl` (~124 documents).
+2. Hand-label ~150 pairs (duplicate / related / unrelated), stratified by lexical overlap
+   so it isn't all easy negatives. **This gold set is the artifact that makes it ML.**
+3. Score the lexical baseline (BM25 + existing `overlapScore`) **before** touching
+   embeddings — you must know what you're beating.
+4. Dense embeddings via `@huggingface/transformers` + `all-MiniLM-L6-v2` (~23 MB, 384 dims,
+   runs in Node, no API key, no AWS).
+5. Precision-recall curve for both; pick a threshold favouring precision (a false
+   "duplicate" that suppresses a good proposal is worse than a miss). Write
+   `metrics/dedup-eval.json`.
+6. Ship: Scout checks the index before filing; queue UI shows "similar to #114 (0.87)".
+7. Later: flip the encoder to Bedrock Titan v2, rerun the *same* eval, get a
+   backend-comparison table free. Mirror the `EMBEDDING_BACKEND` switch on the existing
+   `cli | api | bedrock` pattern in `lib/map-ai.ts`.
+
+**Gotcha:** `onnxruntime-node` is unreliable on musl. The Dockerfile is `node:22-alpine`;
+expect to move to `node:22-slim`.
+
+### Do now, cheaply, because it unblocks later work
+
+- Wire the unused `declined` / `redraft` labels to a one-line reason capture. Six weeks of
+  that turns the acceptance model from impossible into the best idea on the list.
+- Start recording per-run tokens, cost, model, and duration. A few lines; currently captured
+  nowhere; in six months it is the dataset for routing Scout between Haiku and Sonnet.
+- Persist Actions run outcomes to `metrics/loop-runs.jsonl` (2,147 runs are live-queryable
+  but never stored), joining runs to the artifacts they produced, so "productive vs no-op"
+  becomes a real label and the headline metric becomes honest.
+
+### Other ranked ideas
+
+- **Dense retrieval to replace tool-fit's keyword prerank** — shares all infrastructure with
+  the dedup work; measure recall@10 against `overlapScore`. Build second.
+- **Calibration/eval harness for the Auditor's `SHIP | FIX FIRST | DO NOT MERGE` verdicts** —
+  confusion matrix, reliability diagram, Brier score. n≈46, so report bootstrap CIs and
+  expect them wide. No model trained; evals engineering is in demand.
+- **Proposal acceptance model** — highest ceiling, blocked on the label capture above.
+- **PR merge-risk scoring** — don't build. n=46 after dropping leaky human PRs, features are
+  near-noise, and the one strong feature is the Auditor's own LLM verdict.
+
+### Do not
+
+Fine-tune anything (off by three orders of magnitude); RL/bandits over agent policy;
+forecasting `loop-metrics.json` (51 cumulative, non-stationary points); a "which repo should
+the loop work on" model (n=1 active repo); SageMaker or any training cluster at this data
+scale — it is an active negative signal, not a credential.
 
 ---
 
