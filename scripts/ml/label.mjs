@@ -175,8 +175,62 @@ const green = (s) => (isTTY ? `\x1b[32m${s}\x1b[0m` : s);
 
 const HARD_STRATA = new Set(["dense_only", "lex_top"]);
 
+// Titles alone are often too thin to judge a pair, so pull the real issue/PR
+// body out of the corpus and show an excerpt. Keyed by `${type}#${number}`.
+const bodyByKey = (() => {
+  const map = new Map();
+  const corpusPath = path.join(ROOT, "data", "corpus.jsonl");
+  if (!existsSync(corpusPath)) return map;
+  for (const line of readFileSync(corpusPath, "utf-8").split("\n")) {
+    if (!line.trim()) continue;
+    try {
+      const doc = JSON.parse(line);
+      map.set(`${doc.type}#${doc.number}`, doc.body ?? "");
+    } catch {
+      // A malformed corpus line costs us one excerpt, not the session.
+    }
+  }
+  return map;
+})();
+
+// Markdown headings, bullets and code fences add noise at this width; strip to
+// prose so the excerpt spends its characters on meaning.
+function excerpt(body, limit) {
+  const clean = String(body ?? "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/^\s*#{1,6}\s*/gm, "")
+    .replace(/[*_`>]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!clean) return dim("(no description)");
+  return clean.length <= limit ? clean : `${clean.slice(0, limit).trimEnd()}…`;
+}
+
+function wrap(text, width, indent) {
+  const out = [];
+  let line = "";
+  for (const word of text.split(" ")) {
+    if (line && line.length + word.length + 1 > width) {
+      out.push(indent + line);
+      line = word;
+    } else {
+      line = line ? `${line} ${word}` : word;
+    }
+  }
+  if (line) out.push(indent + line);
+  return out.join("\n");
+}
+
+// Toggled with `b` — full text when a pair genuinely needs it.
+let showFullBody = false;
+
 function fmtSide(label, num, type, title, url) {
-  return `  ${bold(label)} [${type.toUpperCase()} #${num}]\n    ${title}\n    ${dim(url)}`;
+  const body = bodyByKey.get(`${type}#${num}`);
+  const text = excerpt(body, showFullBody ? 4000 : 320);
+  return (
+    `  ${bold(label)} [${type.toUpperCase()} #${num}]\n    ${title}\n` +
+    `${wrap(text, 66, "      ")}\n    ${dim(url)}`
+  );
 }
 
 function renderPrompt(row) {
@@ -206,7 +260,7 @@ function renderPrompt(row) {
   console.log(
     `  ${green("1")}=duplicate  ${green("2")}=related  ${green("3")}=unrelated  ${cyan("s")}=skip  ${cyan(
       "u",
-    )}=undo  ${cyan("q")}=quit&save`,
+    )}=undo  ${cyan("b")}=${showFullBody ? "shorter text" : "full text"}  ${cyan("q")}=quit&save`,
   );
   console.log(
     `  labelled ${done} / ${total} — ${c.duplicate} duplicate, ${c.related} related, ${c.unrelated} unrelated`,
@@ -290,6 +344,12 @@ function handleKey(ch) {
     save();
     queue.splice(pos, 1); // answered — leave the queue, don't advance pos
     promptNext();
+    return;
+  }
+
+  if (ch === "b" || ch === "B") {
+    showFullBody = !showFullBody;
+    renderPrompt(row);
     return;
   }
 
