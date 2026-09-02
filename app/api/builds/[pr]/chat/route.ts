@@ -6,10 +6,18 @@ import {
   AiError,
   type ChatMessage,
 } from "@/lib/map-ai";
-import { loadPRDetail } from "@/lib/queues";
+import { loadPRDetail, isBuilderBranch } from "@/lib/queues";
 import { getOctokit, type RepoConfig } from "@/lib/github";
 import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 import { localCheckoutForRepo } from "@/lib/local-folders";
+import {
+  READONLY_TOOLS,
+  UNTRUSTED_OPEN,
+  UNTRUSTED_CLOSE,
+  defuse,
+  filesystemBoundary,
+  untrustedPreamble,
+} from "@/lib/prompt-safety";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,8 +25,6 @@ export const runtime = "nodejs";
 const CHAT_TIMEOUT_MS = 60_000;
 /** Longer budget when the assistant is actually reading code (multi-turn). */
 const CODE_CHAT_TIMEOUT_MS = 150_000;
-/** Read-only tools handed to the assistant when a local checkout exists. */
-const READONLY_TOOLS = ["Read", "Grep", "Glob"];
 const MAX_MESSAGES = 40;
 const MAX_MESSAGE_CHARS = 4000;
 /** How much of the PR's diff to include in the prompt before truncating. */
@@ -31,9 +37,19 @@ const MAX_DIFF_CHARS = 14_000;
  *
  * A private, local chat about ONE pull request — never posted to GitHub. It is
  * given the PR's title/body/verdict/thread AND its actual diff, and — when the
- * project is checked out locally — read-only tools (Read/Grep/Glob) rooted at
- * that checkout so it can verify how the changed code fits the wider codebase
- * instead of guessing. Falls back to diff+text-only when no checkout is found.
+ * project is checked out locally AND the CLI backend is the one serving the
+ * call — read-only tools (Read/Grep/Glob) rooted at that checkout so it can
+ * verify how the changed code fits the wider codebase instead of guessing.
+ * Falls back to diff+text-only otherwise, including on the hosted backends,
+ * which ignore `cwd`/`tools` entirely.
+ *
+ * Two things keep that tool grant safe, and both are load-bearing:
+ *   - only PRs the Builds queue actually surfaces for this project can be
+ *     addressed (see the queue gate below), so a caller can't point the agent
+ *     at an arbitrary outside contributor's PR; and
+ *   - everything GitHub hands back — title, body, branch names, verdict, diff,
+ *     comments — is third-party text, so it is `defuse()`d and fenced as DATA,
+ *     and the prompt states the filesystem boundary the tools do not enforce.
  */
 export async function POST(
   req: Request,
@@ -48,7 +64,8 @@ export async function POST(
 
   const { pr } = await params;
   const prNumber = Number(pr);
-  if (!Number.isInteger(prNumber)) {
+  // GitHub numbers PRs from 1 — zero and negatives are malformed, not lookups.
+  if (!Number.isInteger(prNumber) || prNumber <= 0) {
     return NextResponse.json({ error: "Bad PR number" }, { status: 400 });
   }
 
@@ -95,43 +112,77 @@ export async function POST(
   try {
     const { repo: repoConfig } = await resolveProjectFromUrl(req.url);
     const { owner, repo } = repoConfig;
-    const [detail, diff, checkout] = await Promise.all([
+    const [detail, checkout] = await Promise.all([
       loadPRDetail(prNumber, repoConfig),
-      loadDiff(prNumber, repoConfig),
       localCheckoutForRepo(owner, repo),
     ]);
 
+    // QUEUE GATE — the analogue of the ideas route's label allowlist.
+    //
+    // `loadPRDetail` is scoped to the resolved project, so the number can't
+    // reach another repo, but ANY pull request number in that repo used to be
+    // addressable — including an open PR pushed by an outside contributor,
+    // whose title, body and diff are entirely attacker-written and which this
+    // route then feeds to a tool-enabled agent. The Builds screen only ever
+    // surfaces two kinds of PR, so those are the only two we accept:
+    //   - open PRs on a Builder branch (`claude/…`), the "needs review" tab; and
+    //   - closed/merged PRs, the Merged and Closed tabs.
+    // Anything else is not part of this project's build queue and is refused
+    // before its text is fetched or interpolated into a prompt.
+    const inBuildQueue = detail.state === "closed" || isBuilderBranch(detail.headRef);
+    if (!inBuildQueue) {
+      return NextResponse.json(
+        { error: "That pull request isn't in this project's build queue." },
+        { status: 404 },
+      );
+    }
+
+    // Fetched only after the gate, so a PR we won't discuss never has its diff
+    // pulled down in the first place.
+    const diff = await loadDiff(prNumber, repoConfig);
+
     const discussion = detail.comments.length
-      ? detail.comments.map((c) => `${c.author}: ${c.body}`).join("\n\n")
+      ? detail.comments.map((c) => `${defuse(c.author)}: ${defuse(c.body)}`).join("\n\n")
       : "(no discussion yet)";
 
     const verdictLine = detail.verdict
-      ? `Auditor verdict: ${detail.verdict.verdict}`
+      ? `Auditor verdict: ${defuse(detail.verdict.verdict)}`
       : "Auditor verdict: none yet";
 
     // Only the CLI backend can actually run the read-only tools against a
-    // checkout; the hosted backends (Bedrock / Anthropic API) answer from the
-    // diff alone, so don't promise them tools they won't have.
+    // checkout; the hosted backends (Bedrock / Anthropic API) silently ignore
+    // `cwd`/`tools` and answer from the diff alone, so don't promise them tools
+    // they won't have — a model told it can read code it can't will invent
+    // file paths and cite them. `assistantCanReadCode()` is `aiBackend() ===
+    // "cli"`, deterministic and settled before the call.
     const canReadCode = checkout !== null && assistantCanReadCode();
 
-    const codeAccess = canReadCode
-      ? `You CAN read this project's ACTUAL source code: it is checked out locally (on its \`${detail.baseRef}\` branch) and you have read-only tools (Read, Grep, Glob) rooted at its repository. USE THEM together with the diff below. The diff is the source of truth for what THIS PR changes; the local checkout is the surrounding code as it currently stands. Before making ANY claim about what the PR does, whether it's correct, or how it interacts with the rest of the app, read the real files and cite the specific paths. Never assert behaviour from the PR's description alone — descriptions can be wrong or aspirational. If you can't verify something, say so instead of guessing.`
-      : `You are NOT connected to this project's code on this machine (its local checkout isn't available here); you only have the PR's diff and text below, no tools. Reason from the diff — it is the source of truth for what changed. If a question needs wider codebase context you don't have, say so plainly instead of guessing.`;
+    const codeAccess = canReadCode && checkout
+      ? `You CAN read this project's ACTUAL source code: it is checked out locally at ${checkout} (on its \`${defuse(detail.baseRef)}\` branch) and you have read-only tools (Read, Grep, Glob) whose working directory is that checkout. USE THEM together with the diff below. The diff is the source of truth for what THIS PR changes; the local checkout is the surrounding code as it currently stands. Before making ANY claim about what the PR does, whether it's correct, or how it interacts with the rest of the app, read the real files and cite the specific paths. Never assert behaviour from the PR's description alone — descriptions can be wrong or aspirational. If you can't verify something, say so instead of guessing.
+
+${filesystemBoundary(checkout)}`
+      : `You are NOT connected to this project's code on this machine (its local checkout isn't available here, or this backend can't run tools); you only have the PR's diff and text below, no tools. Reason from the diff — it is the source of truth for what changed. If a question needs wider codebase context you don't have, say so plainly instead of guessing — do NOT state how the surrounding code behaves as if you had checked it, and do NOT cite file paths as though you had opened them.`;
 
     const system = `You are a thinking-partner for the owner of ${owner}/${repo}, helping them review ONE pull request before they decide whether to merge it, send it back for changes, or close it. This is a private conversation — nothing you say here is posted to GitHub.
 
 ${codeAccess}
 
-THE PULL REQUEST — #${detail.number}, "${detail.title}" (branch ${detail.headRef} → ${detail.baseRef}):
-${detail.body?.trim() || "(no description)"}
+${untrustedPreamble(
+  "the Builder agent, the Auditor agent, bots, and anyone who can open a pull request or comment on one",
+)}
+
+${UNTRUSTED_OPEN}
+THE PULL REQUEST — #${detail.number}, "${defuse(detail.title)}" (branch ${defuse(detail.headRef)} → ${defuse(detail.baseRef)}):
+${defuse(detail.body?.trim() || "") || "(no description)"}
 
 ${verdictLine}. Changes: +${detail.additions}/−${detail.deletions} across ${detail.changedFiles} file(s).
 
 THE DIFF:
-${diff}
+${defuse(diff)}
 
 DISCUSSION SO FAR:
 ${discussion}
+${UNTRUSTED_CLOSE}
 
 Answer the owner's questions plainly and honestly — be direct about correctness, risk, scope, and whether this PR is safe to merge. You're here to help them decide, not to cheerlead.`;
 

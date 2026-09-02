@@ -441,7 +441,12 @@ function mapPR(p: RawPR, merged: boolean): PRSummary {
   };
 }
 
-const isBuilderBranch = (ref: string) => ref.startsWith("claude/");
+/**
+ * Head branches the Builder pushes to. The Builds queue's "needs review" tab
+ * is exactly the open PRs on one of these, so routes that must decide whether
+ * a PR number really belongs to this project's build queue share the test.
+ */
+export const isBuilderBranch = (ref: string) => ref.startsWith("claude/");
 
 /** Load the three Builds tabs. */
 export async function loadBuilds(
