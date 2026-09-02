@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop Dashboard — design directions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#100f0e; --panel:#171614; --line:#2a2825;
+    --text:#ece7df; --muted:#9c948a; --faint:#6b645c; --accent:#ffb000;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:15px/1.55 "IBM Plex Sans",system-ui,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:900px;margin:0 auto;padding:64px 32px 96px}
+  h1{font-size:13px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;
+     color:var(--muted);margin:0 0 8px}
+  .lede{font-size:28px;line-height:1.25;margin:0 0 12px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 48px;max-width:60ch}
+  .dir{border-top:1px solid var(--line);padding:28px 0 4px}
+  .dir h2{font-size:11px;letter-spacing:.16em;text-transform:uppercase;
+          color:var(--accent);margin:0 0 6px;font-weight:500}
+  .dir p{margin:0 0 18px;color:var(--muted);max-width:64ch;font-size:14px}
+  .links{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+  a.screen{display:inline-block;padding:9px 16px;border:1px solid var(--line);
+     color:var(--text);text-decoration:none;font:500 13px/1 "IBM Plex Mono",monospace;
+     letter-spacing:.02em;transition:border-color .18s ease,color .18s ease,background .18s ease;
+     cursor:pointer}
+  a.screen:hover{border-color:var(--accent);color:var(--accent);background:var(--panel)}
+  a.screen:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  a.missing{opacity:.4;pointer-events:none;text-decoration:line-through}
+  footer{border-top:1px solid var(--line);margin-top:44px;padding-top:20px;
+         color:var(--faint);font-size:13px}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Loop Dashboard</h1>
+  <p class="lede">Three design directions.</p>
+  <p class="sub">Same three screens, same real data, three different personalities. Pick the one
+  that feels least like a template — then it gets built for real across all nine tabs.</p>
+
+  <div class="dir">
+    <h2>Instrument</h2>
+    <p>No cards at all. Structure from hairline rules and column alignment; monospace tabular
+    numerals so figures lock into columns. One element per screen is 5–10× everything else.
+    Sodium-amber signal colour on warm near-black — a lit instrument, not a dark-mode SaaS app.</p>
+    <div class="links">
+      <a class="screen" href="instrument/overview.html">overview</a>
+      <a class="screen" href="instrument/ideas.html">ideas</a>
+      <a class="screen" href="instrument/metrics.html">metrics</a>
+    </div>
+  </div>
+
+  <div class="dir">
+    <h2>Editorial</h2>
+    <p>Dramatic hierarchy. One dominant figure or headline per screen, everything else
+    deliberately quiet. Spacious at the top, dense as you scroll. Reads like a printed research
+    report rather than a dashboard.</p>
+    <div class="links">
+      <a class="screen" href="editorial/overview.html">overview</a>
+      <a class="screen" href="editorial/ideas.html">ideas</a>
+      <a class="screen" href="editorial/metrics.html">metrics</a>
+    </div>
+  </div>
+
+  <div class="dir">
+    <h2>Blueprint</h2>
+    <p>Leans into what the product actually is — a pipeline. Technical-drawing aesthetic with a
+    faint grid substrate and labelled connectors; the flow from proposal to merged PR is visible
+    on every screen, and an item's stage <em>is</em> its status.</p>
+    <div class="links">
+      <a class="screen" href="blueprint/overview.html">overview</a>
+      <a class="screen" href="blueprint/ideas.html">ideas</a>
+      <a class="screen" href="blueprint/metrics.html">metrics</a>
+    </div>
+  </div>
+
+  <footer>
+    Mockups only — static HTML, not wired to the app. All figures are real, read from
+    <code>metrics/dedup-eval.json</code> and <code>data/corpus.jsonl</code>.
+  </footer>
+</div>
+</body>
+</html>

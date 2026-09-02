@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>INSTRUMENT — Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   INSTRUMENT — shared shell
+   Warm near-black. One signal: sodium amber #FFB000.
+   No cards. Structure = 1px rules + alignment + whitespace.
+   ============================================================ */
+:root{
+  --bg:#100F0E;          /* warm near-black, not #000, not zinc */
+  --bg-raise:#171614;    /* used only for header strips + focused row */
+  --rule:#2A2724;        /* hairline */
+  --rule-2:#403A34;      /* emphasised hairline */
+  --dim:#8A847C;         /* 4.9:1 on --bg */
+  --mid:#ABA49B;
+  --fg:#EDE9E3;
+  --hi:#FFFFFF;
+  --signal:#FFB000;      /* sodium amber */
+  --signal-mute:#7A5407;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --rail:236px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg);}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font-family:var(--sans); font-size:13px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1,"lnum" 1;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+svg{display:block}
+:focus-visible{outline:1px solid var(--signal);outline-offset:2px;border-radius:0}
+
+/* numerals are the hero — every figure is mono + tabular */
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+/* ---------- shell ---------- */
+.wrap{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100vh}
+
+/* ---------- left rail ---------- */
+.rail{
+  border-right:1px solid var(--rule);
+  position:sticky;top:0;height:100vh;
+  display:flex;flex-direction:column;
+}
+.rail-top{padding:18px 16px 14px;display:flex;align-items:baseline;gap:8px}
+.mark{width:7px;height:7px;background:var(--signal);flex:none;transform:translateY(-1px)}
+.wordmark{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.22em;color:var(--fg)}
+.wordmark span{color:var(--dim);font-weight:400}
+.rail-build{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim)}
+
+/* project switcher — a readout, not a card */
+.proj{
+  display:block;width:100%;text-align:left;
+  padding:10px 16px 12px;
+  border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  transition:background 180ms ease;
+}
+.proj:hover{background:var(--bg-raise)}
+.proj-k{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.proj-v{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12.5px;font-weight:500;color:var(--fg)}
+.proj-v svg{margin-left:auto;stroke:var(--dim);flex:none}
+.proj-r{display:block;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.navgroup{padding:16px 16px 6px;font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.nav{
+  display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:0;
+  padding:5px 16px 5px 15px;
+  border-left:1px solid transparent;
+  color:var(--mid);
+  transition:color 160ms ease,border-color 160ms ease,background 160ms ease;
+}
+.nav:hover{color:var(--fg);background:var(--bg-raise)}
+.nav-i{font-family:var(--mono);font-size:10px;color:var(--dim);transition:color 160ms ease}
+.nav:hover .nav-i{color:var(--mid)}
+.nav-l{font-size:12.5px}
+.nav-n{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.nav.on{color:var(--hi);border-left-color:var(--signal);background:var(--bg-raise)}
+.nav.on .nav-i{color:var(--signal)}
+.nav.on .nav-l{font-weight:600}
+
+/* account / identity block — replaces the bare "Sign out" link */
+.acct{margin-top:auto;border-top:1px solid var(--rule)}
+.acct-row{display:grid;grid-template-columns:26px 1fr 22px;gap:9px;align-items:center;padding:12px 16px 8px}
+.tile{
+  width:26px;height:26px;display:grid;place-items:center;
+  border:1px solid var(--rule-2);
+  font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.04em;color:var(--fg);
+}
+.acct-name{display:block;font-size:12px;font-weight:500;color:var(--fg);line-height:1.25}
+.acct-sub{display:block;font-family:var(--mono);font-size:9.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-out{width:22px;height:22px;display:grid;place-items:center;color:var(--dim);transition:color 160ms ease}
+.acct-out:hover{color:var(--signal)}
+.acct-out svg{stroke:currentColor}
+.acct-meta{
+  display:flex;justify-content:space-between;gap:8px;
+  padding:0 16px 13px;
+  font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;
+}
+.acct-meta b{font-weight:500;color:var(--mid);letter-spacing:.04em}
+
+/* ---------- main ---------- */
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{
+  display:flex;align-items:center;gap:14px;
+  padding:0 28px;height:44px;
+  border-bottom:1px solid var(--rule);
+}
+.crumb{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg)}
+.crumb i{font-style:normal;color:var(--dim);letter-spacing:.06em;text-transform:none}
+.readouts{margin-left:auto;display:flex;align-items:center;gap:22px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--dim)}
+.readouts b{font-weight:500;color:var(--mid)}
+.ok{display:inline-flex;align-items:center;gap:6px}
+.ok::before{content:"";width:6px;height:6px;background:var(--signal)}
+
+.pad{padding:0 28px}
+
+/* the signature band device: a hairline with its label sitting ON it */
+.band{border-top:1px solid var(--rule);position:relative;margin-top:34px;padding-top:22px}
+.band > .tag{
+  position:absolute;top:0;left:0;transform:translateY(-52%);
+  background:var(--bg);padding-right:14px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);
+}
+.band > .tag-r{
+  position:absolute;top:0;right:0;transform:translateY(-52%);
+  background:var(--bg);padding-left:14px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--dim);
+}
+
+/* ---------- hero ---------- */
+.hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:40px;align-items:end;padding:44px 0 30px}
+.hero-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+.hero-fig{
+  font-family:var(--mono);font-weight:500;
+  font-size:clamp(84px,9.2vw,132px);line-height:.84;letter-spacing:-.045em;
+  color:var(--signal);margin:14px 0 0;display:block;
+}
+.hero-sub{margin-top:16px;font-size:13px;color:var(--mid);max-width:52ch}
+.hero-sub em{font-style:normal;color:var(--fg)}
+.hero-meta{margin-top:7px;font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;color:var(--dim)}
+
+.hero-side{text-align:right;padding-bottom:6px}
+.hero-side dl{margin:0;display:grid;grid-template-columns:auto auto;gap:0 20px;justify-content:end}
+.hero-side dt{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:5px 0;text-align:left}
+.hero-side dd{margin:0;font-family:var(--mono);font-size:14px;color:var(--fg);padding:4px 0;border-bottom:1px solid var(--rule)}
+.hero-side dt{border-bottom:1px solid var(--rule)}
+
+/* ---------- stage rail ---------- */
+.stages{display:grid;grid-template-columns:repeat(5,1fr);align-items:start}
+.stage{padding:0 0 0 0;position:relative}
+.stage-h{display:flex;align-items:center;gap:0}
+.stage-dot{width:7px;height:7px;flex:none;background:var(--rule-2)}
+.stage-line{flex:1;height:1px;background:var(--rule)}
+.stage:last-child .stage-line{background:transparent}
+.stage.here .stage-dot{background:var(--signal)}
+.stage-n{display:block;margin-top:12px;font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.stage.here .stage-n{color:var(--signal)}
+.stage-v{display:block;margin-top:5px;font-family:var(--mono);font-size:22px;color:var(--mid);letter-spacing:-.02em}
+.stage.here .stage-v{color:var(--fg);font-weight:500}
+.stage-c{display:block;margin-top:2px;font-size:11px;color:var(--dim)}
+
+/* ---------- counter ledger ---------- */
+.ledger{display:grid;grid-template-columns:repeat(5,1fr)}
+.cell{padding:2px 20px 4px;border-left:1px solid var(--rule)}
+.cell:first-child{padding-left:0;border-left:0}
+.cell-k{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.cell-v{display:block;margin-top:6px;font-family:var(--mono);font-size:30px;line-height:1;letter-spacing:-.03em;color:var(--fg)}
+.cell-v.acc{color:var(--signal)}
+.cell-c{display:block;margin-top:6px;font-size:11px;color:var(--dim)}
+
+/* ---------- tables ---------- */
+.scroll{overflow-x:auto;overflow-y:hidden}
+table{border-collapse:collapse;width:100%;min-width:660px}
+thead th{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--dim);font-weight:400;text-align:left;
+  padding:0 12px 8px 0;border-bottom:1px solid var(--rule);white-space:nowrap;
+}
+tbody td{padding:9px 12px 9px 0;border-bottom:1px solid var(--rule);vertical-align:baseline}
+tbody tr{transition:background 160ms ease}
+tbody tr:hover{background:var(--bg-raise)}
+.num{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap;padding-right:0!important;padding-left:24px!important}
+.mk{width:18px;font-family:var(--mono);color:var(--dim);padding-right:8px!important}
+.mk.on{color:var(--signal)}
+.id{font-family:var(--mono);font-size:11.5px;color:var(--dim);white-space:nowrap}
+.ttl{color:var(--fg)}
+.ttl.mute{color:var(--dim)}
+.kind{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.state{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid)}
+.state.live{color:var(--signal)}
+.state.off{color:var(--dim)}
+.mono-s{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap}
+
+/* ---------- entry points ---------- */
+.entries{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:40px}
+.entry{
+  display:grid;grid-template-columns:20px 1fr auto 16px;align-items:baseline;gap:10px;
+  padding:11px 0;border-bottom:1px solid var(--rule);
+  transition:padding-left 180ms ease,color 180ms ease;
+}
+.entry:hover{padding-left:6px}
+.entry-i{font-family:var(--mono);font-size:10px;color:var(--dim)}
+.entry-l{font-size:13.5px;color:var(--fg)}
+.entry:hover .entry-l{color:var(--hi)}
+.entry-m{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.entry-a{align-self:center;color:var(--rule-2);transition:color 180ms ease,transform 180ms ease}
+.entry:hover .entry-a{color:var(--signal);transform:translateX(3px)}
+.entry.g .entry-i{color:var(--signal-mute)}
+
+.foot{padding:30px 0 46px;font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;
+  display:flex;gap:26px;flex-wrap:wrap;border-top:1px solid var(--rule);margin-top:34px}
+
+@media (max-width:1180px){
+  .hero{grid-template-columns:1fr;gap:26px;align-items:start}
+  .hero-side{text-align:left}
+  .hero-side dl{justify-content:start}
+  .ledger{grid-template-columns:repeat(3,1fr);row-gap:22px}
+  .cell:nth-child(4){padding-left:0;border-left:0}
+  .entries{grid-template-columns:1fr}
+}
+@media (max-width:1200px){
+  .topbar{height:auto;min-height:44px;padding-top:8px;padding-bottom:8px;flex-wrap:wrap;row-gap:2px}
+  .readouts{gap:16px}
+  .readouts > span:first-of-type{display:none}
+}
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition-duration:0.01ms!important;animation-duration:0.01ms!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ══ LEFT RAIL ══ -->
+  <aside class="rail">
+    <div class="rail-top">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="wordmark">LOOP<span>/DASH</span></span>
+      <span class="rail-build n">v0.9.4</span>
+    </div>
+
+    <button class="proj" type="button">
+      <span class="proj-k">Project</span>
+      <span class="proj-v">Content Generation Platform
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke-width="1.1" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg>
+      </span>
+      <span class="proj-r">ApagPlayz/content-generation-platform</span>
+    </button>
+
+    <nav>
+      <div class="navgroup">This project</div>
+      <a class="nav on" href="#"><span class="nav-i">01</span><span class="nav-l">Overview</span><span class="nav-n"></span></a>
+      <a class="nav" href="#"><span class="nav-i">02</span><span class="nav-l">Process Map</span><span class="nav-n"></span></a>
+      <a class="nav" href="ideas.html"><span class="nav-i">03</span><span class="nav-l">Ideas</span><span class="nav-n">42</span></a>
+      <a class="nav" href="#"><span class="nav-i">04</span><span class="nav-l">Pull Requests</span><span class="nav-n">13</span></a>
+      <a class="nav" href="#"><span class="nav-i">05</span><span class="nav-l">Learnings</span><span class="nav-n"></span></a>
+      <a class="nav" href="#"><span class="nav-i">06</span><span class="nav-l">Testing</span><span class="nav-n"></span></a>
+      <a class="nav" href="metrics.html"><span class="nav-i">07</span><span class="nav-l">Metrics</span><span class="nav-n"></span></a>
+
+      <div class="navgroup">Global</div>
+      <a class="nav" href="#"><span class="nav-i">08</span><span class="nav-l">Tool Catalog</span><span class="nav-n">24</span></a>
+      <a class="nav" href="#"><span class="nav-i">09</span><span class="nav-l">News</span><span class="nav-n"></span></a>
+    </nav>
+
+    <div class="acct">
+      <div class="acct-row">
+        <span class="tile" aria-hidden="true">AP</span>
+        <span>
+          <span class="acct-name">Owner session</span>
+          <span class="acct-sub">ApagPlayz · gh token</span>
+        </span>
+        <button class="acct-out" type="button" aria-label="Sign out" title="Sign out">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.15" stroke-linecap="square" aria-hidden="true">
+            <path d="M6 2.5H3.2v11H6"/><path d="M9.5 5.5 12.5 8l-3 2.5"/><path d="M12.5 8H6"/>
+          </svg>
+        </button>
+      </div>
+      <div class="acct-meta"><span>Expires</span><b class="n">6d 04h</b></div>
+    </div>
+  </aside>
+
+  <!-- ══ MAIN ══ -->
+  <main class="main">
+    <div class="topbar">
+      <span class="crumb">Overview <i>— Content Generation Platform</i></span>
+      <span class="readouts">
+        <span>SNAPSHOT <b class="n">60s</b></span>
+        <span>LAST ACTIVITY <b class="n">2026-08-31</b></span>
+        <span class="ok">GITHUB <b>OK</b></span>
+      </span>
+    </div>
+
+    <div class="pad">
+
+      <!-- HERO — the one dominant element -->
+      <section class="hero">
+        <div>
+          <div class="hero-eyebrow">Ideas waiting for you</div>
+          <span class="hero-fig">23</span>
+          <p class="hero-sub">Proposals the Scout filed that nothing will happen to until <em>you</em> approve, redraft or decline them. The Builder is idle while this number is above zero.</p>
+          <div class="hero-meta">OLDEST 44d &nbsp;·&nbsp; NEWEST 2026-08-31 &nbsp;·&nbsp; FILED BY claude[bot]</div>
+        </div>
+        <div class="hero-side">
+          <dl>
+            <dt>Open ideas</dt><dd>42</dd>
+            <dt>Approved &amp; waiting</dt><dd>11</dd>
+            <dt>Open PRs</dt><dd>13</dd>
+            <dt>Corpus documents</dt><dd>132</dd>
+          </dl>
+        </div>
+      </section>
+
+      <!-- STAGE RAIL -->
+      <section class="band">
+        <span class="tag">Loop position</span>
+        <span class="tag-r">held at REVIEW</span>
+        <div class="stages">
+          <div class="stage">
+            <div class="stage-h"><span class="stage-dot"></span><span class="stage-line"></span></div>
+            <span class="stage-n">Scout</span><span class="stage-v">62</span><span class="stage-c">ideas filed all-time</span>
+          </div>
+          <div class="stage here">
+            <div class="stage-h"><span class="stage-dot"></span><span class="stage-line"></span></div>
+            <span class="stage-n">Review</span><span class="stage-v">23</span><span class="stage-c">waiting on you</span>
+          </div>
+          <div class="stage">
+            <div class="stage-h"><span class="stage-dot"></span><span class="stage-line"></span></div>
+            <span class="stage-n">Build</span><span class="stage-v">11</span><span class="stage-c">approved, not built</span>
+          </div>
+          <div class="stage">
+            <div class="stage-h"><span class="stage-dot"></span><span class="stage-line"></span></div>
+            <span class="stage-n">Audit</span><span class="stage-v">13</span><span class="stage-c">open pull requests</span>
+          </div>
+          <div class="stage">
+            <div class="stage-h"><span class="stage-dot"></span><span class="stage-line"></span></div>
+            <span class="stage-n">Merge</span><span class="stage-v">44</span><span class="stage-c">merged all-time</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- COUNTERS -->
+      <section class="band">
+        <span class="tag">Counters</span>
+        <span class="tag-r">source: github · live</span>
+        <div class="ledger">
+          <div class="cell">
+            <span class="cell-k">Open ideas</span>
+            <span class="cell-v">42</span>
+            <span class="cell-c">Proposals, approved and redraft</span>
+          </div>
+          <div class="cell">
+            <span class="cell-k">Approved &amp; waiting</span>
+            <span class="cell-v acc">11</span>
+            <span class="cell-c">Signed off, not yet built</span>
+          </div>
+          <div class="cell">
+            <span class="cell-k">Open PRs</span>
+            <span class="cell-v">13</span>
+            <span class="cell-c">Builder branches awaiting review</span>
+          </div>
+          <div class="cell">
+            <span class="cell-k">Merged</span>
+            <span class="cell-v">44</span>
+            <span class="cell-c">of 70 opened all-time</span>
+          </div>
+          <div class="cell">
+            <span class="cell-k">Merge rate</span>
+            <span class="cell-v">63<span style="font-size:.5em;letter-spacing:0">%</span></span>
+            <span class="cell-c">13 rejected unmerged</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROJECTS -->
+      <section class="band">
+        <span class="tag">Projects</span>
+        <span class="tag-r">2 registered · 1 set up</span>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="mk" scope="col"></th>
+                <th scope="col">Key</th>
+                <th scope="col">Owner / repo</th>
+                <th class="num" scope="col">Ideas</th>
+                <th class="num" scope="col">PRs</th>
+                <th class="num" scope="col">Merged</th>
+                <th scope="col" style="padding-left:26px">Added</th>
+                <th scope="col">Last activity</th>
+                <th scope="col">State</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mk on">&#9656;</td>
+                <td class="ttl" style="font-weight:500">Content Generation Platform</td>
+                <td class="id">ApagPlayz/content-generation-platform</td>
+                <td class="num">42</td>
+                <td class="num">13</td>
+                <td class="num">44</td>
+                <td class="mono-s" style="padding-left:26px">2026-07-15</td>
+                <td class="mono-s">2026-08-31</td>
+                <td class="state live">Active</td>
+              </tr>
+              <tr>
+                <td class="mk">&#183;</td>
+                <td class="ttl mute">supply-chain-optimizer</td>
+                <td class="id">ApagPlayz/supply-chain-optimizer</td>
+                <td class="num" style="color:var(--dim)">0</td>
+                <td class="num" style="color:var(--dim)">0</td>
+                <td class="num" style="color:var(--dim)">0</td>
+                <td class="mono-s" style="padding-left:26px">2026-07-16</td>
+                <td class="mono-s">&#8212;</td>
+                <td class="state off">Paused by owner</td>
+              </tr>
+              <tr>
+                <td class="mk">+</td>
+                <td colspan="8"><a href="#" style="color:var(--mid)">Add a project&#8230;</a></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- RECENT -->
+      <section class="band">
+        <span class="tag">Latest movement</span>
+        <span class="tag-r">7 of 132 documents</span>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="mk" scope="col"></th>
+                <th scope="col" style="width:56px">Ref</th>
+                <th scope="col" style="width:64px">Kind</th>
+                <th scope="col">Title</th>
+                <th scope="col" style="width:110px">State</th>
+                <th class="num" scope="col" style="width:96px">Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="mk">&#183;</td><td class="id">#132</td><td class="kind">Issue</td><td class="ttl">[retro] Week of 2026-08-31</td><td class="state off">Open</td><td class="num mono-s">2026-08-31</td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#131</td><td class="kind">PR</td><td class="ttl">Apply the Warm Creator look: light by default, dark toggle, one nav bar</td><td class="state off">Open</td><td class="num mono-s">2026-08-25</td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#130</td><td class="kind">Issue</td><td class="ttl">[retro] Week of 2026-08-09</td><td class="state off">Open</td><td class="num mono-s">2026-08-09</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#126</td><td class="kind">Issue</td><td class="ttl">Apply the picked redesign: Style 2 &#8220;Warm Creator&#8221;, light default, single nav</td><td class="state live">Approved</td><td class="num mono-s">2026-08-02</td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#128</td><td class="kind">PR</td><td class="ttl">[retro] Week of 2026-07-27 &#8212; record the idle-Builder week + the first idea-quality lesson</td><td class="state off">Open</td><td class="num mono-s">2026-08-02</td></tr>
+              <tr><td class="mk">&#8730;</td><td class="id">#127</td><td class="kind">PR</td><td class="ttl mute">Apply the Warm Creator look: light by default, dark toggle, one nav bar</td><td class="state off">Merged</td><td class="num mono-s">2026-08-02</td></tr>
+              <tr><td class="mk">&#8730;</td><td class="id">#122</td><td class="kind">PR</td><td class="ttl mute">Stop an auto-posted video from calling a real person guilty &#8212; close two holes in the legal safety check</td><td class="state off">Merged</td><td class="num mono-s">2026-07-27</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ENTRY POINTS -->
+      <section class="band">
+        <span class="tag">Enter the loop</span>
+        <div class="entries">
+          <a class="entry" href="ideas.html">
+            <span class="entry-i">03</span>
+            <span class="entry-l">Review queue</span>
+            <span class="entry-m">23 waiting</span>
+            <span class="entry-a"><svg width="14" height="10" viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="square" aria-hidden="true"><path d="M0 5h14M10 1.2 13.8 5 10 8.8"/></svg></span>
+          </a>
+          <a class="entry" href="#">
+            <span class="entry-i">04</span>
+            <span class="entry-l">Pull requests</span>
+            <span class="entry-m">13 open</span>
+            <span class="entry-a"><svg width="14" height="10" viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="square" aria-hidden="true"><path d="M0 5h14M10 1.2 13.8 5 10 8.8"/></svg></span>
+          </a>
+          <a class="entry" href="#">
+            <span class="entry-i">02</span>
+            <span class="entry-l">Process map</span>
+            <span class="entry-m">5 stages</span>
+            <span class="entry-a"><svg width="14" height="10" viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="square" aria-hidden="true"><path d="M0 5h14M10 1.2 13.8 5 10 8.8"/></svg></span>
+          </a>
+          <a class="entry" href="metrics.html">
+            <span class="entry-i">07</span>
+            <span class="entry-l">Metrics &amp; model evaluation</span>
+            <span class="entry-m">2026-09-02</span>
+            <span class="entry-a"><svg width="14" height="10" viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="square" aria-hidden="true"><path d="M0 5h14M10 1.2 13.8 5 10 8.8"/></svg></span>
+          </a>
+          <a class="entry g" href="#">
+            <span class="entry-i">08</span>
+            <span class="entry-l">Tool Catalog</span>
+            <span class="entry-m">global</span>
+            <span class="entry-a"><svg width="14" height="10" viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="square" aria-hidden="true"><path d="M0 5h14M10 1.2 13.8 5 10 8.8"/></svg></span>
+          </a>
+          <a class="entry g" href="#">
+            <span class="entry-i">09</span>
+            <span class="entry-l">News</span>
+            <span class="entry-m">global</span>
+            <span class="entry-a"><svg width="14" height="10" viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="square" aria-hidden="true"><path d="M0 5h14M10 1.2 13.8 5 10 8.8"/></svg></span>
+          </a>
+        </div>
+      </section>
+
+      <div class="foot">
+        <span>Corpus 132 docs</span>
+        <span>Index MiniLM-L6-v2 · 384d</span>
+        <span>Index Titan v2 · 1024d</span>
+        <span>Built 2026-09-02 21:02 UTC</span>
+      </div>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>

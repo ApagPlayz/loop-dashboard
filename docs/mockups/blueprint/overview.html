@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BLUEPRINT — Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   BLUEPRINT — a drafting-table control plane
+   Shared shell styles. Duplicated verbatim across the three
+   mockups so each file opens standalone from file://
+   ============================================================ */
+:root{
+  --ink:#0A1119;          /* page ground — ink blue, not zinc */
+  --ink-2:#0D1621;        /* sheet ground */
+  --panel:#101B27;
+  --panel-2:#142230;
+  --rule:#1D3040;         /* hairline */
+  --rule-2:#27404F;       /* stronger hairline */
+  --paper:#DCE8F0;        /* body text          15.2:1 */
+  --paper-2:#9FB6C6;      /* secondary           9.0:1 */
+  --paper-3:#7E97AB;      /* faint labels        6.2:1 */
+  --cyan:#59C7F2;         /* the machine         9.8:1 */
+  --cyan-2:#2E7FA6;
+  --cyan-ghost:rgba(89,199,242,.12);
+  --signal:#FFA24B;       /* needs a human       9.5:1 */
+  --signal-2:#7E5023;
+  --signal-ghost:rgba(255,162,75,.10);
+  --redline:#E86A5A;
+  --grid-fine:rgba(112,168,204,.045);
+  --grid-coarse:rgba(112,168,204,.085);
+  --rail-w:252px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--ink);
+  color:var(--paper);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+::selection{background:rgba(89,199,242,.28)}
+.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* focus — a drafting bracket, never a glow blob */
+a,button,[tabindex]{outline:none}
+a:focus-visible,button:focus-visible,[tabindex]:focus-visible{
+  outline:1.5px solid var(--cyan);outline-offset:2px;
+}
+button{font:inherit;color:inherit;background:none;border:none;padding:0}
+a{color:inherit;text-decoration:none}
+.clk{cursor:pointer}
+
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{transition-duration:.001ms !important;animation-duration:.001ms !important}
+}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:var(--rail-w) minmax(0,1fr);min-height:100vh}
+
+/* ---------- left rail ---------- */
+.rail{
+  border-right:1px solid var(--rule);
+  background:var(--ink);
+  display:flex;flex-direction:column;
+  position:sticky;top:0;height:100vh;
+}
+.rail-head{padding:20px 18px 14px;border-bottom:1px solid var(--rule)}
+.wordmark{display:flex;align-items:baseline;gap:8px}
+.wordmark b{font-size:13px;font-weight:600;letter-spacing:.16em;text-transform:uppercase}
+.wordmark span{font-size:9.5px;letter-spacing:.16em;color:var(--paper-3)}
+.sheet-no{
+  margin-top:14px;display:flex;align-items:flex-start;gap:10px;
+  border:1px solid var(--rule);border-left:2px solid var(--cyan);
+  padding:8px 10px;position:relative;
+}
+.sheet-no .k{font-size:8.5px;letter-spacing:.18em;color:var(--paper-3);text-transform:uppercase;display:block}
+.sheet-no .v{font-size:12.5px;font-weight:600;color:var(--paper);letter-spacing:.01em;display:block;margin-top:2px}
+.sheet-no .swap{font-size:9px;letter-spacing:.12em;color:var(--cyan);margin-left:auto;padding-top:2px;white-space:nowrap}
+.sheet-no:hover{background:var(--panel)}
+.sheet-no{transition:background 180ms ease}
+
+.rail-body{flex:1;overflow-y:auto;padding:14px 0 8px}
+.grp{margin-bottom:6px}
+.grp-h{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 18px 8px;font-size:8.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--paper-3);
+}
+.grp-h::after{content:"";flex:1;height:1px;background:var(--rule)}
+.nav{display:block;position:relative;padding:0 18px}
+.nav a{
+  display:grid;grid-template-columns:22px 18px 1fr auto;align-items:center;gap:9px;
+  padding:7px 8px 7px 0;border-left:2px solid transparent;padding-left:10px;
+  color:var(--paper-2);transition:color 180ms ease,background 180ms ease,border-color 180ms ease;
+}
+.nav a .ix{font-size:9px;letter-spacing:.06em;color:var(--paper-3);font-family:"IBM Plex Mono",monospace}
+.nav a svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.15;stroke-linecap:square;stroke-linejoin:miter;opacity:.9}
+.nav a .lb{font-size:13px;font-weight:500;letter-spacing:.005em}
+.nav a .ct{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--paper-3)}
+.nav a:hover{color:var(--paper);background:var(--panel);border-left-color:var(--rule-2)}
+.nav a.on{color:var(--paper);background:linear-gradient(90deg,var(--cyan-ghost),transparent 70%);border-left-color:var(--cyan)}
+.nav a.on .ix{color:var(--cyan)}
+.nav a.on svg{opacity:1;color:var(--cyan)}
+.nav a .ct.warn{color:var(--signal)}
+
+/* identity block — replaces the bare "Sign out" link */
+.ident{border-top:1px solid var(--rule);padding:14px 18px 16px}
+.ident-cap{font-size:8.5px;letter-spacing:.2em;color:var(--paper-3);text-transform:uppercase;margin-bottom:9px}
+.ident-row{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:10px}
+.mark{
+  width:34px;height:34px;border:1px solid var(--rule-2);
+  display:grid;place-items:center;position:relative;background:var(--panel);
+}
+.mark b{font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--paper)}
+.mark::before,.mark::after{content:"";position:absolute;width:5px;height:5px;border:1px solid var(--cyan)}
+.mark::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.mark::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+.ident-name{font-size:12.5px;font-weight:600;line-height:1.25}
+.ident-sub{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--paper-3);letter-spacing:.02em;margin-top:2px}
+.ident-acts{display:flex;gap:2px}
+.ibtn{
+  width:26px;height:26px;display:grid;place-items:center;border:1px solid transparent;
+  color:var(--paper-3);transition:color 180ms ease,border-color 180ms ease,background 180ms ease;
+}
+.ibtn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:1.15;stroke-linecap:square}
+.ibtn:hover{color:var(--paper);border-color:var(--rule-2);background:var(--panel)}
+.ibtn.out:hover{color:var(--signal);border-color:var(--signal-2)}
+.ident-status{
+  display:flex;align-items:center;gap:7px;margin-top:11px;
+  font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.06em;color:var(--paper-3);
+}
+.ident-status i{width:6px;height:6px;background:var(--cyan);display:block;font-style:normal}
+
+/* ---------- sheet ---------- */
+.sheet{
+  min-width:0;background:var(--ink-2);position:relative;
+  background-image:
+    linear-gradient(to right,var(--grid-fine) 1px,transparent 1px),
+    linear-gradient(to bottom,var(--grid-fine) 1px,transparent 1px),
+    linear-gradient(to right,var(--grid-coarse) 1px,transparent 1px),
+    linear-gradient(to bottom,var(--grid-coarse) 1px,transparent 1px);
+  background-size:16px 16px,16px 16px,96px 96px,96px 96px;
+}
+.sheet-head{
+  border-bottom:1px solid var(--rule);padding:18px 32px 16px;
+  display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;
+  background:linear-gradient(180deg,rgba(10,17,25,.9),rgba(10,17,25,.4));
+}
+.crumb{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper-3)}
+.crumb b{color:var(--paper-2);font-weight:500}
+h1{margin:7px 0 0;font-size:22px;font-weight:600;letter-spacing:-.01em}
+.subline{margin:5px 0 0;font-size:12.5px;color:var(--paper-2)}
+.stamp{
+  border:1px solid var(--rule);padding:8px 12px;
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.1em;color:var(--paper-3);
+  display:grid;grid-template-columns:auto auto;gap:2px 16px;text-transform:uppercase;
+}
+.stamp b{color:var(--paper-2);font-weight:500;text-align:right}
+.body{padding:26px 32px 64px}
+
+/* section heading — a title bar, not a card */
+.sec{margin-top:34px}
+.sec-h{display:flex;align-items:baseline;gap:12px;border-bottom:1px solid var(--rule);padding-bottom:7px;margin-bottom:0}
+.sec-h h2{margin:0;font-family:"IBM Plex Mono",monospace;font-size:10px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;color:var(--paper-2)}
+.sec-h .num{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--cyan);letter-spacing:.1em}
+.sec-h .note{margin-left:auto;font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--paper-3);letter-spacing:.08em;text-transform:uppercase}
+
+/* ---------- hero pipeline ---------- */
+.hero{border:1px solid var(--rule-2);background:rgba(13,22,33,.72);position:relative;margin-top:2px}
+.hero::before,.hero::after,.hero .tl,.hero .tr{content:"";position:absolute;width:9px;height:9px;border:1px solid var(--cyan);pointer-events:none}
+.hero::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+.hero::after{bottom:-1px;right:-1px;border-left:0;border-top:0}
+.hero .tl{top:-1px;right:-1px;border-left:0;border-bottom:0}
+.hero .tr{bottom:-1px;left:-1px;border-right:0;border-top:0}
+.hero-bar{
+  display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid var(--rule);
+  font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--paper-3);
+}
+.hero-bar b{color:var(--paper);font-weight:600;letter-spacing:.16em}
+.hero-bar .sp{margin-left:auto;color:var(--signal)}
+.scroll{overflow-x:auto;overflow-y:hidden}
+.scroll::-webkit-scrollbar{height:8px}
+.scroll::-webkit-scrollbar-track{background:var(--ink)}
+.scroll::-webkit-scrollbar-thumb{background:var(--rule-2)}
+.flow{display:block;width:100%;min-width:1120px;height:auto}
+
+/* svg text classes */
+.t-idx{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.14em;fill:var(--paper-3)}
+.t-name{font-family:"IBM Plex Sans",sans-serif;font-size:12.5px;font-weight:600;letter-spacing:.055em;fill:var(--paper)}
+.t-state{font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.09em;fill:var(--paper-3)}
+.t-kind{font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.16em;fill:var(--cyan-2)}
+.t-q{font-family:"IBM Plex Mono",monospace;font-size:31px;font-weight:600;fill:var(--cyan);letter-spacing:-.02em}
+.t-q.warn{fill:var(--signal)}
+.t-qc{font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.1em;fill:var(--paper-2)}
+.t-qc.warn{fill:var(--signal)}
+.t-edge{font-family:"IBM Plex Mono",monospace;font-size:8px;letter-spacing:.16em;fill:var(--paper-3)}
+.t-dim{font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.14em;fill:var(--signal)}
+.t-ret{font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.14em;fill:var(--cyan-2)}
+.t-note{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.06em;fill:var(--paper-2)}
+.t-note-h{font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.16em;fill:var(--signal)}
+.s-rule{stroke:var(--rule-2);fill:none;stroke-width:1}
+.s-spine{stroke:var(--cyan-2);fill:none;stroke-width:1.2}
+.s-dash{stroke:var(--rule-2);fill:none;stroke-width:1;stroke-dasharray:3 3}
+.s-ret{stroke:var(--cyan-2);fill:none;stroke-width:1;stroke-dasharray:5 4}
+.s-red{stroke:var(--signal-2);fill:none;stroke-width:1;stroke-dasharray:5 4}
+.s-dim{stroke:var(--signal);fill:none;stroke-width:1}
+.station{fill:var(--panel);stroke:var(--rule-2);stroke-width:1}
+.station.you{stroke:var(--signal);fill:rgba(255,162,75,.05)}
+.g-station{transition:opacity 200ms ease}
+.g-station:hover .station{stroke:var(--cyan)}
+
+/* ---------- readings row (KPI) — dimension figures, no cards ---------- */
+.readings{display:grid;grid-template-columns:repeat(3,1fr) 1.35fr;border:1px solid var(--rule);border-top:0;background:rgba(16,27,39,.55)}
+.reading{padding:18px 20px 16px;border-left:1px solid var(--rule);position:relative}
+.reading:first-child{border-left:0}
+.reading .k{font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--paper-3)}
+.reading .v{font-family:"IBM Plex Mono",monospace;font-size:38px;font-weight:600;line-height:1;margin-top:12px;letter-spacing:-.03em}
+.reading .v.warn{color:var(--signal)}
+.reading .h{font-size:11.5px;color:var(--paper-2);margin-top:9px}
+/* the dimension baseline under each figure */
+.reading .dim{margin-top:11px;height:7px;border-top:1px solid var(--rule-2);position:relative}
+.reading .dim::before,.reading .dim::after{content:"";position:absolute;top:-4px;width:1px;height:9px;background:var(--rule-2)}
+.reading .dim::before{left:0}.reading .dim::after{right:0}
+.reading.link{transition:background 180ms ease}
+.reading.link:hover{background:var(--panel-2)}
+.reading .go{position:absolute;top:16px;right:18px;font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.12em;color:var(--paper-3);transition:color 180ms ease}
+.reading.link:hover .go{color:var(--cyan)}
+.reading.wide .h{margin-top:12px}
+.spark{display:block;margin-top:10px}
+
+/* ---------- aligned register (projects / global) ---------- */
+.regbox{overflow-x:auto}
+.regbox::-webkit-scrollbar{height:8px}
+.regbox::-webkit-scrollbar-track{background:var(--ink)}
+.regbox::-webkit-scrollbar-thumb{background:var(--rule-2)}
+.reg{width:100%;border-collapse:collapse;font-size:13px;min-width:880px}
+.reg thead th{
+  font-family:"IBM Plex Mono",monospace;font-size:8.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--paper-3);font-weight:500;text-align:left;padding:9px 12px;border-bottom:1px solid var(--rule);
+}
+.reg thead th.r{text-align:right}
+.reg tbody td{padding:13px 12px;border-bottom:1px solid var(--rule);vertical-align:middle}
+.reg tbody td.r{text-align:right;font-family:"IBM Plex Mono",monospace;font-size:12.5px}
+.reg tbody tr{transition:background 180ms ease}
+.reg tbody tr:hover{background:var(--panel)}
+.reg .ix{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--paper-3);letter-spacing:.1em}
+.reg .pname{font-weight:600;font-size:13.5px}
+.reg .prepo{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--paper-3);margin-top:2px}
+.reg .state{font-family:"IBM Plex Mono",monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;display:flex;align-items:center;gap:7px}
+.reg .state.run{color:var(--cyan)}
+.reg .state.hold{color:var(--paper-3)}
+.reg .state svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:1.3;stroke-linecap:square}
+.warnv{color:var(--signal)}
+.dimv{color:var(--paper-3)}
+
+/* mini stage strip — where each project's work sits */
+.strip{display:flex;align-items:center;gap:0}
+.strip .s{width:26px;height:14px;border:1px solid var(--rule-2);border-right:0;position:relative}
+.strip .s:last-child{border-right:1px solid var(--rule-2)}
+.strip .s.f{background:var(--cyan-ghost);border-color:var(--cyan-2)}
+.strip .s.w{background:var(--signal-ghost);border-color:var(--signal)}
+.strip .s span{
+  position:absolute;inset:0;display:grid;place-items:center;
+  font-family:"IBM Plex Mono",monospace;font-size:8.5px;color:var(--paper-2);
+}
+.strip .s.w span{color:var(--signal)}
+.strip .s.f span{color:var(--cyan)}
+.strip-cap{font-family:"IBM Plex Mono",monospace;font-size:9px;letter-spacing:.1em;color:var(--paper-3);margin-top:5px}
+
+/* global links — leader-dot rows */
+.leader{display:flex;align-items:baseline;gap:10px;padding:12px 12px;border-bottom:1px solid var(--rule);transition:background 180ms ease}
+.leader:hover{background:var(--panel)}
+.leader svg{width:15px;height:15px;stroke:var(--paper-3);fill:none;stroke-width:1.15;stroke-linecap:square;align-self:center;transition:stroke 180ms ease}
+.leader:hover svg{stroke:var(--cyan)}
+.leader .t{font-size:13px;font-weight:500}
+.leader .dots{flex:1;border-bottom:1px dotted var(--rule-2);transform:translateY(-4px)}
+.leader .m{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--paper-3);letter-spacing:.08em}
+
+/* footnote */
+.fnote{margin-top:18px;display:flex;gap:10px;font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:var(--paper-3);letter-spacing:.04em;line-height:1.7}
+.fnote b{color:var(--signal);font-weight:500}
+
+@media (max-width:1200px){
+  :root{--rail-w:236px}
+  .rail-head{padding:16px 13px 12px}
+  .grp-h{padding:10px 13px 8px}
+  .nav{padding:0 13px}
+  .nav a{grid-template-columns:18px 16px 1fr auto;gap:8px;padding-left:8px}
+  .nav a .lb{font-size:12.5px}
+  .ident{padding:13px 13px 14px}
+  .ident-name{font-size:12px}
+  .ident-sub,.ident-status{font-size:9px}
+  .body{padding:22px 20px 56px}
+  .sheet-head{padding:16px 20px 14px}
+  .readings{grid-template-columns:repeat(2,1fr)}
+  .readings .reading:nth-child(3){border-left:0}
+  .reading{border-top:1px solid var(--rule)}
+  .readings .reading:nth-child(1),.readings .reading:nth-child(2){border-top:0}
+}
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  .rail{position:relative;height:auto;border-right:0;border-bottom:1px solid var(--rule)}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ==================== LEFT RAIL ==================== -->
+  <aside class="rail">
+    <div class="rail-head">
+      <div class="wordmark"><b>Loop</b><span>CONTROL PLANE</span></div>
+      <a href="#" class="sheet-no clk">
+        <span>
+          <span class="k mono">Project</span>
+          <span class="v">Content Generation Platform</span>
+        </span>
+        <span class="swap mono">SWAP</span>
+      </a>
+    </div>
+
+    <div class="rail-body">
+      <div class="grp">
+        <div class="grp-h mono">This project</div>
+        <nav class="nav">
+          <a href="./overview.html" class="on" aria-current="page">
+            <span class="ix">01</span>
+            <svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11"/><path d="M2.5 6.5h11M6.5 6.5v7"/></svg>
+            <span class="lb">Overview</span><span class="ct"></span>
+          </a>
+          <a href="#" class="clk">
+            <span class="ix">02</span>
+            <svg viewBox="0 0 16 16"><rect x="1.5" y="6" width="4" height="4"/><rect x="10.5" y="2" width="4" height="4"/><rect x="10.5" y="10" width="4" height="4"/><path d="M5.5 8h2.5M8 8V4h2.5M8 8v4h2.5"/></svg>
+            <span class="lb">Process Map</span><span class="ct mono">9</span>
+          </a>
+          <a href="./ideas.html">
+            <span class="ix">03</span>
+            <svg viewBox="0 0 16 16"><path d="M5.6 8.6a3 3 0 1 1 4.8 0l-.6 1.4h-3.6z"/><path d="M6.2 12.2h3.6M6.8 13.8h2.4M8 1.2v1.6M2.6 6.4h1.6M11.8 6.4h1.6M4.2 2.6 5.3 3.7M11.8 2.6 10.7 3.7"/></svg>
+            <span class="lb">Ideas</span><span class="ct mono warn">23</span>
+          </a>
+          <a href="#" class="clk">
+            <span class="ix">04</span>
+            <svg viewBox="0 0 16 16"><circle cx="4" cy="3.4" r="1.7"/><circle cx="4" cy="12.6" r="1.7"/><circle cx="12" cy="12.6" r="1.7"/><path d="M4 5.1v5.8M12 10.9V6.6L9.6 4.2H6.6"/><path d="M8.2 2.6 6.6 4.2l1.6 1.6"/></svg>
+            <span class="lb">Pull Requests</span><span class="ct mono">13</span>
+          </a>
+          <a href="#" class="clk">
+            <span class="ix">05</span>
+            <svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11"/><path d="M8 2.5v11M4.6 5.6h2.2M4.6 8.1h2.2M9.2 5.6h2.2M9.2 8.1h2.2"/></svg>
+            <span class="lb">Learnings</span><span class="ct mono">6</span>
+          </a>
+          <a href="#" class="clk">
+            <span class="ix">06</span>
+            <svg viewBox="0 0 16 16"><path d="M6.4 2v4.2L2.9 12.3a1 1 0 0 0 .9 1.5h8.4a1 1 0 0 0 .9-1.5L9.6 6.2V2"/><path d="M5.4 2h5.2M4.4 9.6h7.2"/></svg>
+            <span class="lb">Testing</span><span class="ct mono">31</span>
+          </a>
+          <a href="./metrics.html">
+            <span class="ix">07</span>
+            <svg viewBox="0 0 16 16"><path d="M2 13.4h12"/><path d="M4.6 13.4V8.2M8 13.4V3.6M11.4 13.4V10"/></svg>
+            <span class="lb">Metrics</span><span class="ct"></span>
+          </a>
+        </nav>
+      </div>
+
+      <div class="grp">
+        <div class="grp-h mono">Global</div>
+        <nav class="nav">
+          <a href="#" class="clk">
+            <span class="ix">08</span>
+            <svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5"/><rect x="9" y="2" width="5" height="5"/><rect x="2" y="9" width="5" height="5"/><path d="M9 11.5h5M11.5 9v5"/></svg>
+            <span class="lb">Tool Catalog</span><span class="ct mono warn">2</span>
+          </a>
+          <a href="#" class="clk">
+            <span class="ix">09</span>
+            <svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10"/><path d="M4.4 6h4M4.4 8.5h4M4.4 11h2.6M10.6 6h1.4M10.6 8.5h1.4M10.6 11h1.4"/></svg>
+            <span class="lb">News</span><span class="ct"></span>
+          </a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- identity block: replaces the bare "Sign out" text link -->
+    <div class="ident">
+      <div class="ident-cap mono">Operator</div>
+      <div class="ident-row">
+        <div class="mark"><b>AP</b></div>
+        <div>
+          <div class="ident-name">Alessio Pagliarulo</div>
+          <div class="ident-sub">ApagPlayz · owner</div>
+        </div>
+        <div class="ident-acts">
+          <button class="ibtn clk" aria-label="Account settings" title="Account settings">
+            <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.4"/><path d="M8 1.4v2.1M8 12.5v2.1M14.6 8h-2.1M3.5 8H1.4M12.7 3.3l-1.5 1.5M4.8 11.2l-1.5 1.5M12.7 12.7l-1.5-1.5M4.8 4.8 3.3 3.3"/></svg>
+          </button>
+          <button class="ibtn out clk" aria-label="Sign out" title="Sign out">
+            <svg viewBox="0 0 16 16"><path d="M9.4 2.4H3.2v11.2h6.2"/><path d="M7.6 8h6.6M11.7 5.5 14.2 8l-2.5 2.5"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="ident-status mono"><i></i>GITHUB TOKEN OK · SYNCED 21:04</div>
+    </div>
+  </aside>
+
+  <!-- ==================== SHEET ==================== -->
+  <main class="sheet">
+    <div class="sheet-head">
+      <div>
+        <div class="crumb mono">Loop <b>/</b> Content Generation Platform <b>/</b> Overview</div>
+        <h1>Where the loop stands</h1>
+        <p class="subline">Six stations, one direction of travel. The numerals sit in the gaps — that is the queue between two stations.</p>
+      </div>
+      <div class="stamp mono">
+        <span>SHEET</span><b>01 / 09</b>
+        <span>REV</span><b>2026-09-02</b>
+        <span>LAST ACTIVITY</span><b>41 MIN AGO</b>
+      </div>
+    </div>
+
+    <div class="body">
+
+      <!-- ---------- HERO: the pipeline ---------- -->
+      <div class="sec-h">
+        <span class="num mono">A</span>
+        <h2>Loop schematic — open work by station</h2>
+        <span class="note mono">live from github · polls every 15s</span>
+      </div>
+
+      <div class="hero"><span class="tl"></span><span class="tr"></span>
+        <div class="hero-bar mono">
+          <span>FLOW</span><b>SCOUT → YOU → BUILDER → AUDITOR → DEMO → RETRO</b>
+          <span class="sp">34 OF 42 OPEN ISSUES ARE STUCK IN THE FIRST TWO GAPS</span>
+        </div>
+        <div class="scroll">
+        <svg class="flow" viewBox="0 0 1240 392" role="img"
+             aria-label="Pipeline schematic. 23 proposals await your decision between Scout and You decide; 11 approved items await the Builder; 13 open pull requests sit between Builder and Auditor; 6 retro issues open on the return path; 2 items blocked awaiting a permission grant.">
+          <defs>
+            <marker id="ah" markerWidth="7" markerHeight="7" refX="6.2" refY="3.5" orient="auto">
+              <path d="M0 0.6 L6.2 3.5 L0 6.4" fill="none" stroke="#2E7FA6" stroke-width="1.1"/>
+            </marker>
+            <marker id="ahw" markerWidth="7" markerHeight="7" refX="6.2" refY="3.5" orient="auto">
+              <path d="M0 0.6 L6.2 3.5 L0 6.4" fill="none" stroke="#7E5023" stroke-width="1.1"/>
+            </marker>
+            <marker id="tickL" markerWidth="6" markerHeight="10" refX="3" refY="5" orient="auto">
+              <path d="M3 0.5 L3 9.5" stroke="#FFA24B" stroke-width="1"/>
+            </marker>
+          </defs>
+
+          <!-- ===== top: bracket calling out the stuck band ===== -->
+          <path class="s-dim" d="M30 74 L30 62 L360 62 L360 74" marker-start="url(#tickL)" marker-end="url(#tickL)"/>
+          <path class="s-dash" d="M30 78 L30 112 M360 78 L360 112"/>
+          <text class="t-dim" x="195" y="52" text-anchor="middle">STATIONS 01–02 · 34 RECORDS PARKED</text>
+
+          <!-- ===== stations ===== -->
+          <!-- 01 SCOUT  cx 89 -->
+          <g class="g-station">
+            <rect class="station" x="30" y="112" width="118" height="72"/>
+            <path class="s-rule" d="M30 112 h9 M30 112 v9 M148 184 h-9 M148 184 v-9" stroke="#59C7F2"/>
+            <text class="t-idx" x="41" y="128">01</text>
+            <text class="t-kind" x="137" y="128" text-anchor="end">AGENT</text>
+            <text class="t-name" x="41" y="150">SCOUT</text>
+            <text class="t-state" x="41" y="166">EVERY HOUR</text>
+            <text class="t-state" x="41" y="177">CAPS QUEUE AT 8</text>
+          </g>
+          <!-- 02 YOU DECIDE cx 301 -->
+          <g class="g-station">
+            <rect class="station you" x="242.4" y="112" width="118" height="72"/>
+            <path class="s-rule" d="M242.4 112 h9 M242.4 112 v9 M360.4 184 h-9 M360.4 184 v-9" stroke="#FFA24B"/>
+            <text class="t-idx" x="253" y="128" fill="#FFA24B">02</text>
+            <text class="t-kind" x="349" y="128" text-anchor="end" fill="#FFA24B">YOU</text>
+            <text class="t-name" x="253" y="150">YOU DECIDE</text>
+            <text class="t-state" x="253" y="166">APPROVE / SEND BACK</text>
+            <text class="t-state" x="253" y="177" fill="#FFA24B">FLAG 1 — SEE NOTE</text>
+          </g>
+          <!-- 03 BUILDER cx 513.8 -->
+          <g class="g-station">
+            <rect class="station" x="454.8" y="112" width="118" height="72"/>
+            <path class="s-rule" d="M454.8 112 h9 M454.8 112 v9 M572.8 184 h-9 M572.8 184 v-9" stroke="#59C7F2"/>
+            <text class="t-idx" x="465" y="128">03</text>
+            <text class="t-kind" x="562" y="128" text-anchor="end">AGENT</text>
+            <text class="t-name" x="465" y="150">BUILDER</text>
+            <text class="t-state" x="465" y="166">ON APPROVE</text>
+            <text class="t-state" x="465" y="177">+ EVERY 30 MIN</text>
+          </g>
+          <!-- 04 AUDITOR cx 726.2 -->
+          <g class="g-station">
+            <rect class="station" x="667.2" y="112" width="118" height="72"/>
+            <path class="s-rule" d="M667.2 112 h9 M667.2 112 v9 M785.2 184 h-9 M785.2 184 v-9" stroke="#59C7F2"/>
+            <text class="t-idx" x="677" y="128">04</text>
+            <text class="t-kind" x="775" y="128" text-anchor="end">AGENT</text>
+            <text class="t-name" x="677" y="150">AUDITOR</text>
+            <text class="t-state" x="677" y="166">ON EVERY PR</text>
+            <text class="t-state" x="677" y="177">5 REVIEW PASSES</text>
+          </g>
+          <!-- 05 DEMO cx 938.6 -->
+          <g class="g-station">
+            <rect class="station" x="879.6" y="112" width="118" height="72"/>
+            <path class="s-rule" d="M879.6 112 h9 M879.6 112 v9 M997.6 184 h-9 M997.6 184 v-9" stroke="#59C7F2"/>
+            <text class="t-idx" x="890" y="128">05</text>
+            <text class="t-kind" x="988" y="128" text-anchor="end">AGENT</text>
+            <text class="t-name" x="890" y="150">DEMO</text>
+            <text class="t-state" x="890" y="166">ON claude/ PRs</text>
+            <text class="t-state" x="890" y="177">VIDEO EVIDENCE</text>
+          </g>
+          <!-- 06 RETRO cx 1151 -->
+          <g class="g-station">
+            <rect class="station" x="1092" y="112" width="118" height="72"/>
+            <path class="s-rule" d="M1092 112 h9 M1092 112 v9 M1210 184 h-9 M1210 184 v-9" stroke="#59C7F2"/>
+            <text class="t-idx" x="1102" y="128">06</text>
+            <text class="t-kind" x="1200" y="128" text-anchor="end">AGENT</text>
+            <text class="t-name" x="1102" y="150">RETRO</text>
+            <text class="t-state" x="1102" y="166">SUNDAY EVENINGS</text>
+            <text class="t-state" x="1102" y="177">REWRITES AGENTS</text>
+          </g>
+
+          <!-- ===== gap 1: 23 waiting on you (warm) cx 195.2 ===== -->
+          <path class="s-spine" d="M148 148 H171" />
+          <text class="t-q warn" x="195.2" y="158" text-anchor="middle">23</text>
+          <path class="s-spine" d="M219 148 H236" marker-end="url(#ah)" stroke="#7E5023"/>
+          <text class="t-qc warn" x="195.2" y="174" text-anchor="middle">AWAITING YOUR</text>
+          <text class="t-qc warn" x="195.2" y="184" text-anchor="middle">DECISION</text>
+
+          <!-- ===== gap 2: 11 approved cx 407.6 ===== -->
+          <path class="s-spine" d="M360.4 148 H383"/>
+          <text class="t-q" x="407.6" y="158" text-anchor="middle">11</text>
+          <path class="s-spine" d="M432 148 H449" marker-end="url(#ah)"/>
+          <text class="t-qc" x="407.6" y="174" text-anchor="middle">APPROVED · NOT</text>
+          <text class="t-qc" x="407.6" y="184" text-anchor="middle">YET BUILT</text>
+
+          <!-- ===== gap 3: 13 open PRs cx 620 ===== -->
+          <path class="s-spine" d="M572.8 148 H595"/>
+          <text class="t-q" x="620" y="158" text-anchor="middle">13</text>
+          <path class="s-spine" d="M645 148 H661" marker-end="url(#ah)"/>
+          <text class="t-qc" x="620" y="174" text-anchor="middle">OPEN PULL</text>
+          <text class="t-qc" x="620" y="184" text-anchor="middle">REQUESTS</text>
+
+          <!-- ===== gap 4 + 5: no queue, just labelled connectors ===== -->
+          <path class="s-spine" d="M785.2 148 H874" marker-end="url(#ah)"/>
+          <text class="t-edge" x="829.9" y="141" text-anchor="middle">VERDICT</text>
+          <text class="t-edge" x="829.9" y="163" text-anchor="middle" fill="#2E7FA6">NONE QUEUED</text>
+
+          <path class="s-spine" d="M997.6 148 H1086" marker-end="url(#ah)"/>
+          <text class="t-edge" x="1041.8" y="141" text-anchor="middle">MERGE</text>
+          <text class="t-edge" x="1041.8" y="163" text-anchor="middle" fill="#2E7FA6">2026-07-28</text>
+
+          <!-- ===== redraft return loop (02 → back into the queue) ===== -->
+          <path class="s-red" d="M301.4 184 V228 H195.2 V166" marker-end="url(#ahw)"/>
+          <text class="t-ret" x="252" y="245" text-anchor="middle" fill="#7E5023">SENT BACK · REDRAFT</text>
+
+          <!-- ===== retro return path (06 → 01) ===== -->
+          <path class="s-ret" d="M1151 184 V272 H89 V190" marker-end="url(#ah)"/>
+          <text class="t-ret" x="470" y="265" text-anchor="middle">RETRO REWRITES THE AGENTS' OWN INSTRUCTIONS</text>
+          <!-- queue gauge on the return path -->
+          <g>
+            <path class="s-rule" d="M1000 272 v22" stroke="#27404F"/>
+            <text class="t-q" x="1020" y="308" font-size="22">6</text>
+            <text class="t-qc" x="1050" y="300" fill="#7E97AB">RETRO ISSUES</text>
+            <text class="t-qc" x="1050" y="310" fill="#7E97AB">STILL OPEN</text>
+          </g>
+
+          <!-- ===== notes ===== -->
+          <g>
+            <path class="s-dim" d="M30 322 h4 v50 h-4" opacity=".9"/>
+            <text class="t-note-h" x="44" y="334">FLAG 1 — BLOCKED</text>
+            <text class="t-note" x="44" y="349">2 items cannot move until you grant a</text>
+            <text class="t-note" x="44" y="362">workflow permission — #59 Memory (MCP),</text>
+            <text class="t-note" x="44" y="375">#61 Playwright (MCP).</text>
+          </g>
+          <g>
+            <path class="s-rule" d="M700 322 h4 v50 h-4"/>
+            <text class="t-note-h" x="714" y="334" fill="#7E97AB">HOW TO READ</text>
+            <text class="t-note" x="714" y="349" fill="#7E97AB">Boxes are actors. The numeral in a gap is the</text>
+            <text class="t-note" x="714" y="362" fill="#7E97AB">queue between two actors. Amber = the queue is</text>
+            <text class="t-note" x="714" y="375" fill="#7E97AB">waiting on you. Dashed = a return path.</text>
+          </g>
+          <text class="t-idx" x="1210" y="334" text-anchor="end" fill="#9FB6C6">Σ 42 OPEN ISSUES · 13 OPEN PRs</text>
+        </svg>
+        </div>
+
+        <!-- ---------- readings, welded to the schematic ---------- -->
+        <div class="readings">
+          <a href="./ideas.html" class="reading link">
+            <span class="go mono">→</span>
+            <div class="k">Open ideas</div>
+            <div class="v">34</div>
+            <div class="dim"></div>
+            <div class="h">Proposals, approved and redraft</div>
+          </a>
+          <a href="./ideas.html" class="reading link">
+            <span class="go mono">→</span>
+            <div class="k">Approved &amp; waiting</div>
+            <div class="v warn">11</div>
+            <div class="dim"></div>
+            <div class="h">Signed off, not yet built</div>
+          </a>
+          <a href="#" class="reading link clk">
+            <span class="go mono">→</span>
+            <div class="k">Open PRs</div>
+            <div class="v">13</div>
+            <div class="dim"></div>
+            <div class="h">Builder branches awaiting review</div>
+          </a>
+          <div class="reading wide">
+            <div class="k">Throughput · 17 recorded days</div>
+            <svg class="spark" viewBox="0 0 300 68" width="100%" height="68" role="img" aria-label="Pull requests opened per recorded day, 10 July to 25 August 2026. Peaks of 13 and 11, then a long flat tail.">
+              <path d="M0 55 H300" stroke="#1D3040" stroke-width="1" fill="none"/>
+              <!-- opened per day: 5,1,1,4,13,5,3,7,4,2,2,5,11,1,3,2,1 -->
+              <g fill="none" stroke="#2E7FA6" stroke-width="1.2">
+                <path d="M6 55 V34"/><path d="M23 55 V51"/><path d="M40 55 V51"/><path d="M57 55 V38"/>
+                <path d="M74 55 V4"/><path d="M91 55 V34"/><path d="M108 55 V43"/><path d="M125 55 V26"/>
+                <path d="M142 55 V38"/><path d="M159 55 V47"/><path d="M176 55 V47"/><path d="M193 55 V34"/>
+                <path d="M210 55 V12"/><path d="M227 55 V51"/><path d="M244 55 V43"/><path d="M261 55 V47"/>
+                <path d="M278 55 V51"/>
+              </g>
+              <path d="M278 55 V51" stroke="#FFA24B" stroke-width="1.6" fill="none"/>
+              <text x="0" y="61" font-family="IBM Plex Mono, monospace" font-size="7.5" fill="#7E97AB" letter-spacing="1">10 JUL</text>
+              <text x="300" y="61" text-anchor="end" font-family="IBM Plex Mono, monospace" font-size="7.5" fill="#7E97AB" letter-spacing="1">25 AUG</text>
+            </svg>
+            <div class="h">PRs opened per recorded day. The tail is flat — the Scout stands down while the queue is unmoved.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------- PROJECTS ---------- -->
+      <section class="sec">
+        <div class="sec-h">
+          <span class="num mono">B</span>
+          <h2>Registered projects</h2>
+          <span class="note mono">2 registered · 2 set up</span>
+        </div>
+        <div class="regbox">
+        <table class="reg">
+          <thead>
+            <tr>
+              <th style="width:44px">#</th>
+              <th>Project</th>
+              <th style="width:150px">Loop</th>
+              <th style="width:190px">Where its work sits</th>
+              <th class="r" style="width:90px">Ideas</th>
+              <th class="r" style="width:80px">PRs</th>
+              <th class="r" style="width:150px">Last activity</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="clk">
+              <td class="ix">P-01</td>
+              <td>
+                <div class="pname">Content Generation Platform</div>
+                <div class="prepo">ApagPlayz/content-generation-platform</div>
+              </td>
+              <td>
+                <div class="state run">
+                  <svg viewBox="0 0 16 16"><path d="M4 2.5 12.5 8 4 13.5Z"/></svg>
+                  RUNNING
+                </div>
+              </td>
+              <td>
+                <div class="strip" aria-label="Work sits at stations 1 and 2">
+                  <span class="s w"><span>23</span></span>
+                  <span class="s w"><span>11</span></span>
+                  <span class="s f"><span>13</span></span>
+                  <span class="s"><span>·</span></span>
+                  <span class="s"><span>·</span></span>
+                  <span class="s f"><span>6</span></span>
+                </div>
+                <div class="strip-cap">STATIONS 01 → 06</div>
+              </td>
+              <td class="r warnv">34</td>
+              <td class="r">13</td>
+              <td class="r dimv">41 min ago</td>
+            </tr>
+            <tr class="clk">
+              <td class="ix">P-02</td>
+              <td>
+                <div class="pname">supply-chain-optimizer</div>
+                <div class="prepo">ApagPlayz/supply-chain-optimizer</div>
+              </td>
+              <td>
+                <div class="state hold">
+                  <svg viewBox="0 0 16 16"><path d="M5 3v10M11 3v10"/></svg>
+                  PAUSED BY YOU
+                </div>
+              </td>
+              <td>
+                <div class="strip" aria-label="No work in flight; loop paused">
+                  <span class="s"><span>·</span></span><span class="s"><span>·</span></span>
+                  <span class="s"><span>·</span></span><span class="s"><span>·</span></span>
+                  <span class="s"><span>·</span></span><span class="s"><span>·</span></span>
+                </div>
+                <div class="strip-cap">WORKFLOWS OFF — INTENTIONAL</div>
+              </td>
+              <td class="r dimv">0</td>
+              <td class="r dimv">0</td>
+              <td class="r dimv">—</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+        <div class="fnote">
+          <b>NOTE</b>
+          <span>P-02 is switched off deliberately while the loop is repaired. It is not a fault and the dashboard will not nag about it.</span>
+        </div>
+      </section>
+
+      <!-- ---------- GLOBAL ---------- -->
+      <section class="sec">
+        <div class="sec-h">
+          <span class="num mono">C</span>
+          <h2>Global</h2>
+          <span class="note mono">shared across all projects</span>
+        </div>
+        <a href="#" class="leader clk">
+          <svg viewBox="0 0 16 16"><rect x="2" y="2" width="5" height="5"/><rect x="9" y="2" width="5" height="5"/><rect x="2" y="9" width="5" height="5"/><path d="M9 11.5h5M11.5 9v5"/></svg>
+          <span class="t">Tool Catalog</span>
+          <span class="dots"></span>
+          <span class="m warnv">2 AWAITING A PERMISSION GRANT</span>
+        </a>
+        <a href="#" class="leader clk">
+          <svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10"/><path d="M4.4 6h4M4.4 8.5h4M4.4 11h2.6M10.6 6h1.4M10.6 8.5h1.4M10.6 11h1.4"/></svg>
+          <span class="t">News</span>
+          <span class="dots"></span>
+          <span class="m">LAST DIGEST 2026-09-01</span>
+        </a>
+      </section>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>

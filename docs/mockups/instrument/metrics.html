@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>INSTRUMENT — Metrics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   INSTRUMENT — shared shell
+   ============================================================ */
+:root{
+  --bg:#100F0E; --bg-raise:#171614;
+  --rule:#2A2724; --rule-2:#403A34;
+  --dim:#8A847C; --mid:#ABA49B; --fg:#EDE9E3; --hi:#FFFFFF;
+  --signal:#FFB000; --signal-mute:#7A5407;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --rail:236px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+svg{display:block}
+:focus-visible{outline:1px solid var(--signal);outline-offset:2px}
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.wrap{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100vh}
+
+/* rail */
+.rail{border-right:1px solid var(--rule);position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.rail-top{padding:18px 16px 14px;display:flex;align-items:baseline;gap:8px}
+.mark{width:7px;height:7px;background:var(--signal);flex:none;transform:translateY(-1px)}
+.wordmark{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.22em;color:var(--fg)}
+.wordmark span{color:var(--dim);font-weight:400}
+.rail-build{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim)}
+.proj{display:block;width:100%;text-align:left;padding:10px 16px 12px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);transition:background 180ms ease}
+.proj:hover{background:var(--bg-raise)}
+.proj-k{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.proj-v{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12.5px;font-weight:500;color:var(--fg)}
+.proj-v svg{margin-left:auto;stroke:var(--dim);flex:none}
+.proj-r{display:block;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navgroup{padding:16px 16px 6px;font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.nav{display:grid;grid-template-columns:22px 1fr auto;align-items:center;padding:5px 16px 5px 15px;border-left:1px solid transparent;color:var(--mid);
+  transition:color 160ms ease,border-color 160ms ease,background 160ms ease}
+.nav:hover{color:var(--fg);background:var(--bg-raise)}
+.nav-i{font-family:var(--mono);font-size:10px;color:var(--dim);transition:color 160ms ease}
+.nav:hover .nav-i{color:var(--mid)}
+.nav-l{font-size:12.5px}
+.nav-n{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.nav.on{color:var(--hi);border-left-color:var(--signal);background:var(--bg-raise)}
+.nav.on .nav-i{color:var(--signal)}
+.nav.on .nav-l{font-weight:600}
+.acct{margin-top:auto;border-top:1px solid var(--rule)}
+.acct-row{display:grid;grid-template-columns:26px 1fr 22px;gap:9px;align-items:center;padding:12px 16px 8px}
+.tile{width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--rule-2);font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--fg)}
+.acct-name{display:block;font-size:12px;font-weight:500;color:var(--fg);line-height:1.25}
+.acct-sub{display:block;font-family:var(--mono);font-size:9.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-out{width:22px;height:22px;display:grid;place-items:center;color:var(--dim);transition:color 160ms ease}
+.acct-out:hover{color:var(--signal)}
+.acct-out svg{stroke:currentColor}
+.acct-meta{display:flex;justify-content:space-between;padding:0 16px 13px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+.acct-meta b{font-weight:500;color:var(--mid);letter-spacing:.04em}
+
+/* main */
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:14px;padding:0 28px;height:44px;border-bottom:1px solid var(--rule)}
+.crumb{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg)}
+.crumb i{font-style:normal;color:var(--dim);letter-spacing:.06em;text-transform:none}
+.readouts{margin-left:auto;display:flex;align-items:center;gap:22px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--dim)}
+.readouts b{font-weight:500;color:var(--mid)}
+.ok{display:inline-flex;align-items:center;gap:6px}
+.ok::before{content:"";width:6px;height:6px;background:var(--signal)}
+.pad{padding:0 28px}
+
+.band{border-top:1px solid var(--rule);position:relative;margin-top:34px;padding-top:22px}
+.band > .tag{position:absolute;top:0;left:0;transform:translateY(-52%);background:var(--bg);padding-right:14px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.band > .tag-r{position:absolute;top:0;right:0;transform:translateY(-52%);background:var(--bg);padding-left:14px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--dim)}
+
+/* ---------- 8-figure snapshot ledger (deliberately small) ---------- */
+.snap{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));padding-top:26px}
+.fig{padding:0 14px;border-left:1px solid var(--rule)}
+.fig:first-child{padding-left:0;border-left:0}
+.fig-k{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);min-height:28px;line-height:1.45}
+.fig-v{display:block;margin-top:4px;font-family:var(--mono);font-size:26px;line-height:1;letter-spacing:-.03em;color:var(--fg)}
+.fig-v .u{font-size:.48em;letter-spacing:0;color:var(--mid)}
+.fig-h{display:block;margin-top:5px;font-family:var(--mono);font-size:9.5px;color:var(--dim)}
+
+/* ---------- DOMINANT: model evaluation ---------- */
+.eval{padding-top:26px}
+.eval-head{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:52px;align-items:end;padding-bottom:26px}
+.eval-t{margin:0;font-size:clamp(26px,2.6vw,38px);line-height:1.08;letter-spacing:-.022em;font-weight:500;color:var(--hi);max-width:19ch}
+.eval-t em{font-style:normal;color:var(--signal)}
+.eval-d{margin:14px 0 0;max-width:62ch;color:var(--mid);font-size:13.5px;line-height:1.6}
+.eval-params{border-left:1px solid var(--rule);padding-left:24px}
+.pr{display:flex;justify-content:space-between;gap:14px;padding:6px 0;border-bottom:1px solid var(--rule)}
+.pr:first-child{border-top:1px solid var(--rule)}
+.pr-k{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.pr-v{font-family:var(--mono);font-size:11.5px;color:var(--mid);text-align:right}
+
+.plot-wrap{overflow-x:auto;overflow-y:hidden;padding-bottom:4px}
+.plot{width:100%;min-width:880px;height:auto;display:block}
+.plot text{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.t-name{font-family:"IBM Plex Sans",sans-serif;font-size:13.5px;fill:var(--fg)}
+.t-name.win{fill:var(--hi);font-weight:600}
+.t-sub{font-size:9.5px;fill:var(--dim);letter-spacing:.06em}
+.t-idx{font-size:10px;fill:var(--dim)}
+.t-hd{font-size:9px;fill:var(--dim);letter-spacing:.18em}
+.t-ap{font-size:16px;fill:var(--mid)}
+.t-ap.win{fill:var(--signal)}
+.t-ci{font-size:10.5px;fill:var(--dim);letter-spacing:.02em}
+.t-ax{font-size:9.5px;fill:var(--dim);letter-spacing:.06em}
+.t-note{font-size:9.5px;fill:var(--dim);letter-spacing:.1em}
+.grid{stroke:var(--rule);stroke-width:1}
+.axis{stroke:var(--rule-2);stroke-width:1}
+.ref{stroke:var(--rule-2);stroke-width:1;stroke-dasharray:2 4}
+.whisk{stroke:var(--rule-2);stroke-width:1.25}
+.whisk.win{stroke:var(--signal-mute)}
+.cap{stroke:var(--rule-2);stroke-width:1.25}
+.cap.win{stroke:var(--signal-mute)}
+.dot{fill:none;stroke:var(--mid);stroke-width:1.4}
+.dot.win{fill:var(--signal);stroke:none}
+.plot g.row{transition:opacity 200ms ease}
+.plot:hover g.row{opacity:.5}
+.plot g.row:hover{opacity:1}
+
+.callout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:44px;margin-top:26px;padding-top:20px;border-top:1px solid var(--rule)}
+.callout p{margin:0;font-size:12.5px;line-height:1.6;color:var(--mid)}
+.callout p b{color:var(--fg);font-weight:500}
+.callout .lead{padding-left:11px;border-left:2px solid var(--signal)}
+.callout .lead b{color:var(--signal)}
+
+/* ---------- tables ---------- */
+.scroll{overflow-x:auto;overflow-y:hidden}
+table{border-collapse:collapse;width:100%;min-width:760px}
+thead th{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  font-weight:400;text-align:left;padding:0 12px 8px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+tbody td{padding:8px 12px 8px 0;border-bottom:1px solid var(--rule);vertical-align:baseline;font-size:12.5px}
+tbody tr{transition:background 160ms ease}
+tbody tr:hover{background:var(--bg-raise)}
+tfoot td{padding:9px 12px 9px 0;border-top:1px solid var(--rule-2);font-size:12.5px;color:var(--fg)}
+.num{text-align:right;font-family:var(--mono);white-space:nowrap;padding-right:0!important;padding-left:26px!important}
+.num.best{color:var(--signal)}
+.num.mute{color:var(--dim)}
+.mk{width:18px;font-family:var(--mono);color:var(--dim);padding-right:8px!important}
+.mk.on{color:var(--signal)}
+.meth{color:var(--fg)}
+.meth.mute{color:var(--mid)}
+.meth small{display:block;font-family:var(--mono);font-size:10px;color:var(--dim);letter-spacing:.03em;margin-top:1px}
+.mono-s{font-family:var(--mono);font-size:11.5px;color:var(--mid);white-space:nowrap}
+
+.foot{padding:26px 0 46px;margin-top:30px;border-top:1px solid var(--rule);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;display:flex;gap:26px;flex-wrap:wrap}
+
+@media (max-width:1280px){
+  .snap{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:24px}
+  .fig:nth-child(5){padding-left:0;border-left:0}
+  .eval-head{grid-template-columns:1fr;gap:26px;align-items:start}
+  .eval-params{border-left:0;padding-left:0}
+  .callout{grid-template-columns:1fr;gap:18px}
+}
+@media (max-width:1200px){
+  .topbar{height:auto;min-height:44px;padding-top:8px;padding-bottom:8px;flex-wrap:wrap;row-gap:2px}
+  .readouts{gap:16px}
+  .readouts > span:first-of-type{display:none}
+}
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule)}
+  .snap{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .fig:nth-child(odd){padding-left:0;border-left:0}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <aside class="rail">
+    <div class="rail-top">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="wordmark">LOOP<span>/DASH</span></span>
+      <span class="rail-build n">v0.9.4</span>
+    </div>
+    <button class="proj" type="button">
+      <span class="proj-k">Project</span>
+      <span class="proj-v">Content Generation Platform
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke-width="1.1" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg>
+      </span>
+      <span class="proj-r">ApagPlayz/content-generation-platform</span>
+    </button>
+    <nav>
+      <div class="navgroup">This project</div>
+      <a class="nav" href="overview.html"><span class="nav-i">01</span><span class="nav-l">Overview</span><span class="nav-n"></span></a>
+      <a class="nav" href="#"><span class="nav-i">02</span><span class="nav-l">Process Map</span><span class="nav-n"></span></a>
+      <a class="nav" href="ideas.html"><span class="nav-i">03</span><span class="nav-l">Ideas</span><span class="nav-n">42</span></a>
+      <a class="nav" href="#"><span class="nav-i">04</span><span class="nav-l">Pull Requests</span><span class="nav-n">13</span></a>
+      <a class="nav" href="#"><span class="nav-i">05</span><span class="nav-l">Learnings</span><span class="nav-n"></span></a>
+      <a class="nav" href="#"><span class="nav-i">06</span><span class="nav-l">Testing</span><span class="nav-n"></span></a>
+      <a class="nav on" href="#"><span class="nav-i">07</span><span class="nav-l">Metrics</span><span class="nav-n"></span></a>
+      <div class="navgroup">Global</div>
+      <a class="nav" href="#"><span class="nav-i">08</span><span class="nav-l">Tool Catalog</span><span class="nav-n">24</span></a>
+      <a class="nav" href="#"><span class="nav-i">09</span><span class="nav-l">News</span><span class="nav-n"></span></a>
+    </nav>
+    <div class="acct">
+      <div class="acct-row">
+        <span class="tile" aria-hidden="true">AP</span>
+        <span>
+          <span class="acct-name">Owner session</span>
+          <span class="acct-sub">ApagPlayz · gh token</span>
+        </span>
+        <button class="acct-out" type="button" aria-label="Sign out" title="Sign out">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.15" stroke-linecap="square" aria-hidden="true">
+            <path d="M6 2.5H3.2v11H6"/><path d="M9.5 5.5 12.5 8l-3 2.5"/><path d="M12.5 8H6"/>
+          </svg>
+        </button>
+      </div>
+      <div class="acct-meta"><span>Expires</span><b class="n">6d 04h</b></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <span class="crumb">Metrics <i>— Content Generation Platform</i></span>
+      <span class="readouts">
+        <span>SNAPSHOT <b class="n">2026-08-31</b></span>
+        <span>EVAL BUILT <b class="n">2026-09-02 21:03</b></span>
+        <span class="ok">READ FROM REPO</span>
+      </span>
+    </div>
+
+    <div class="pad">
+
+      <!-- 8-figure snapshot: deliberately quiet -->
+      <section>
+        <div class="snap">
+          <div class="fig"><span class="fig-k">Merge rate</span><span class="fig-v">63<span class="u">%</span></span><span class="fig-h">44 of 70</span></div>
+          <div class="fig"><span class="fig-k">PRs merged</span><span class="fig-v">44</span><span class="fig-h">all-time</span></div>
+          <div class="fig"><span class="fig-k">PRs opened</span><span class="fig-v">70</span><span class="fig-h">all-time</span></div>
+          <div class="fig"><span class="fig-k">Open now</span><span class="fig-v">13</span><span class="fig-h">awaiting audit</span></div>
+          <div class="fig"><span class="fig-k">PRs rejected</span><span class="fig-v">13</span><span class="fig-h">closed unmerged</span></div>
+          <div class="fig"><span class="fig-k">Proposals filed</span><span class="fig-v">62</span><span class="fig-h">by the Scout</span></div>
+          <div class="fig"><span class="fig-k">Proposals approved</span><span class="fig-v">21</span><span class="fig-h">by you</span></div>
+          <div class="fig"><span class="fig-k">Approval rate</span><span class="fig-v">34<span class="u">%</span></span><span class="fig-h">21 of 62</span></div>
+        </div>
+      </section>
+
+      <!-- ══ DOMINANT: MODEL EVALUATION ══ -->
+      <section class="band">
+        <span class="tag">Model evaluation &#183; duplicate detection</span>
+        <span class="tag-r">metrics/dedup-eval.json</span>
+
+        <div class="eval">
+          <div class="eval-head">
+            <div>
+              <h1 class="eval-t">A 384-dimension local encoder <em>matches</em> Amazon Titan v2 on this corpus.</h1>
+              <p class="eval-d">Average precision for the <b>duplicate</b> class over 150 human-labelled pairs drawn from 132 issues and PRs, with 95% percentile bootstrap intervals from 1,000 replicates. The two dense encoders are statistically indistinguishable; both clear BM25 by a wide margin. That is the whole argument for keeping inference local and paying Bedrock for nothing.</p>
+            </div>
+            <div class="eval-params">
+              <div class="pr"><span class="pr-k">Corpus</span><span class="pr-v">132 docs &#183; 8,646 pairs</span></div>
+              <div class="pr"><span class="pr-k">Gold set</span><span class="pr-v">150 pairs</span></div>
+              <div class="pr"><span class="pr-k">Dup / rel / unrel</span><span class="pr-v">25 / 47 / 78</span></div>
+              <div class="pr"><span class="pr-k">Positive class</span><span class="pr-v">label === "duplicate"</span></div>
+              <div class="pr"><span class="pr-k">Bootstrap</span><span class="pr-v">1000 &#183; seed 20260901</span></div>
+              <div class="pr"><span class="pr-k">Sampling</span><span class="pr-v">stratified + dense-only</span></div>
+            </div>
+          </div>
+
+          <!-- hand-written dot plot with CI whiskers -->
+          <div class="plot-wrap">
+            <svg class="plot" viewBox="0 0 1120 356" role="img"
+                 aria-label="Dot plot of average precision with 95 percent bootstrap confidence intervals. MiniLM-L6-v2 0.937 CI 0.844 to 0.991; Amazon Titan Text v2 0.934 CI 0.856 to 0.987; normalised token overlap 0.807 CI 0.644 to 0.922; BM25 0.760 CI 0.592 to 0.898; raw lexical overlap 0.622 CI 0.410 to 0.791.">
+
+              <!-- column headers -->
+              <text class="t-hd" x="0" y="26">METHOD</text>
+              <text class="t-hd" x="330" y="26">AVERAGE PRECISION &#183; 95% BOOTSTRAP CI</text>
+              <text class="t-hd" x="826" y="26">AP</text>
+              <text class="t-hd" x="900" y="26">INTERVAL</text>
+              <text class="t-hd" x="1120" y="26" text-anchor="end">ROC AUC</text>
+              <line class="axis" x1="0" y1="38" x2="1120" y2="38"/>
+
+              <!-- gridlines -->
+              <g>
+                <line class="grid" x1="330"   y1="52" x2="330"   y2="312"/>
+                <line class="grid" x1="408.3" y1="52" x2="408.3" y2="312"/>
+                <line class="grid" x1="486.7" y1="52" x2="486.7" y2="312"/>
+                <line class="grid" x1="565"   y1="52" x2="565"   y2="312"/>
+                <line class="grid" x1="643.3" y1="52" x2="643.3" y2="312"/>
+                <line class="grid" x1="721.7" y1="52" x2="721.7" y2="312"/>
+                <line class="grid" x1="800"   y1="52" x2="800"   y2="312"/>
+              </g>
+
+              <!-- BM25 reference line -->
+              <line class="ref" x1="612" y1="52" x2="612" y2="326"/>
+              <text class="t-note" x="612" y="340" text-anchor="middle">BM25 BASELINE 0.760</text>
+
+              <!-- ROW 1 — MiniLM (winner) -->
+              <g class="row">
+                <text class="t-idx"  x="0"  y="96">01</text>
+                <text class="t-name win" x="26" y="96">MiniLM-L6-v2</text>
+                <text class="t-sub"  x="26" y="110">LOCAL &#183; 384d &#183; fp32 &#183; Xenova</text>
+                <line class="whisk win" x1="677.5" y1="92" x2="792.3" y2="92"/>
+                <line class="cap win"   x1="677.5" y1="85" x2="677.5" y2="99"/>
+                <line class="cap win"   x1="792.3" y1="85" x2="792.3" y2="99"/>
+                <circle class="dot win" cx="750.4" cy="92" r="5"/>
+                <text class="t-ap win" x="826" y="97">0.937</text>
+                <text class="t-ci"     x="900" y="97">[0.844, 0.991]</text>
+                <text class="t-ap"     x="1120" y="97" text-anchor="end">0.985</text>
+              </g>
+
+              <!-- ROW 2 — Titan -->
+              <g class="row">
+                <text class="t-idx"  x="0"  y="146">02</text>
+                <text class="t-name win" x="26" y="146">Amazon Titan Text v2</text>
+                <text class="t-sub"  x="26" y="160">BEDROCK &#183; 1024d &#183; amazon.titan-embed-text-v2:0</text>
+                <line class="whisk win" x1="686.8" y1="142" x2="789.3" y2="142"/>
+                <line class="cap win"   x1="686.8" y1="135" x2="686.8" y2="149"/>
+                <line class="cap win"   x1="789.3" y1="135" x2="789.3" y2="149"/>
+                <circle class="dot win" cx="748.6" cy="142" r="5"/>
+                <text class="t-ap win" x="826" y="147">0.934</text>
+                <text class="t-ci"     x="900" y="147">[0.856, 0.987]</text>
+                <text class="t-ap"     x="1120" y="147" text-anchor="end">0.982</text>
+              </g>
+
+              <!-- ROW 3 — normalised overlap -->
+              <g class="row">
+                <text class="t-idx"  x="0"  y="196">03</text>
+                <text class="t-name" x="26" y="196">Normalised token overlap</text>
+                <text class="t-sub"  x="26" y="210">LEXICAL &#183; JACCARD-STYLE</text>
+                <line class="whisk" x1="521.3" y1="192" x2="738.8" y2="192"/>
+                <line class="cap"   x1="521.3" y1="185" x2="521.3" y2="199"/>
+                <line class="cap"   x1="738.8" y1="185" x2="738.8" y2="199"/>
+                <circle class="dot" cx="649.1" cy="192" r="5"/>
+                <text class="t-ap"  x="826" y="197">0.807</text>
+                <text class="t-ci"  x="900" y="197">[0.644, 0.922]</text>
+                <text class="t-ap"  x="1120" y="197" text-anchor="end">0.954</text>
+              </g>
+
+              <!-- ROW 4 — BM25 -->
+              <g class="row">
+                <text class="t-idx"  x="0"  y="246">04</text>
+                <text class="t-name" x="26" y="246">BM25</text>
+                <text class="t-sub"  x="26" y="260">LEXICAL &#183; RANKING BASELINE</text>
+                <line class="whisk" x1="480.2" y1="242" x2="719.9" y2="242"/>
+                <line class="cap"   x1="480.2" y1="235" x2="480.2" y2="249"/>
+                <line class="cap"   x1="719.9" y1="235" x2="719.9" y2="249"/>
+                <circle class="dot" cx="612" cy="242" r="5"/>
+                <text class="t-ap"  x="826" y="247">0.760</text>
+                <text class="t-ci"  x="900" y="247">[0.592, 0.898]</text>
+                <text class="t-ap"  x="1120" y="247" text-anchor="end">0.955</text>
+              </g>
+
+              <!-- ROW 5 — raw overlap -->
+              <g class="row">
+                <text class="t-idx"  x="0"  y="296">05</text>
+                <text class="t-name" x="26" y="296">Raw lexical overlap</text>
+                <text class="t-sub"  x="26" y="310">LEXICAL &#183; UNNORMALISED FLOOR</text>
+                <line class="whisk" x1="338.2" y1="292" x2="636.8" y2="292"/>
+                <line class="cap"   x1="338.2" y1="285" x2="338.2" y2="299"/>
+                <line class="cap"   x1="636.8" y1="285" x2="636.8" y2="299"/>
+                <circle class="dot" cx="503.9" cy="292" r="5"/>
+                <text class="t-ap"  x="826" y="297">0.622</text>
+                <text class="t-ci"  x="900" y="297">[0.410, 0.791]</text>
+                <text class="t-ap"  x="1120" y="297" text-anchor="end">0.856</text>
+              </g>
+
+              <!-- axis -->
+              <line class="axis" x1="330" y1="312" x2="800" y2="312"/>
+              <text class="t-ax" x="330"   y="326" text-anchor="middle">0.40</text>
+              <text class="t-ax" x="408.3" y="326" text-anchor="middle">0.50</text>
+              <text class="t-ax" x="486.7" y="326" text-anchor="middle">0.60</text>
+              <text class="t-ax" x="565"   y="326" text-anchor="middle">0.70</text>
+              <text class="t-ax" x="643.3" y="326" text-anchor="middle">0.80</text>
+              <text class="t-ax" x="721.7" y="326" text-anchor="middle">0.90</text>
+              <text class="t-ax" x="800"   y="326" text-anchor="middle">1.00</text>
+            </svg>
+          </div>
+
+          <div class="callout">
+            <div class="lead">
+              <p><b>&#916; = 0.0024 in favour of MiniLM</b>, with intervals that overlap almost entirely. There is no evidence on this gold set that the 1024-dimension managed encoder beats the 384-dimension local one &#8212; so the production index stays local and Bedrock stays a fallback.</p>
+            </div>
+            <div>
+              <p><b>Read the intervals, not the ranks.</b> 25 positives is a small denominator: the bootstrap spread on the lexical methods is over 30 points wide. The gold set is stratified by lexical overlap plus a dense-only stratum, so these unweighted figures describe the sample, not the 8,646-pair corpus.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- OPERATING POINTS -->
+      <section class="band">
+        <span class="tag">Operating points</span>
+        <span class="tag-r">best-F1 threshold &#183; chosen on the same data it is scored on</span>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="mk" scope="col"></th>
+                <th scope="col">Method</th>
+                <th class="num" scope="col">Threshold</th>
+                <th class="num" scope="col">Precision</th>
+                <th class="num" scope="col">Recall</th>
+                <th class="num" scope="col">F1</th>
+                <th class="num" scope="col">TP</th>
+                <th class="num" scope="col">FP</th>
+                <th class="num" scope="col">FN</th>
+                <th class="num" scope="col">P@1</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mk on">&#9656;</td>
+                <td class="meth">MiniLM-L6-v2 <small>dense_local &#183; in production</small></td>
+                <td class="num">0.8046</td><td class="num">0.828</td><td class="num">0.960</td>
+                <td class="num best">0.889</td><td class="num">24</td><td class="num">5</td><td class="num">1</td><td class="num">0.957</td>
+              </tr>
+              <tr>
+                <td class="mk">&#183;</td>
+                <td class="meth">Amazon Titan Text v2 <small>dense_titan &#183; bedrock fallback</small></td>
+                <td class="num">0.8420</td><td class="num best">0.909</td><td class="num">0.800</td>
+                <td class="num">0.851</td><td class="num">20</td><td class="num">2</td><td class="num">5</td><td class="num best">0.978</td>
+              </tr>
+              <tr>
+                <td class="mk">&#183;</td>
+                <td class="meth mute">BM25 <small>bm25</small></td>
+                <td class="num">135.35</td><td class="num">0.649</td><td class="num best">0.960</td>
+                <td class="num">0.774</td><td class="num">24</td><td class="num">13</td><td class="num">1</td><td class="num">0.913</td>
+              </tr>
+              <tr>
+                <td class="mk">&#183;</td>
+                <td class="meth mute">Normalised token overlap <small>overlap_norm</small></td>
+                <td class="num">0.5090</td><td class="num">0.688</td><td class="num">0.880</td>
+                <td class="num">0.772</td><td class="num">22</td><td class="num">10</td><td class="num">3</td><td class="num">0.957</td>
+              </tr>
+              <tr>
+                <td class="mk">&#183;</td>
+                <td class="meth mute">Raw lexical overlap <small>overlap</small></td>
+                <td class="num">92</td><td class="num">0.682</td><td class="num">0.600</td>
+                <td class="num">0.638</td><td class="num">15</td><td class="num">7</td><td class="num">10</td><td class="num">0.891</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- SNAPSHOT HISTORY -->
+      <section class="band">
+        <span class="tag">Snapshot history</span>
+        <span class="tag-r">weekly &#183; newest first</span>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Week</th>
+                <th class="num" scope="col">Opened</th>
+                <th class="num" scope="col">Merged</th>
+                <th class="num" scope="col">Rejected</th>
+                <th class="num" scope="col">Open</th>
+                <th class="num" scope="col">Merge %</th>
+                <th class="num" scope="col">Filed</th>
+                <th class="num" scope="col">Approved</th>
+                <th class="num" scope="col">Approval %</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="mono-s">2026-08-31</td><td class="num mute">0</td><td class="num mute">0</td><td class="num mute">0</td><td class="num mute">0</td><td class="num mute">&#8212;</td><td class="num">1</td><td class="num mute">0</td><td class="num">0%</td></tr>
+              <tr><td class="mono-s">2026-08-24</td><td class="num">1</td><td class="num mute">0</td><td class="num mute">0</td><td class="num">1</td><td class="num">0%</td><td class="num mute">0</td><td class="num mute">0</td><td class="num mute">&#8212;</td></tr>
+              <tr><td class="mono-s">2026-08-03</td><td class="num mute">0</td><td class="num mute">0</td><td class="num mute">0</td><td class="num mute">0</td><td class="num mute">&#8212;</td><td class="num">1</td><td class="num mute">0</td><td class="num">0%</td></tr>
+              <tr><td class="mono-s">2026-07-27</td><td class="num">6</td><td class="num">1</td><td class="num">1</td><td class="num">4</td><td class="num">17%</td><td class="num">2</td><td class="num">1</td><td class="num">50%</td></tr>
+              <tr><td class="mono-s">2026-07-20</td><td class="num">20</td><td class="num">10</td><td class="num">3</td><td class="num">7</td><td class="num">50%</td><td class="num">32</td><td class="num">7</td><td class="num">22%</td></tr>
+              <tr><td class="mono-s">2026-07-13</td><td class="num">36</td><td class="num">26</td><td class="num">9</td><td class="num">1</td><td class="num">72%</td><td class="num">26</td><td class="num">13</td><td class="num">50%</td></tr>
+              <tr><td class="mono-s">2026-07-06</td><td class="num">7</td><td class="num">7</td><td class="num mute">0</td><td class="num mute">0</td><td class="num best">100%</td><td class="num mute">0</td><td class="num mute">0</td><td class="num mute">&#8212;</td></tr>
+            </tbody>
+            <tfoot>
+              <tr>
+                <td class="mono-s" style="color:var(--fg)">All-time</td>
+                <td class="num">70</td><td class="num">44</td><td class="num">13</td><td class="num">13</td>
+                <td class="num">63%</td><td class="num">62</td><td class="num">21</td><td class="num">34%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </section>
+
+      <div class="foot">
+        <span>Gold file data/gold-pairs-llm.jsonl</span>
+        <span>Local index built 2026-09-02 18:35 UTC</span>
+        <span>Titan index built 2026-09-02 21:02 UTC</span>
+        <span>Both indexes match corpus</span>
+      </div>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>

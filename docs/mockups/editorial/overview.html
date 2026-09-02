@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Overview — Loop Dashboard (Editorial mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   EDITORIAL — Loop Dashboard design mockup
+   Paper-ink inverted. Warm ink ground, one vermilion accent.
+   Display: Instrument Serif. UI: Inter. Figures: IBM Plex Mono.
+   ============================================================ */
+
+:root{
+  --ink:#16120F;
+  --ink-2:#100D0B;
+  --panel:#1D1815;
+  --panel-2:#241E19;
+  --rule:#322A24;
+  --rule-2:#453A31;
+  --paper:#F4EFE6;
+  --muted:#C0B5A7;
+  --faint:#9A8F81;
+  --accent:#E85A34;
+  --accent-soft:#F0805C;
+
+  --serif:"Instrument Serif","Iowan Old Style",Georgia,"Times New Roman",serif;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+  --rail:268px;
+  --t:190ms cubic-bezier(.22,.61,.36,1);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:var(--ink);
+  color:var(--paper);
+  font-family:var(--sans);
+  font-size:14px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:left}
+h1,h2,h3,p{margin:0}
+
+:focus-visible{
+  outline:2px solid var(--accent-soft);
+  outline-offset:3px;
+  border-radius:1px;
+}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{transition:none!important;animation:none!important}
+}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100vh}
+
+/* ---------- left rail ---------- */
+.rail{
+  position:sticky;top:0;align-self:start;
+  height:100vh;overflow-y:auto;
+  background:var(--ink-2);
+  border-right:1px solid var(--rule);
+  padding:26px 22px 16px;
+  display:flex;flex-direction:column;
+}
+.brand{padding-bottom:18px;border-bottom:1px solid var(--rule)}
+.brand-mark{
+  display:block;font-family:var(--serif);font-size:31px;line-height:1;
+  letter-spacing:-.015em;color:var(--paper);
+}
+.brand-sub{
+  display:block;margin-top:5px;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.30em;text-transform:uppercase;color:var(--faint);
+}
+
+.switcher{
+  display:block;width:100%;padding:15px 0 16px;
+  border-bottom:1px solid var(--rule);
+  transition:opacity var(--t);
+}
+.switcher:hover{opacity:.78}
+.switcher-eyebrow{
+  display:block;font-family:var(--mono);font-size:9px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--faint);
+}
+.switcher-name{
+  display:flex;align-items:baseline;gap:6px;margin-top:6px;
+  font-family:var(--serif);font-size:19px;line-height:1.15;color:var(--paper);
+}
+.switcher-name svg{flex:none;width:11px;height:11px;color:var(--faint)}
+.switcher-repo{
+  display:block;margin-top:4px;font-family:var(--mono);font-size:9.8px;letter-spacing:-.005em;
+  color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+.nav{padding-top:20px;flex:1 1 auto}
+.group{
+  display:flex;align-items:center;gap:10px;
+  font-family:var(--mono);font-size:9px;letter-spacing:.24em;
+  text-transform:uppercase;color:var(--faint);margin:0 0 10px;
+}
+.group::after{content:"";flex:1 1 auto;height:1px;background:var(--rule)}
+.group + .group,.nav .group:not(:first-child){margin-top:24px}
+
+.navlink{
+  display:grid;grid-template-columns:26px minmax(0,1fr) auto;
+  align-items:baseline;gap:8px;
+  padding:6px 8px 6px 10px;margin-left:-10px;
+  color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;
+  transition:color var(--t),border-color var(--t),background-color var(--t);
+}
+.navlink:hover{color:var(--paper);background:rgba(244,239,230,.035)}
+.navlink:hover .n{color:var(--accent)}
+.navlink .n{font-family:var(--mono);font-size:10px;color:var(--faint);transition:color var(--t)}
+.navlink .c{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.navlink.on{color:var(--paper);border-left-color:var(--accent);background:rgba(232,90,52,.07)}
+.navlink.on .n{color:var(--accent)}
+.navlink.on .lbl{font-weight:500}
+
+/* account block — replaces the bare "Sign out" link */
+.acct{margin-top:24px;border-top:1px solid var(--rule);padding-top:14px}
+.acct-id{display:grid;grid-template-columns:34px minmax(0,1fr);gap:11px;align-items:center}
+.acct-mark{
+  width:34px;height:34px;display:flex;align-items:center;justify-content:center;
+  border:1px solid var(--rule-2);
+  font-family:var(--serif);font-size:16px;letter-spacing:.02em;color:var(--paper);
+}
+.acct-name{display:block;font-size:12.5px;font-weight:500;line-height:1.3;color:var(--paper)}
+.acct-meta{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:2px}
+.acct-foot{
+  display:flex;flex-direction:column;align-items:flex-start;gap:9px;
+  margin-top:12px;padding-top:10px;border-top:1px solid var(--rule);
+}
+.acct-session{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+.acct-acts{display:flex;align-items:center;gap:9px}
+.acct-acts button{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;
+  color:var(--muted);border-bottom:1px solid transparent;padding-bottom:1px;
+  transition:color var(--t),border-color var(--t);
+}
+.acct-acts button:hover{color:var(--accent-soft);border-bottom-color:var(--accent)}
+.acct-acts .sep{color:var(--rule-2);font-size:10px}
+
+/* ---------- sheet ---------- */
+.sheet{max-width:1320px;padding:0 clamp(26px,4.2vw,76px) 110px;width:100%}
+
+.folio{
+  display:flex;align-items:baseline;justify-content:space-between;gap:24px;
+  padding:19px 0 11px;border-bottom:1px solid var(--rule);
+  font-family:var(--mono);font-size:10px;letter-spacing:.19em;
+  text-transform:uppercase;color:var(--faint);
+}
+.folio b{color:var(--accent);font-weight:500;margin-right:9px}
+.folio .r{text-align:right}
+
+/* masthead — the one dominant element */
+.masthead{
+  display:grid;grid-template-columns:minmax(0,1fr) 292px;gap:clamp(32px,5vw,72px);
+  padding:clamp(52px,8.5vh,116px) 0 clamp(38px,5.5vh,66px);
+  align-items:end;
+}
+.eyebrow{
+  font-family:var(--mono);font-size:10px;letter-spacing:.26em;
+  text-transform:uppercase;color:var(--accent);
+}
+.eyebrow::after{content:"";display:block;width:44px;height:2px;background:var(--accent);margin-top:11px}
+.hero{margin-top:26px}
+.hero-num{
+  display:block;font-family:var(--serif);color:var(--accent);
+  font-size:clamp(6rem,13.5vw,12.5rem);line-height:.76;letter-spacing:-.04em;
+  font-variant-numeric:lining-nums;
+}
+.hero-tail{
+  display:block;margin-top:14px;font-family:var(--serif);font-style:italic;
+  font-size:clamp(1.75rem,3.1vw,2.7rem);line-height:1.1;letter-spacing:-.01em;color:var(--paper);
+}
+.lede{
+  margin-top:22px;max-width:47ch;font-size:15px;line-height:1.75;color:var(--muted);
+}
+
+.figs{border-top:1px solid var(--rule-2)}
+.fig{padding:15px 0;border-bottom:1px solid var(--rule)}
+.fig:last-child{border-bottom:0}
+.fig-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.19em;text-transform:uppercase;color:var(--faint)}
+.fig-num{
+  display:block;margin-top:5px;font-family:var(--mono);font-weight:500;
+  font-size:2.15rem;line-height:1;letter-spacing:-.02em;color:var(--paper);
+}
+.fig-hint{margin-top:6px;font-size:12px;color:var(--faint);line-height:1.5}
+.margin-note{
+  margin-top:18px;padding-top:14px;border-top:1px solid var(--rule);
+  font-size:12px;line-height:1.6;color:var(--faint);
+}
+.margin-note em{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--muted)}
+
+/* section heads */
+.sect{margin-top:clamp(46px,7vh,86px)}
+.sect-head{
+  display:flex;align-items:baseline;gap:16px;
+  padding-bottom:12px;border-bottom:1px solid var(--rule-2);
+}
+.sect-num{font-family:var(--mono);font-size:10px;letter-spacing:.19em;color:var(--accent);padding-top:6px}
+.sect-head h2{font-family:var(--serif);font-size:1.85rem;line-height:1.1;letter-spacing:-.012em;font-weight:400}
+.sect-note{
+  margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.15em;
+  text-transform:uppercase;color:var(--faint);text-align:right;
+}
+
+/* ---------- project list (rows, not a card grid) ---------- */
+.rows{margin-top:2px}
+.prow{
+  display:grid;grid-template-columns:34px minmax(0,1fr) auto 158px;
+  align-items:baseline;gap:20px;
+  padding:20px 12px 20px 14px;margin:0 -12px 0 -14px;
+  border-bottom:1px solid var(--rule);
+  box-shadow:inset 2px 0 0 transparent;
+  transition:background-color var(--t),box-shadow var(--t);
+}
+.prow:hover{background:var(--panel);box-shadow:inset 2px 0 0 var(--accent)}
+.prow-idx{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.prow-title{
+  display:block;font-family:var(--serif);font-size:1.5rem;line-height:1.15;
+  letter-spacing:-.01em;color:var(--paper);
+}
+.prow-repo{display:block;margin-top:5px;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.prow-counts{font-family:var(--mono);font-size:11px;color:var(--faint);white-space:nowrap}
+.prow-counts b{color:var(--paper);font-weight:500;font-size:13px}
+.prow-counts span{margin-right:14px}
+.prow-counts span:last-child{margin-right:0}
+.prow-right{text-align:right}
+
+/* status: small-caps text with a rule, never a pill */
+.status{
+  display:inline-flex;align-items:center;gap:8px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--muted);
+}
+.status .tick{display:block;width:14px;height:2px;background:var(--faint)}
+.status.building{color:var(--accent-soft)}
+.status.building .tick{background:var(--accent)}
+.status.idle .tick{background:var(--rule-2)}
+.status.idle{color:var(--faint)}
+.prow-note{
+  display:block;margin-top:6px;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--faint);
+}
+.prow-note.cur{color:var(--paper)}
+
+/* ---------- entry points: deliberately unequal ---------- */
+.entries{margin-top:22px;display:grid;grid-template-columns:1.55fr 1fr;gap:14px}
+.stack{display:grid;grid-template-rows:1fr 1fr;gap:14px}
+.card{
+  position:relative;display:flex;flex-direction:column;
+  border:1px solid var(--rule);background:var(--panel);border-radius:2px;
+  padding:22px 24px;
+  transition:border-color var(--t),background-color var(--t),transform var(--t);
+}
+.card:hover{border-color:var(--rule-2);background:var(--panel-2);transform:translateY(-1px)}
+.card:hover .card-arrow{color:var(--accent);transform:translate(2px,-2px)}
+.card-num{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;color:var(--faint)}
+.card h3{
+  margin-top:auto;font-family:var(--serif);font-weight:400;line-height:1.08;
+  letter-spacing:-.012em;color:var(--paper);
+}
+.card-lg{min-height:262px}
+.card-lg h3{font-size:2.6rem;padding-top:34px}
+.card-lg p{margin-top:14px;max-width:38ch;font-size:14px;color:var(--muted)}
+.card-sm h3{font-size:1.4rem;padding-top:22px}
+.card-sm p{margin-top:7px;font-size:12.5px;color:var(--faint)}
+.card-arrow{
+  position:absolute;top:20px;right:22px;width:16px;height:16px;color:var(--faint);
+  transition:color var(--t),transform var(--t);
+}
+
+.minrow{
+  margin-top:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  border-top:1px solid var(--rule);
+}
+.minlink{
+  display:flex;align-items:baseline;gap:12px;padding:17px 2px;
+  border-bottom:1px solid var(--rule);
+  transition:color var(--t),padding-left var(--t);
+}
+.minlink + .minlink{border-left:1px solid var(--rule);padding-left:22px}
+.minlink:hover{color:var(--accent-soft);padding-left:8px}
+.minlink + .minlink:hover{padding-left:28px}
+.minlink .n{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;color:var(--faint)}
+.minlink .t{font-family:var(--serif);font-size:1.2rem;line-height:1}
+.minlink .d{margin-left:auto;padding-right:20px;font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+
+.colophon{
+  margin-top:clamp(46px,7vh,80px);padding-top:16px;border-top:1px solid var(--rule);
+  display:flex;flex-wrap:wrap;gap:8px 26px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+}
+
+/* ---------- responsive ---------- */
+@media (max-width:1200px){
+  :root{--rail:246px}
+  .masthead{grid-template-columns:minmax(0,1fr) 250px}
+  .entries{grid-template-columns:1.35fr 1fr}
+}
+@media (max-width:1000px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule)}
+  .masthead{grid-template-columns:1fr;gap:38px}
+  .entries{grid-template-columns:1fr}
+  .minrow{grid-template-columns:1fr}
+  .minlink + .minlink{border-left:0;padding-left:2px}
+  .prow{grid-template-columns:28px minmax(0,1fr);gap:12px}
+  .prow-counts,.prow-right{grid-column:2}
+  .prow-right{text-align:left}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============ LEFT RAIL ============ -->
+  <aside class="rail">
+    <div class="brand">
+      <span class="brand-mark">Loop</span>
+      <span class="brand-sub">Dashboard</span>
+    </div>
+
+    <button class="switcher" type="button" aria-label="Switch project">
+      <span class="switcher-eyebrow">Project</span>
+      <span class="switcher-name">
+        Content Generation Platform
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M4 6.5 8 10.5 12 6.5"/></svg>
+      </span>
+      <span class="switcher-repo">ApagPlayz/content-generation-platform</span>
+    </button>
+
+    <nav class="nav" aria-label="Primary">
+      <p class="group">This project</p>
+      <a class="navlink on" href="#" aria-current="page"><span class="n">01</span><span class="lbl">Overview</span><span class="c"></span></a>
+      <a class="navlink" href="#"><span class="n">02</span><span class="lbl">Process Map</span><span class="c"></span></a>
+      <a class="navlink" href="ideas.html"><span class="n">03</span><span class="lbl">Ideas</span><span class="c">23</span></a>
+      <a class="navlink" href="#"><span class="n">04</span><span class="lbl">Pull Requests</span><span class="c">13</span></a>
+      <a class="navlink" href="#"><span class="n">05</span><span class="lbl">Learnings</span><span class="c"></span></a>
+      <a class="navlink" href="#"><span class="n">06</span><span class="lbl">Testing</span><span class="c"></span></a>
+      <a class="navlink" href="metrics.html"><span class="n">07</span><span class="lbl">Metrics</span><span class="c"></span></a>
+
+      <p class="group">Global</p>
+      <a class="navlink" href="#"><span class="n">08</span><span class="lbl">Tool Catalog</span><span class="c"></span></a>
+      <a class="navlink" href="#"><span class="n">09</span><span class="lbl">News</span><span class="c"></span></a>
+    </nav>
+
+    <div class="acct">
+      <div class="acct-id">
+        <span class="acct-mark" aria-hidden="true">AP</span>
+        <span>
+          <span class="acct-name">Alessio Pagliarulo</span>
+          <span class="acct-meta">ApagPlayz · owner</span>
+        </span>
+      </div>
+      <div class="acct-foot">
+        <span class="acct-session">Session 6d</span>
+        <span class="acct-acts">
+          <button type="button">Account</button>
+          <span class="sep">/</span>
+          <button type="button">Sign out</button>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ SHEET ============ -->
+  <main class="sheet">
+    <div class="folio">
+      <span><b>01</b> Overview</span>
+      <span class="r">Content Generation Platform · live from GitHub · 2 Sep 2026</span>
+    </div>
+
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">Waiting on you</p>
+        <p class="hero">
+          <span class="hero-num">42</span>
+          <span class="hero-tail">open ideas, and the Scout keeps filing.</span>
+        </p>
+        <p class="lede">
+          Every proposal the loop has raised and you have not yet answered. Eleven are
+          already approved and queued for the Builder; thirteen branches are sitting in
+          review. Nothing else in the loop moves until this number comes down.
+        </p>
+      </div>
+
+      <aside class="figs" aria-label="Secondary figures">
+        <div class="fig">
+          <p class="fig-lbl">Approved &amp; waiting</p>
+          <span class="fig-num">11</span>
+          <p class="fig-hint">Signed off, not yet built</p>
+        </div>
+        <div class="fig">
+          <p class="fig-lbl">Open pull requests</p>
+          <span class="fig-num">13</span>
+          <p class="fig-hint">Builder branches awaiting review</p>
+        </div>
+        <div class="fig">
+          <p class="fig-lbl">State</p>
+          <span class="status building" style="margin-top:9px"><span class="tick"></span>Building</span>
+          <p class="fig-hint">Last activity 2 days ago</p>
+        </div>
+        <p class="margin-note">
+          <em>Counts read straight from GitHub on every request.</em>
+          Figures shown here are the 2 Sep snapshot of
+          <span style="font-family:var(--mono)">data/corpus.jsonl</span> — 132 records,
+          10 Jul – 31 Aug 2026.
+        </p>
+      </aside>
+    </header>
+
+    <section class="sect">
+      <div class="sect-head">
+        <span class="sect-num">02</span>
+        <h2>Projects</h2>
+        <span class="sect-note">2 registered · 2 set up</span>
+      </div>
+
+      <div class="rows">
+        <a class="prow" href="#">
+          <span class="prow-idx">01</span>
+          <span>
+            <span class="prow-title">Content Generation Platform</span>
+            <span class="prow-repo">ApagPlayz/content-generation-platform</span>
+          </span>
+          <span class="prow-counts">
+            <span><b>42</b> ideas</span><span><b>13</b> PRs</span><span><b>4</b> agents</span>
+          </span>
+          <span class="prow-right">
+            <span class="status building"><span class="tick"></span>Building</span>
+            <span class="prow-note cur">Current project</span>
+          </span>
+        </a>
+
+        <a class="prow" href="#">
+          <span class="prow-idx">02</span>
+          <span>
+            <span class="prow-title">supply-chain-optimizer</span>
+            <span class="prow-repo">ApagPlayz/supply-chain-optimizer</span>
+          </span>
+          <span class="prow-counts">
+            <span><b>0</b> ideas</span><span><b>0</b> PRs</span><span><b>3</b> agents</span>
+          </span>
+          <span class="prow-right">
+            <span class="status idle"><span class="tick"></span>Idle</span>
+            <span class="prow-note">Switch to this project</span>
+          </span>
+        </a>
+      </div>
+    </section>
+
+    <section class="sect">
+      <div class="sect-head">
+        <span class="sect-num">03</span>
+        <h2>Enter the loop</h2>
+        <span class="sect-note">Scout → you → Builder → Auditor</span>
+      </div>
+
+      <div class="entries">
+        <a class="card card-lg" href="#">
+          <span class="card-num">02 — This project</span>
+          <svg class="card-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" aria-hidden="true"><path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"/></svg>
+          <h3>Process<br>Map</h3>
+          <p>
+            The whole loop on one page — which agent holds the work right now, where a
+            proposal stalls, and which workflow last ran in each repo.
+          </p>
+        </a>
+
+        <div class="stack">
+          <a class="card card-sm" href="#">
+            <span class="card-num">06 — This project</span>
+            <svg class="card-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" aria-hidden="true"><path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"/></svg>
+            <h3>Testing</h3>
+            <p>Trigger a workflow by hand and watch the run.</p>
+          </a>
+          <a class="card card-sm" href="#">
+            <span class="card-num">05 — This project</span>
+            <svg class="card-arrow" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.15" aria-hidden="true"><path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"/></svg>
+            <h3>Learnings</h3>
+            <p>What the loop wrote down about its own mistakes.</p>
+          </a>
+        </div>
+      </div>
+
+      <div class="minrow">
+        <a class="minlink" href="#"><span class="n">04</span><span class="t">Pull Requests</span><span class="d">13 open</span></a>
+        <a class="minlink" href="#"><span class="n">08</span><span class="t">Tool Catalog</span><span class="d">global</span></a>
+        <a class="minlink" href="#"><span class="n">09</span><span class="t">News</span><span class="d">global</span></a>
+      </div>
+    </section>
+
+    <p class="colophon">
+      <span>Editorial — mockup</span>
+      <span>Instrument Serif / Inter / IBM Plex Mono</span>
+      <span>Not wired to the app</span>
+    </p>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Metrics — Loop Dashboard (Editorial mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   EDITORIAL — Loop Dashboard design mockup
+   Paper-ink inverted. Warm ink ground, one vermilion accent.
+   Display: Instrument Serif. UI: Inter. Figures: IBM Plex Mono.
+   ============================================================ */
+
+:root{
+  --ink:#16120F;
+  --ink-2:#100D0B;
+  --panel:#1D1815;
+  --panel-2:#241E19;
+  --rule:#322A24;
+  --rule-2:#453A31;
+  --paper:#F4EFE6;
+  --muted:#C0B5A7;
+  --faint:#9A8F81;
+  --accent:#E85A34;
+  --accent-soft:#F0805C;
+
+  --serif:"Instrument Serif","Iowan Old Style",Georgia,"Times New Roman",serif;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+
+  --rail:268px;
+  --t:190ms cubic-bezier(.22,.61,.36,1);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--ink);color:var(--paper);
+  font-family:var(--sans);font-size:14px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:left}
+h1,h2,h3,p{margin:0}
+:focus-visible{outline:2px solid var(--accent-soft);outline-offset:3px;border-radius:1px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+
+/* ---------- shell ---------- */
+.shell{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100vh}
+.rail{
+  position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  background:var(--ink-2);border-right:1px solid var(--rule);
+  padding:26px 22px 16px;display:flex;flex-direction:column;
+}
+.brand{padding-bottom:18px;border-bottom:1px solid var(--rule)}
+.brand-mark{display:block;font-family:var(--serif);font-size:31px;line-height:1;letter-spacing:-.015em;color:var(--paper)}
+.brand-sub{display:block;margin-top:5px;font-family:var(--mono);font-size:9.5px;letter-spacing:.30em;text-transform:uppercase;color:var(--faint)}
+.switcher{display:block;width:100%;padding:15px 0 16px;border-bottom:1px solid var(--rule);transition:opacity var(--t)}
+.switcher:hover{opacity:.78}
+.switcher-eyebrow{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint)}
+.switcher-name{display:flex;align-items:baseline;gap:6px;margin-top:6px;font-family:var(--serif);font-size:19px;line-height:1.15;color:var(--paper)}
+.switcher-name svg{flex:none;width:11px;height:11px;color:var(--faint)}
+.switcher-repo{display:block;margin-top:4px;font-family:var(--mono);font-size:9.8px;letter-spacing:-.005em;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav{padding-top:20px;flex:1 1 auto}
+.group{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:9px;letter-spacing:.24em;text-transform:uppercase;color:var(--faint);margin:0 0 10px}
+.group::after{content:"";flex:1 1 auto;height:1px;background:var(--rule)}
+.nav .group:not(:first-child){margin-top:24px}
+.navlink{
+  display:grid;grid-template-columns:26px minmax(0,1fr) auto;align-items:baseline;gap:8px;
+  padding:6px 8px 6px 10px;margin-left:-10px;color:var(--muted);font-size:13.5px;
+  border-left:2px solid transparent;
+  transition:color var(--t),border-color var(--t),background-color var(--t);
+}
+.navlink:hover{color:var(--paper);background:rgba(244,239,230,.035)}
+.navlink:hover .n{color:var(--accent)}
+.navlink .n{font-family:var(--mono);font-size:10px;color:var(--faint);transition:color var(--t)}
+.navlink .c{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.navlink.on{color:var(--paper);border-left-color:var(--accent);background:rgba(232,90,52,.07)}
+.navlink.on .n{color:var(--accent)}
+.navlink.on .lbl{font-weight:500}
+.acct{margin-top:24px;border-top:1px solid var(--rule);padding-top:14px}
+.acct-id{display:grid;grid-template-columns:34px minmax(0,1fr);gap:11px;align-items:center}
+.acct-mark{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border:1px solid var(--rule-2);font-family:var(--serif);font-size:16px;color:var(--paper)}
+.acct-name{display:block;font-size:12.5px;font-weight:500;line-height:1.3;color:var(--paper)}
+.acct-meta{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:2px}
+.acct-foot{display:flex;flex-direction:column;align-items:flex-start;gap:9px;margin-top:12px;padding-top:10px;border-top:1px solid var(--rule)}
+.acct-session{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint)}
+.acct-acts{display:flex;align-items:center;gap:9px}
+.acct-acts button{font-family:var(--mono);font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid transparent;padding-bottom:1px;transition:color var(--t),border-color var(--t)}
+.acct-acts button:hover{color:var(--accent-soft);border-bottom-color:var(--accent)}
+.acct-acts .sep{color:var(--rule-2);font-size:10px}
+
+/* ---------- sheet ---------- */
+.sheet{max-width:1320px;padding:0 clamp(26px,4.2vw,76px) 110px;width:100%}
+.folio{
+  display:flex;align-items:baseline;justify-content:space-between;gap:24px;
+  padding:19px 0 11px;border-bottom:1px solid var(--rule);
+  font-family:var(--mono);font-size:10px;letter-spacing:.19em;text-transform:uppercase;color:var(--faint);
+}
+.folio b{color:var(--accent);font-weight:500;margin-right:9px}
+.folio .r{text-align:right}
+
+.masthead{
+  display:grid;grid-template-columns:minmax(0,1fr) 292px;gap:clamp(32px,5vw,72px);
+  padding:clamp(52px,8.5vh,116px) 0 clamp(38px,5.5vh,66px);align-items:end;
+}
+.eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--accent)}
+.eyebrow::after{content:"";display:block;width:44px;height:2px;background:var(--accent);margin-top:11px}
+.hero{margin-top:26px}
+.hero-num{display:block;font-family:var(--serif);color:var(--accent);font-size:clamp(6rem,13.5vw,12.5rem);line-height:.76;letter-spacing:-.04em}
+.hero-num .pct{font-size:.44em;letter-spacing:-.01em;vertical-align:baseline}
+.hero-tail{display:block;margin-top:14px;font-family:var(--serif);font-style:italic;font-size:clamp(1.75rem,3.1vw,2.7rem);line-height:1.1;letter-spacing:-.01em;color:var(--paper)}
+.lede{margin-top:22px;max-width:47ch;font-size:15px;line-height:1.75;color:var(--muted)}
+
+.figs{border-top:1px solid var(--rule-2)}
+.fig{padding:15px 0;border-bottom:1px solid var(--rule)}
+.fig:last-child{border-bottom:0}
+.fig-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.19em;text-transform:uppercase;color:var(--faint)}
+.fig-num{display:block;margin-top:5px;font-family:var(--mono);font-weight:500;font-size:2.15rem;line-height:1;letter-spacing:-.02em;color:var(--paper)}
+.fig-hint{margin-top:6px;font-size:12px;color:var(--faint);line-height:1.5}
+.margin-note{margin-top:18px;padding-top:14px;border-top:1px solid var(--rule);font-size:12px;line-height:1.6;color:var(--faint)}
+.margin-note em{font-family:var(--serif);font-style:italic;font-size:14px;color:var(--muted)}
+
+.sect{margin-top:clamp(46px,7vh,86px)}
+.sect-head{display:flex;align-items:baseline;gap:16px;padding-bottom:12px;border-bottom:1px solid var(--rule-2)}
+.sect-num{font-family:var(--mono);font-size:10px;letter-spacing:.19em;color:var(--accent);padding-top:6px}
+.sect-head h2{font-family:var(--serif);font-size:1.85rem;line-height:1.1;letter-spacing:-.012em;font-weight:400}
+.sect-note{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--faint);text-align:right}
+
+/* ---------- the run of figures: a printed table of figures, not tiles ---------- */
+.figrun{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr}
+.figcell{padding:24px 22px 22px;border-bottom:1px solid var(--rule);border-left:1px solid var(--rule)}
+.figcell:nth-child(4n+1){border-left:0;padding-left:0}
+.figcell:nth-child(n+5){border-bottom:0}
+.fc-lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.19em;text-transform:uppercase;color:var(--faint)}
+.fc-val{
+  display:block;margin-top:12px;font-family:var(--serif);font-weight:400;
+  font-size:3rem;line-height:.92;letter-spacing:-.025em;color:var(--paper);
+}
+.fc-val .u{font-size:.42em;color:var(--faint);letter-spacing:0}
+.figcell.lead .fc-val{font-size:4.4rem;color:var(--paper)}
+.fc-hint{margin-top:9px;font-size:12px;line-height:1.5;color:var(--faint)}
+
+/* ---------- model evaluation ---------- */
+.evalgrid{display:grid;grid-template-columns:minmax(0,1fr) 268px;gap:clamp(28px,3.6vw,56px);margin-top:26px}
+.eval-dek{font-family:var(--serif);font-size:1.6rem;line-height:1.25;letter-spacing:-.01em;color:var(--paper);max-width:30ch}
+.eval-sub{margin-top:14px;max-width:60ch;font-size:14px;line-height:1.7;color:var(--muted)}
+
+.plotwrap{margin-top:34px;border-top:1px solid var(--rule);padding-top:14px;overflow-x:auto}
+.plot{display:block;width:100%;min-width:740px;height:auto}
+.plot .gl{stroke:var(--rule);stroke-width:1}
+.plot .gl-row{stroke:var(--rule);stroke-width:1;stroke-dasharray:1 5;opacity:.75}
+.plot .axis{stroke:var(--rule-2);stroke-width:1}
+.plot .ax{fill:#9A8F81;font-family:var(--mono);font-size:13.5px;letter-spacing:.06em}
+.plot .axtitle{fill:#9A8F81;font-family:var(--mono);font-size:12.5px;letter-spacing:.2em;text-transform:uppercase}
+.plot .pl-name{fill:#F4EFE6;font-family:"Inter",sans-serif;font-size:17.5px;font-weight:500}
+.plot .pl-sub{fill:#9A8F81;font-family:var(--mono);font-size:13px}
+.plot .pl-val{fill:#C0B5A7;font-family:var(--mono);font-size:17.5px;font-weight:500}
+.plot .pl-val.is-lead{fill:#F0805C}
+.plot .pl-ci{fill:#9A8F81;font-family:var(--mono);font-size:12px}
+.plot .wh{stroke:#7E7365;stroke-width:1.5}
+.plot .wh.is-lead{stroke:#B8462A}
+.plot .cap{stroke:#7E7365;stroke-width:1.5}
+.plot .cap.is-lead{stroke:#B8462A}
+.plot .dot{fill:#F4EFE6}
+.plot .dot.is-lead{fill:#E85A34}
+.plot .annot{fill:#9A8F81;font-family:var(--serif);font-style:italic;font-size:17px}
+.plot .annot-rule{stroke:var(--rule-2);stroke-width:1;stroke-dasharray:3 3}
+
+.sidenote{border-top:1px solid var(--rule-2);padding-top:16px;font-size:12.5px;line-height:1.7;color:var(--faint)}
+.sidenote h3{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);font-weight:400;margin-bottom:10px}
+.sidenote dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:4px 14px}
+.sidenote dt{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.sidenote dd{margin:0;font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:right}
+.sidenote p{margin-top:14px}
+
+/* ---------- tables ---------- */
+.tablewrap{margin-top:22px;overflow-x:auto;border-top:1px solid var(--rule-2)}
+table{width:100%;min-width:760px;border-collapse:collapse;font-size:13px}
+caption{
+  caption-side:top;text-align:left;padding:14px 0 12px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--faint);
+}
+th{
+  font-family:var(--mono);font-size:9.5px;font-weight:400;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--faint);text-align:right;padding:0 0 11px 22px;border-bottom:1px solid var(--rule-2);white-space:nowrap;
+}
+th:first-child,td:first-child{text-align:left;padding-left:0}
+td{
+  padding:11px 0 11px 22px;text-align:right;border-bottom:1px solid var(--rule);
+  font-family:var(--mono);font-size:12.5px;color:var(--muted);white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+tbody tr{transition:background-color var(--t)}
+tbody tr:hover{background:var(--panel)}
+td.name{font-family:var(--sans);font-size:13.5px;color:var(--paper)}
+td.name small{display:block;font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:2px}
+tr.lead td{color:var(--paper)}
+tr.lead td.name{color:var(--accent-soft)}
+td.dim{color:var(--faint)}
+tfoot td{border-bottom:0;padding-top:14px;font-size:11px;color:var(--faint);white-space:normal;text-align:left;font-family:var(--sans);line-height:1.6}
+
+.colophon{
+  margin-top:clamp(46px,7vh,80px);padding-top:16px;border-top:1px solid var(--rule);
+  display:flex;flex-wrap:wrap;gap:8px 26px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+}
+
+@media (max-width:1200px){
+  :root{--rail:246px}
+  .masthead{grid-template-columns:minmax(0,1fr) 250px}
+  .evalgrid{grid-template-columns:minmax(0,1fr);gap:34px}
+  .figrun{grid-template-columns:1.35fr 1fr 1fr 1fr}
+  .figcell.lead .fc-val{font-size:3.6rem}
+  .fc-val{font-size:2.5rem}
+}
+@media (max-width:1000px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule)}
+  .masthead{grid-template-columns:1fr;gap:38px}
+  .evalgrid{grid-template-columns:1fr}
+  .figrun{grid-template-columns:1fr 1fr}
+  .figcell:nth-child(4n+1){border-left:1px solid var(--rule);padding-left:22px}
+  .figcell:nth-child(odd){border-left:0;padding-left:0}
+  .figcell:nth-child(n+5){border-bottom:1px solid var(--rule)}
+  .figcell:nth-last-child(-n+2){border-bottom:0}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ============ LEFT RAIL ============ -->
+  <aside class="rail">
+    <div class="brand">
+      <span class="brand-mark">Loop</span>
+      <span class="brand-sub">Dashboard</span>
+    </div>
+
+    <button class="switcher" type="button" aria-label="Switch project">
+      <span class="switcher-eyebrow">Project</span>
+      <span class="switcher-name">
+        Content Generation Platform
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><path d="M4 6.5 8 10.5 12 6.5"/></svg>
+      </span>
+      <span class="switcher-repo">ApagPlayz/content-generation-platform</span>
+    </button>
+
+    <nav class="nav" aria-label="Primary">
+      <p class="group">This project</p>
+      <a class="navlink" href="overview.html"><span class="n">01</span><span class="lbl">Overview</span><span class="c"></span></a>
+      <a class="navlink" href="#"><span class="n">02</span><span class="lbl">Process Map</span><span class="c"></span></a>
+      <a class="navlink" href="ideas.html"><span class="n">03</span><span class="lbl">Ideas</span><span class="c">23</span></a>
+      <a class="navlink" href="#"><span class="n">04</span><span class="lbl">Pull Requests</span><span class="c">13</span></a>
+      <a class="navlink" href="#"><span class="n">05</span><span class="lbl">Learnings</span><span class="c"></span></a>
+      <a class="navlink" href="#"><span class="n">06</span><span class="lbl">Testing</span><span class="c"></span></a>
+      <a class="navlink on" href="#" aria-current="page"><span class="n">07</span><span class="lbl">Metrics</span><span class="c"></span></a>
+
+      <p class="group">Global</p>
+      <a class="navlink" href="#"><span class="n">08</span><span class="lbl">Tool Catalog</span><span class="c"></span></a>
+      <a class="navlink" href="#"><span class="n">09</span><span class="lbl">News</span><span class="c"></span></a>
+    </nav>
+
+    <div class="acct">
+      <div class="acct-id">
+        <span class="acct-mark" aria-hidden="true">AP</span>
+        <span>
+          <span class="acct-name">Alessio Pagliarulo</span>
+          <span class="acct-meta">ApagPlayz · owner</span>
+        </span>
+      </div>
+      <div class="acct-foot">
+        <span class="acct-session">Session 6d</span>
+        <span class="acct-acts">
+          <button type="button">Account</button>
+          <span class="sep">/</span>
+          <button type="button">Sign out</button>
+        </span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ============ SHEET ============ -->
+  <main class="sheet">
+    <div class="folio">
+      <span><b>07</b> Metrics</span>
+      <span class="r">Content Generation Platform · window 10 Jul – 31 Aug 2026</span>
+    </div>
+
+    <header class="masthead">
+      <div>
+        <p class="eyebrow">Merge rate</p>
+        <p class="hero">
+          <span class="hero-num">77<span class="pct">%</span></span>
+          <span class="hero-tail">of everything the loop closed, it merged.</span>
+        </p>
+        <p class="lede">
+          Forty-four pull requests merged against thirteen rejected, over seven weeks and
+          132 tracked records. Half the merges landed inside two and a half hours of being
+          opened — the loop's bottleneck is not the Builder, it is the review queue.
+        </p>
+      </div>
+
+      <aside class="figs" aria-label="Window figures">
+        <div class="fig">
+          <p class="fig-lbl">Records in window</p>
+          <span class="fig-num">132</span>
+          <p class="fig-hint">70 pull requests, 62 issues</p>
+        </div>
+        <div class="fig">
+          <p class="fig-lbl">Best encoder (AP)</p>
+          <span class="fig-num" style="color:var(--accent-soft)">0.937</span>
+          <p class="fig-hint">MiniLM-L6-v2, duplicate detection</p>
+        </div>
+        <p class="margin-note">
+          <em>Read straight from the repo.</em>
+          Loop counts derived from
+          <span style="font-family:var(--mono)">data/corpus.jsonl</span>; evaluation from
+          <span style="font-family:var(--mono)">metrics/dedup-eval.json</span>, generated
+          2 Sep 2026 21:03 UTC.
+        </p>
+      </aside>
+    </header>
+
+    <!-- ===== 01 the snapshot ===== -->
+    <section class="sect">
+      <div class="sect-head">
+        <span class="sect-num">01</span>
+        <h2>The snapshot</h2>
+        <span class="sect-note">2 Sep 2026</span>
+      </div>
+
+      <div class="figrun">
+        <div class="figcell lead">
+          <p class="fc-lbl">Merge rate</p>
+          <span class="fc-val">77<span class="u">%</span></span>
+          <p class="fc-hint">44 merged of 57 closed</p>
+        </div>
+        <div class="figcell">
+          <p class="fc-lbl">PRs merged</p>
+          <span class="fc-val">44</span>
+          <p class="fc-hint">All time in window</p>
+        </div>
+        <div class="figcell">
+          <p class="fc-lbl">PRs opened</p>
+          <span class="fc-val">70</span>
+          <p class="fc-hint">Builder and human</p>
+        </div>
+        <div class="figcell">
+          <p class="fc-lbl">Open now</p>
+          <span class="fc-val">13</span>
+          <p class="fc-hint">Awaiting your review</p>
+        </div>
+        <div class="figcell">
+          <p class="fc-lbl">PRs rejected</p>
+          <span class="fc-val">13</span>
+          <p class="fc-hint">Closed unmerged</p>
+        </div>
+        <div class="figcell">
+          <p class="fc-lbl">Proposals filed</p>
+          <span class="fc-val">33</span>
+          <p class="fc-hint">Labelled <span style="font-family:var(--mono)">proposal</span></p>
+        </div>
+        <div class="figcell">
+          <p class="fc-lbl">Approved &amp; waiting</p>
+          <span class="fc-val">11</span>
+          <p class="fc-hint">Signed off, not yet built</p>
+        </div>
+        <div class="figcell">
+          <p class="fc-lbl">Days to merge</p>
+          <span class="fc-val">0.10</span>
+          <p class="fc-hint">Median, ≈ 2h 24m</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 02 model evaluation (new) ===== -->
+    <section class="sect">
+      <div class="sect-head">
+        <span class="sect-num">02</span>
+        <h2>Model evaluation</h2>
+        <span class="sect-note">Duplicate detection · gold labels</span>
+      </div>
+
+      <div class="evalgrid">
+        <div>
+          <p class="eval-dek">Two encoders are tied. The cheaper one runs on this laptop.</p>
+          <p class="eval-sub">
+            Average precision for finding true duplicates among 8,646 candidate pairs, scored
+            against 150 hand-labelled gold pairs. A local 384-dimension MiniLM and Amazon
+            Titan Embed v2 on Bedrock are statistically indistinguishable at this sample size —
+            their 95% intervals overlap almost entirely — and both clear the lexical baselines
+            by a wide margin. That is the finding: the managed 1,024-dimension model buys
+            nothing here, so the loop keeps the local one and spends the Bedrock budget elsewhere.
+          </p>
+
+        </div>
+
+        <aside class="sidenote">
+          <h3>Method</h3>
+          <dl>
+            <dt>Corpus</dt><dd>132 docs</dd>
+            <dt>Pairs scored</dt><dd>8,646</dd>
+            <dt>Gold pairs</dt><dd>150</dd>
+            <dt>Duplicate</dt><dd>25</dd>
+            <dt>Related</dt><dd>47</dd>
+            <dt>Unrelated</dt><dd>78</dd>
+            <dt>Replicates</dt><dd>1,000</dd>
+            <dt>Interval</dt><dd>95% pct</dd>
+            <dt>Seed</dt><dd>20260901</dd>
+          </dl>
+          <p>
+            Gold pairs are stratified by lexical overlap plus a dense-only stratum, so the
+            unweighted figures describe that sample, not the whole corpus.
+          </p>
+          <p>
+            Operating thresholds are chosen on the same data they are scored on, and are
+            optimistically biased at n = 150. Treat them as a relative comparison.
+          </p>
+        </aside>
+      </div>
+
+      <div class="plotwrap">
+        <svg class="plot" viewBox="0 0 940 330" role="img"
+             aria-label="Dot plot of average precision with 95% bootstrap confidence intervals for five duplicate-detection methods. MiniLM-L6-v2 0.937 (0.844 to 0.991); Titan Embed v2 0.934 (0.856 to 0.987); normalised token overlap 0.807 (0.644 to 0.922); BM25 0.760 (0.592 to 0.898); token overlap 0.622 (0.410 to 0.791).">
+          <!-- gridlines + axis ticks -->
+          <line class="gl" x1="346.2" y1="46" x2="346.2" y2="286"/>
+          <text class="ax" x="346.2" y="304" text-anchor="middle">0.4</text>
+          <line class="gl" x1="438.5" y1="46" x2="438.5" y2="286"/>
+          <text class="ax" x="438.5" y="304" text-anchor="middle">0.5</text>
+          <line class="gl" x1="530.8" y1="46" x2="530.8" y2="286"/>
+          <text class="ax" x="530.8" y="304" text-anchor="middle">0.6</text>
+          <line class="gl" x1="623.1" y1="46" x2="623.1" y2="286"/>
+          <text class="ax" x="623.1" y="304" text-anchor="middle">0.7</text>
+          <line class="gl" x1="715.4" y1="46" x2="715.4" y2="286"/>
+          <text class="ax" x="715.4" y="304" text-anchor="middle">0.8</text>
+          <line class="gl" x1="807.7" y1="46" x2="807.7" y2="286"/>
+          <text class="ax" x="807.7" y="304" text-anchor="middle">0.9</text>
+          <line class="gl" x1="900" y1="46" x2="900" y2="286"/>
+          <text class="ax" x="900" y="304" text-anchor="middle">1.0</text>
+          <line class="axis" x1="300" y1="286" x2="900" y2="286"/>
+          <text class="axtitle" x="300" y="322">Average precision · positive = duplicate</text>
+
+          <!-- MiniLM-L6-v2 -->
+          <line class="gl-row" x1="300" y1="62" x2="900" y2="62"/>
+          <text class="pl-name" x="196" y="60" text-anchor="end">MiniLM-L6-v2</text>
+          <text class="pl-sub" x="196" y="77" text-anchor="end">local · 384d</text>
+          <text class="pl-val is-lead" x="272" y="66" text-anchor="end">0.937</text>
+          <line class="wh is-lead" x1="755.7" y1="62" x2="891.4" y2="62"/>
+          <line class="cap is-lead" x1="755.7" y1="56" x2="755.7" y2="68"/>
+          <line class="cap is-lead" x1="891.4" y1="56" x2="891.4" y2="68"/>
+          <circle class="dot is-lead" cx="841.6" cy="62" r="5.5"/>
+          <text class="pl-ci" x="755.7" y="49">0.844</text>
+          <text class="pl-ci" x="891.4" y="49" text-anchor="end">0.991</text>
+
+          <!-- Titan Embed v2 -->
+          <line class="gl-row" x1="300" y1="110" x2="900" y2="110"/>
+          <text class="pl-name" x="196" y="108" text-anchor="end">Titan Embed v2</text>
+          <text class="pl-sub" x="196" y="125" text-anchor="end">Bedrock · 1024d</text>
+          <text class="pl-val" x="272" y="114" text-anchor="end">0.934</text>
+          <line class="wh" x1="766.7" y1="110" x2="887.8" y2="110"/>
+          <line class="cap" x1="766.7" y1="104" x2="766.7" y2="116"/>
+          <line class="cap" x1="887.8" y1="104" x2="887.8" y2="116"/>
+          <circle class="dot" cx="839.4" cy="110" r="5.5"/>
+          <text class="pl-ci" x="766.7" y="97">0.856</text>
+          <text class="pl-ci" x="887.8" y="97" text-anchor="end">0.987</text>
+
+          <!-- Overlap, normalised -->
+          <line class="gl-row" x1="300" y1="158" x2="900" y2="158"/>
+          <text class="pl-name" x="196" y="156" text-anchor="end">Overlap, normalised</text>
+          <text class="pl-sub" x="196" y="173" text-anchor="end">lexical baseline</text>
+          <text class="pl-val" x="272" y="162" text-anchor="end">0.807</text>
+          <line class="wh" x1="571.6" y1="158" x2="827.9" y2="158"/>
+          <line class="cap" x1="571.6" y1="152" x2="571.6" y2="164"/>
+          <line class="cap" x1="827.9" y1="152" x2="827.9" y2="164"/>
+          <circle class="dot" cx="722.1" cy="158" r="5.5"/>
+          <text class="pl-ci" x="571.6" y="145">0.644</text>
+          <text class="pl-ci" x="827.9" y="145" text-anchor="end">0.922</text>
+
+          <!-- BM25 -->
+          <line class="gl-row" x1="300" y1="206" x2="900" y2="206"/>
+          <text class="pl-name" x="196" y="204" text-anchor="end">BM25</text>
+          <text class="pl-sub" x="196" y="221" text-anchor="end">lexical baseline</text>
+          <text class="pl-val" x="272" y="210" text-anchor="end">0.760</text>
+          <line class="wh" x1="523.1" y1="206" x2="805.7" y2="206"/>
+          <line class="cap" x1="523.1" y1="200" x2="523.1" y2="212"/>
+          <line class="cap" x1="805.7" y1="200" x2="805.7" y2="212"/>
+          <circle class="dot" cx="678.5" cy="206" r="5.5"/>
+          <text class="pl-ci" x="523.1" y="193">0.592</text>
+          <text class="pl-ci" x="805.7" y="193" text-anchor="end">0.898</text>
+
+          <!-- Token overlap -->
+          <line class="gl-row" x1="300" y1="254" x2="900" y2="254"/>
+          <text class="pl-name" x="196" y="252" text-anchor="end">Token overlap</text>
+          <text class="pl-sub" x="196" y="269" text-anchor="end">lexical baseline</text>
+          <text class="pl-val" x="272" y="258" text-anchor="end">0.622</text>
+          <line class="wh" x1="355.8" y1="254" x2="707.3" y2="254"/>
+          <line class="cap" x1="355.8" y1="248" x2="355.8" y2="260"/>
+          <line class="cap" x1="707.3" y1="248" x2="707.3" y2="260"/>
+          <circle class="dot" cx="551.1" cy="254" r="5.5"/>
+          <text class="pl-ci" x="355.8" y="241">0.410</text>
+          <text class="pl-ci" x="707.3" y="241" text-anchor="end">0.791</text>
+
+          <!-- annotation: the two dense models overlap -->
+          <line class="annot-rule" x1="841.6" y1="66" x2="841.6" y2="106"/>
+          <text class="annot" x="300" y="30">Whiskers are 95% bootstrap intervals, 1,000 replicates. The two dense encoders overlap.</text>
+        </svg>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <caption>All five methods · positive = duplicate</caption>
+          <thead>
+            <tr>
+              <th scope="col">Method</th>
+              <th scope="col">Backend</th>
+              <th scope="col">Dims</th>
+              <th scope="col">AP</th>
+              <th scope="col">95% CI</th>
+              <th scope="col">ROC AUC</th>
+              <th scope="col">P@1</th>
+              <th scope="col">Best F1</th>
+              <th scope="col">Threshold</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="lead">
+              <td class="name">MiniLM-L6-v2<small>Xenova/all-MiniLM-L6-v2</small></td>
+              <td class="dim">local</td><td>384</td><td>0.937</td><td>0.844 – 0.991</td>
+              <td>0.985</td><td>0.957</td><td>0.889</td><td>0.8046</td>
+            </tr>
+            <tr>
+              <td class="name">Titan Embed v2<small>amazon.titan-embed-text-v2:0</small></td>
+              <td class="dim">Bedrock</td><td>1024</td><td>0.934</td><td>0.856 – 0.987</td>
+              <td>0.982</td><td>0.978</td><td>0.851</td><td>0.8420</td>
+            </tr>
+            <tr>
+              <td class="name">Overlap, normalised<small>token overlap ÷ length</small></td>
+              <td class="dim">lexical</td><td class="dim">—</td><td>0.807</td><td>0.644 – 0.922</td>
+              <td>0.954</td><td>0.957</td><td>0.772</td><td>0.5090</td>
+            </tr>
+            <tr>
+              <td class="name">BM25<small>rank-BM25 over titles + bodies</small></td>
+              <td class="dim">lexical</td><td class="dim">—</td><td>0.760</td><td>0.592 – 0.898</td>
+              <td>0.955</td><td>0.913</td><td>0.774</td><td>135.35</td>
+            </tr>
+            <tr>
+              <td class="name">Token overlap<small>raw shared-token count</small></td>
+              <td class="dim">lexical</td><td class="dim">—</td><td>0.622</td><td>0.410 – 0.791</td>
+              <td>0.856</td><td>0.891</td><td>0.638</td><td>92</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="9">
+                Under the looser <span style="font-family:var(--mono)">duplicate or related</span>
+                definition the ordering flips inside the noise — Titan 0.981 against MiniLM 0.974 —
+                which is the same conclusion: the two dense encoders are not separable on 150 labels.
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===== 03 history ===== -->
+    <section class="sect">
+      <div class="sect-head">
+        <span class="sect-num">03</span>
+        <h2>Snapshot history</h2>
+        <span class="sect-note">Weekly · newest first</span>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <caption>Week beginning Monday · 7 weeks</caption>
+          <thead>
+            <tr>
+              <th scope="col">Week of</th>
+              <th scope="col">Opened</th>
+              <th scope="col">Merged</th>
+              <th scope="col">Rejected</th>
+              <th scope="col">Open at end</th>
+              <th scope="col">Merge %</th>
+              <th scope="col">Median days</th>
+              <th scope="col">Ideas filed</th>
+              <th scope="col">Approved</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="name">31 Aug 2026</td><td class="dim">0</td><td class="dim">0</td><td class="dim">0</td><td>13</td><td class="dim">—</td><td class="dim">—</td><td>1</td><td class="dim">0</td></tr>
+            <tr><td class="name">24 Aug 2026</td><td>1</td><td class="dim">0</td><td class="dim">0</td><td>13</td><td class="dim">—</td><td class="dim">—</td><td class="dim">0</td><td class="dim">0</td></tr>
+            <tr><td class="name">17 Aug 2026</td><td class="dim">0</td><td class="dim">0</td><td class="dim">0</td><td>12</td><td class="dim">—</td><td class="dim">—</td><td class="dim">0</td><td class="dim">0</td></tr>
+            <tr><td class="name">10 Aug 2026</td><td class="dim">0</td><td class="dim">0</td><td class="dim">0</td><td>12</td><td class="dim">—</td><td class="dim">—</td><td class="dim">0</td><td class="dim">0</td></tr>
+            <tr><td class="name">3 Aug 2026</td><td class="dim">0</td><td class="dim">0</td><td class="dim">0</td><td>12</td><td class="dim">—</td><td class="dim">—</td><td>1</td><td class="dim">0</td></tr>
+            <tr><td class="name">27 Jul 2026</td><td>6</td><td>1</td><td>1</td><td>12</td><td>50%</td><td>0.88</td><td>2</td><td>1</td></tr>
+            <tr><td class="name">20 Jul 2026</td><td>20</td><td>10</td><td>3</td><td>8</td><td>77%</td><td>0.00</td><td>32</td><td>7</td></tr>
+            <tr><td class="name">13 Jul 2026</td><td>36</td><td>26</td><td>9</td><td>1</td><td>74%</td><td>0.10</td><td>26</td><td>13</td></tr>
+            <tr><td class="name">6 Jul 2026</td><td>7</td><td>7</td><td class="dim">0</td><td class="dim">0</td><td>100%</td><td>0.11</td><td class="dim">0</td><td class="dim">0</td></tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="9">
+                A merge-rate cell is left as an em dash when nothing closed that week, rather than
+                being shown as zero. Median days to merge is wall-clock from opened to merged;
+                0.00 means every merge that week landed inside an hour.
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </section>
+
+    <p class="colophon">
+      <span>Editorial — mockup</span>
+      <span>Instrument Serif / Inter / IBM Plex Mono</span>
+      <span>Not wired to the app</span>
+    </p>
+  </main>
+</div>
+</body>
+</html>

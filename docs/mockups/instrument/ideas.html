@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>INSTRUMENT — Ideas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   INSTRUMENT — shared shell
+   ============================================================ */
+:root{
+  --bg:#100F0E; --bg-raise:#171614;
+  --rule:#2A2724; --rule-2:#403A34;
+  --dim:#8A847C; --mid:#ABA49B; --fg:#EDE9E3; --hi:#FFFFFF;
+  --signal:#FFB000; --signal-mute:#7A5407;
+  --sans:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --rail:236px;
+}
+*{box-sizing:border-box}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:13px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1,"lnum" 1;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+svg{display:block}
+:focus-visible{outline:1px solid var(--signal);outline-offset:2px}
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+.wrap{display:grid;grid-template-columns:var(--rail) minmax(0,1fr);min-height:100vh}
+
+/* rail */
+.rail{border-right:1px solid var(--rule);position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.rail-top{padding:18px 16px 14px;display:flex;align-items:baseline;gap:8px}
+.mark{width:7px;height:7px;background:var(--signal);flex:none;transform:translateY(-1px)}
+.wordmark{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.22em;color:var(--fg)}
+.wordmark span{color:var(--dim);font-weight:400}
+.rail-build{margin-left:auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--dim)}
+.proj{display:block;width:100%;text-align:left;padding:10px 16px 12px;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);transition:background 180ms ease}
+.proj:hover{background:var(--bg-raise)}
+.proj-k{display:block;font-family:var(--mono);font-size:9px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase}
+.proj-v{display:flex;align-items:center;gap:6px;margin-top:3px;font-size:12.5px;font-weight:500;color:var(--fg)}
+.proj-v svg{margin-left:auto;stroke:var(--dim);flex:none}
+.proj-r{display:block;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.navgroup{padding:16px 16px 6px;font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+.nav{display:grid;grid-template-columns:22px 1fr auto;align-items:center;padding:5px 16px 5px 15px;border-left:1px solid transparent;color:var(--mid);
+  transition:color 160ms ease,border-color 160ms ease,background 160ms ease}
+.nav:hover{color:var(--fg);background:var(--bg-raise)}
+.nav-i{font-family:var(--mono);font-size:10px;color:var(--dim);transition:color 160ms ease}
+.nav:hover .nav-i{color:var(--mid)}
+.nav-l{font-size:12.5px}
+.nav-n{font-family:var(--mono);font-size:10.5px;color:var(--dim)}
+.nav.on{color:var(--hi);border-left-color:var(--signal);background:var(--bg-raise)}
+.nav.on .nav-i{color:var(--signal)}
+.nav.on .nav-l{font-weight:600}
+.nav.on .nav-n{color:var(--signal)}
+.acct{margin-top:auto;border-top:1px solid var(--rule)}
+.acct-row{display:grid;grid-template-columns:26px 1fr 22px;gap:9px;align-items:center;padding:12px 16px 8px}
+.tile{width:26px;height:26px;display:grid;place-items:center;border:1px solid var(--rule-2);font-family:var(--mono);font-size:10.5px;font-weight:600;color:var(--fg)}
+.acct-name{display:block;font-size:12px;font-weight:500;color:var(--fg);line-height:1.25}
+.acct-sub{display:block;font-family:var(--mono);font-size:9.5px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acct-out{width:22px;height:22px;display:grid;place-items:center;color:var(--dim);transition:color 160ms ease}
+.acct-out:hover{color:var(--signal)}
+.acct-out svg{stroke:currentColor}
+.acct-meta{display:flex;justify-content:space-between;padding:0 16px 13px;font-family:var(--mono);font-size:9px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase}
+.acct-meta b{font-weight:500;color:var(--mid);letter-spacing:.04em}
+
+/* main */
+.main{min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:center;gap:14px;padding:0 28px;height:44px;border-bottom:1px solid var(--rule)}
+.crumb{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg)}
+.crumb i{font-style:normal;color:var(--dim);letter-spacing:.06em;text-transform:none}
+.readouts{margin-left:auto;display:flex;align-items:center;gap:22px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;color:var(--dim)}
+.readouts b{font-weight:500;color:var(--mid)}
+.ghost{display:inline-flex;align-items:center;gap:7px;color:var(--mid);font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;transition:color 160ms ease}
+.ghost:hover{color:var(--signal)}
+.ghost svg{stroke:currentColor}
+.pad{padding:0 28px}
+
+.band{border-top:1px solid var(--rule);position:relative;margin-top:34px;padding-top:22px}
+.band > .tag{position:absolute;top:0;left:0;transform:translateY(-52%);background:var(--bg);padding-right:14px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+.band > .tag-r{position:absolute;top:0;right:0;transform:translateY(-52%);background:var(--bg);padding-left:14px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--dim)}
+
+/* ---------- tabs: underline, never a pill ---------- */
+.tabs{display:flex;gap:34px;border-bottom:1px solid var(--rule);padding-top:26px}
+.tab{display:flex;align-items:baseline;gap:9px;padding:0 0 11px;margin-bottom:-1px;
+  border-bottom:1px solid transparent;color:var(--dim);transition:color 170ms ease,border-color 170ms ease}
+.tab:hover{color:var(--mid)}
+.tab-l{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase}
+.tab-c{font-family:var(--mono);font-size:14px;letter-spacing:-.01em}
+.tab.on{color:var(--fg);border-bottom-color:var(--signal)}
+.tab.on .tab-l{font-weight:600;color:var(--hi)}
+.tab.on .tab-c{color:var(--signal)}
+
+/* ---------- focused proposal: the dominant element ---------- */
+.focus{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:52px;padding:34px 0 0}
+.f-eyebrow{display:flex;align-items:baseline;gap:18px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.f-eyebrow .now{color:var(--signal)}
+.f-ref{font-size:12px;letter-spacing:0;color:var(--mid)}
+.f-title{margin:14px 0 0;font-size:clamp(23px,2.1vw,30px);line-height:1.16;letter-spacing:-.016em;font-weight:500;color:var(--hi);max-width:22ch}
+.f-body{margin:20px 0 0;max-width:70ch;color:var(--mid);font-size:13.5px;line-height:1.62}
+.f-body h4{margin:20px 0 4px;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);font-weight:400}
+.f-body p{margin:0 0 10px}
+.f-body strong{color:var(--fg);font-weight:500}
+.f-body a{color:var(--mid);border-bottom:1px solid var(--rule-2)}
+.f-body a:hover{color:var(--signal);border-bottom-color:var(--signal-mute)}
+.f-more{display:inline-flex;align-items:center;gap:8px;margin-top:6px;font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);transition:color 170ms ease}
+.f-more:hover{color:var(--signal)}
+
+/* actions: text + keycap, no pills */
+.acts{display:flex;align-items:stretch;gap:0;margin-top:30px;border-top:1px solid var(--rule-2);border-bottom:1px solid var(--rule)}
+.act{display:flex;align-items:center;gap:12px;padding:15px 26px 15px 0;color:var(--mid);
+  transition:color 170ms ease,background 170ms ease}
+.act + .act{padding-left:26px;border-left:1px solid var(--rule)}
+.act:hover{color:var(--hi)}
+.act-l{font-family:var(--mono);font-size:11.5px;letter-spacing:.16em;text-transform:uppercase;font-weight:500}
+.act-k{font-family:var(--mono);font-size:9.5px;color:var(--dim);border:1px solid var(--rule-2);padding:1px 5px 2px;line-height:1.3}
+.act.primary{color:var(--signal)}
+.act.primary .act-k{border-color:var(--signal-mute);color:var(--signal-mute)}
+.act.primary:hover{color:var(--hi)}
+.act.primary:hover .act-k{color:var(--signal);border-color:var(--signal)}
+.act.danger:hover{color:var(--fg)}
+.act-note{margin-left:auto;align-self:center;font-family:var(--mono);font-size:10px;color:var(--dim);text-align:right;max-width:34ch;line-height:1.5}
+
+/* right column: signals ledger */
+.sig{border-left:1px solid var(--rule);padding-left:26px}
+.sig-h{font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);padding-bottom:12px;border-bottom:1px solid var(--rule)}
+.sig dl{margin:0}
+.sig-row{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:9px 0;border-bottom:1px solid var(--rule)}
+.sig-k{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);white-space:nowrap}
+.sig-v{font-family:var(--mono);font-size:12px;color:var(--fg);text-align:right}
+.sig-v.acc{color:var(--signal)}
+.sig-v.mute{color:var(--mid)}
+
+/* the dup verdict — a readout, not a badge */
+.verdict{margin-top:20px;padding-left:11px;border-left:2px solid var(--signal)}
+.verdict-h{font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--signal)}
+.verdict-b{margin-top:6px;font-size:12px;line-height:1.55;color:var(--mid)}
+.verdict-b b{color:var(--fg);font-weight:500}
+.bar{margin-top:12px;height:3px;background:var(--rule);position:relative}
+.bar-f{position:absolute;inset:0 auto 0 0;background:var(--signal)}
+.bar-t{position:absolute;top:-4px;bottom:-4px;width:1px;background:var(--mid)}
+.bar-l{display:flex;justify-content:space-between;margin-top:5px;font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:.06em}
+
+/* ---------- dense queue list ---------- */
+.scroll{overflow-x:auto;overflow-y:hidden}
+table{border-collapse:collapse;width:100%;min-width:820px}
+thead th{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);
+  font-weight:400;text-align:left;padding:0 12px 8px 0;border-bottom:1px solid var(--rule);white-space:nowrap}
+tbody td{padding:7px 12px 7px 0;border-bottom:1px solid var(--rule);vertical-align:baseline;font-size:12.5px}
+tbody tr{transition:background 160ms ease}
+tbody tr:hover{background:var(--bg-raise)}
+tbody tr:hover .row-act{opacity:1}
+.mk{width:18px;font-family:var(--mono);color:var(--dim);padding-right:8px!important}
+.mk.on{color:var(--signal)}
+.id{font-family:var(--mono);font-size:11px;color:var(--dim);white-space:nowrap}
+.ttl{color:var(--fg)}
+.ttl.mute{color:var(--dim)}
+.num{text-align:right;font-family:var(--mono);white-space:nowrap;padding-right:0!important;padding-left:24px!important}
+.stat-l{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mid)}
+.stat-l.wait{color:var(--signal)}
+.stat-l.off{color:var(--dim)}
+.dup{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.dup.hot{color:var(--signal)}
+.row-act{opacity:0;display:inline-flex;gap:14px;transition:opacity 170ms ease}
+.row-act button{font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);transition:color 150ms ease}
+.row-act button:hover{color:var(--signal)}
+.row-act button.no:hover{color:var(--fg)}
+
+.foot{padding:26px 0 46px;margin-top:30px;border-top:1px solid var(--rule);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;color:var(--dim);text-transform:uppercase;display:flex;gap:26px;flex-wrap:wrap}
+
+@media (max-width:1240px){
+  .focus{grid-template-columns:1fr;gap:30px}
+  .sig{border-left:0;padding-left:0;border-top:1px solid var(--rule);padding-top:18px}
+  .acts{flex-wrap:wrap}
+  .act-note{margin-left:0;max-width:none;text-align:left;padding-bottom:14px}
+}
+@media (max-width:1200px){
+  .topbar{height:auto;min-height:44px;padding-top:8px;padding-bottom:8px;flex-wrap:wrap;row-gap:2px}
+  .readouts{gap:16px}
+  .readouts > span:first-of-type{display:none}
+}
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr}
+  .rail{position:static;height:auto;border-right:0;border-bottom:1px solid var(--rule)}
+  .tabs{gap:20px;overflow-x:auto}
+}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <aside class="rail">
+    <div class="rail-top">
+      <span class="mark" aria-hidden="true"></span>
+      <span class="wordmark">LOOP<span>/DASH</span></span>
+      <span class="rail-build n">v0.9.4</span>
+    </div>
+    <button class="proj" type="button">
+      <span class="proj-k">Project</span>
+      <span class="proj-v">Content Generation Platform
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke-width="1.1" aria-hidden="true"><path d="M3 4.5 6 7.5 9 4.5"/></svg>
+      </span>
+      <span class="proj-r">ApagPlayz/content-generation-platform</span>
+    </button>
+    <nav>
+      <div class="navgroup">This project</div>
+      <a class="nav" href="overview.html"><span class="nav-i">01</span><span class="nav-l">Overview</span><span class="nav-n"></span></a>
+      <a class="nav" href="#"><span class="nav-i">02</span><span class="nav-l">Process Map</span><span class="nav-n"></span></a>
+      <a class="nav on" href="#"><span class="nav-i">03</span><span class="nav-l">Ideas</span><span class="nav-n">42</span></a>
+      <a class="nav" href="#"><span class="nav-i">04</span><span class="nav-l">Pull Requests</span><span class="nav-n">13</span></a>
+      <a class="nav" href="#"><span class="nav-i">05</span><span class="nav-l">Learnings</span><span class="nav-n"></span></a>
+      <a class="nav" href="#"><span class="nav-i">06</span><span class="nav-l">Testing</span><span class="nav-n"></span></a>
+      <a class="nav" href="metrics.html"><span class="nav-i">07</span><span class="nav-l">Metrics</span><span class="nav-n"></span></a>
+      <div class="navgroup">Global</div>
+      <a class="nav" href="#"><span class="nav-i">08</span><span class="nav-l">Tool Catalog</span><span class="nav-n">24</span></a>
+      <a class="nav" href="#"><span class="nav-i">09</span><span class="nav-l">News</span><span class="nav-n"></span></a>
+    </nav>
+    <div class="acct">
+      <div class="acct-row">
+        <span class="tile" aria-hidden="true">AP</span>
+        <span>
+          <span class="acct-name">Owner session</span>
+          <span class="acct-sub">ApagPlayz · gh token</span>
+        </span>
+        <button class="acct-out" type="button" aria-label="Sign out" title="Sign out">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke-width="1.15" stroke-linecap="square" aria-hidden="true">
+            <path d="M6 2.5H3.2v11H6"/><path d="M9.5 5.5 12.5 8l-3 2.5"/><path d="M12.5 8H6"/>
+          </svg>
+        </button>
+      </div>
+      <div class="acct-meta"><span>Expires</span><b class="n">6d 04h</b></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <span class="crumb">Ideas <i>— Content Generation Platform</i></span>
+      <span class="readouts">
+        <a class="ghost" href="#">
+          <svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke-width="1.15" stroke-linecap="square" aria-hidden="true"><path d="M9.4 1.8 12.2 4.6 4.8 12H2v-2.8z"/></svg>
+          Custom idea
+        </a>
+        <span>QUEUE <b class="n">42</b></span>
+        <span>REFRESHED <b class="n">12s</b></span>
+      </span>
+    </div>
+
+    <div class="pad">
+
+      <!-- sub-tabs -->
+      <div class="tabs" role="tablist">
+        <a class="tab on" role="tab" aria-selected="true" href="#"><span class="tab-l">Waiting for you</span><span class="tab-c">23</span></a>
+        <a class="tab" role="tab" aria-selected="false" href="#"><span class="tab-l">Approved</span><span class="tab-c">11</span></a>
+        <a class="tab" role="tab" aria-selected="false" href="#"><span class="tab-l">Being redrafted</span><span class="tab-c">0</span></a>
+        <a class="tab" role="tab" aria-selected="false" href="#"><span class="tab-l">Recently closed</span><span class="tab-c">20</span></a>
+      </div>
+
+      <!-- FOCUSED PROPOSAL — dominant -->
+      <section class="focus">
+        <div>
+          <div class="f-eyebrow">
+            <span class="now">&#9656; Now reviewing</span>
+            <span class="f-ref n">#79</span>
+            <span>opened 44 days ago</span>
+            <span>claude[bot]</span>
+            <span>proposal</span>
+          </div>
+
+          <h1 class="f-title">Auto-add your links (affiliate/product) to every video&#8217;s description &#8212; earn before you&#8217;re monetized</h1>
+
+          <div class="f-body">
+            <h4>What to build</h4>
+            <p>Add a per-factory template for the video <strong>description and pinned comment</strong> &#8212; with your affiliate/product links, a disclosure line, and automatic tracking tags (UTMs) &#8212; filled in automatically on every post. Add a small tab that ties link clicks back to the video/niche that drove them.</p>
+            <h4>Why it matters</h4>
+            <p>For faceless channels, ad revenue is only 30&#8211;50% of income; the rest is affiliate and product links. Description links <strong>earn regardless of monetization status</strong> &#8212; they make money before you&#8217;ve hit YouTube&#8217;s or TikTok&#8217;s payout thresholds, which is exactly the phase a growing channel is in.</p>
+            <h4>Effort &nbsp;/&nbsp; How we&#8217;d know it worked</h4>
+            <p><strong>S</strong> &#8212; every published video carries the right description + pinned-comment block with working, UTM-tagged links, and you can see which niche drove the most clicks.</p>
+            <a class="f-more" href="#">Read full proposal &amp; 2 comments
+              <svg width="13" height="9" viewBox="0 0 16 10" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="square" aria-hidden="true"><path d="M0 5h14M10 1.2 13.8 5 10 8.8"/></svg>
+            </a>
+          </div>
+
+          <div class="acts">
+            <button class="act primary" type="button"><span class="act-l">Approve</span><span class="act-k">ENTER</span></button>
+            <button class="act" type="button"><span class="act-l">Send back with feedback</span><span class="act-k">R</span></button>
+            <button class="act danger" type="button"><span class="act-l">Decline</span><span class="act-k">DEL</span></button>
+            <span class="act-note">Approving starts the Builder within a minute.<br>Declining is read by the Scout so it stops re-proposing.</span>
+          </div>
+        </div>
+
+        <!-- signals -->
+        <aside class="sig">
+          <div class="sig-h">Signals</div>
+          <div class="sig-row"><span class="sig-k">Age</span><span class="sig-v">44 d</span></div>
+          <div class="sig-row"><span class="sig-k">Comments</span><span class="sig-v">2</span></div>
+          <div class="sig-row"><span class="sig-k">Effort</span><span class="sig-v">S</span></div>
+          <div class="sig-row"><span class="sig-k">Queue rank</span><span class="sig-v mute">7 / 23</span></div>
+          <div class="sig-row"><span class="sig-k">Nearest doc</span><span class="sig-v">#27</span></div>
+          <div class="sig-row"><span class="sig-k">cos (MiniLM)</span><span class="sig-v acc">0.831</span></div>
+          <div class="sig-row"><span class="sig-k">cos (Titan v2)</span><span class="sig-v acc">0.869</span></div>
+          <div class="sig-row"><span class="sig-k">BM25</span><span class="sig-v mute">141.02</span></div>
+
+          <div class="verdict">
+            <div class="verdict-h">&#9650; Above duplicate threshold</div>
+            <p class="verdict-b">Both encoders score this above the operating point <b>0.805</b> (MiniLM best-F1, precision 0.828 / recall 0.960). Nearest neighbour is <b>#27 &#8212; &#8220;Let the channel earn money before it&#8217;s monetized: put links &amp; CTAs on every video&#8221;</b>, already <b>approved</b>. Consider declining as a duplicate.</p>
+            <div class="bar" role="img" aria-label="Cosine similarity 0.831 against duplicate threshold 0.805">
+              <span class="bar-f" style="width:83.1%"></span>
+              <span class="bar-t" style="left:80.5%"></span>
+            </div>
+            <div class="bar-l"><span>0.000</span><span>THR 0.805</span><span>1.000</span></div>
+          </div>
+        </aside>
+      </section>
+
+      <!-- REST OF QUEUE -->
+      <section class="band">
+        <span class="tag">Rest of the queue</span>
+        <span class="tag-r">22 more waiting &#183; oldest first</span>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="mk" scope="col"></th>
+                <th scope="col" style="width:52px">Ref</th>
+                <th scope="col">Proposal</th>
+                <th scope="col" style="width:96px">Status</th>
+                <th class="num" scope="col" style="width:64px">Age</th>
+                <th class="num" scope="col" style="width:78px">Max cos</th>
+                <th scope="col" style="width:184px;padding-left:30px">Act</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="mk">&#183;</td><td class="id">#71</td><td class="ttl">The app sometimes makes (and posts) the same video twice when two timers overlap</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.712</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#72</td><td class="ttl">Show me which videos and niches actually EARN money, not just what they cost</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.688</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#73</td><td class="ttl">Your spend numbers can be inflated (and providers billed twice) when a step retries</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.641</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#74</td><td class="ttl">A TikTok video can show &#8216;Posted&#8217; when it never actually went live &#8212; and never retries</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.774</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#75</td><td class="ttl">Your captions &amp; call-to-action can be hidden behind TikTok/Reels/Shorts buttons</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.702</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#76</td><td class="ttl">Videos look blurry after upload &#8212; add clean per-platform export settings</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.659</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk on">&#9650;</td><td class="id">#78</td><td class="ttl">Write titles &amp; hashtags tuned to each platform, not one identical set for all three</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup hot">0.818</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#83</td><td class="ttl">You&#8217;re posting to TikTok but never measuring it &#8212; pull TikTok view counts so it can win too</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.744</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#84</td><td class="ttl">A blank BLACK video with just narration can auto-publish to YouTube &#8212; catch it before it goes live</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.731</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#85</td><td class="ttl">The dashboard&#8217;s &#8220;$ cost&#8221; isn&#8217;t real money &#8212; label it as an estimate and fix the blank sports figure</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.596</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#86</td><td class="ttl">Check every video against YouTube&#8217;s 2026 &#8216;AI slop&#8217; demonetization rules BEFORE it posts</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.783</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#87</td><td class="ttl">Turn each week&#8217;s shorts into one long YouTube video &#8212; 50&#8211;200x the pay, and the only real path to getting monetized</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.607</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#89</td><td class="ttl">You already score each video&#8217;s hook &#8212; use it to skip publishing the ones likely to flop</td><td class="stat-l wait">Waiting</td><td class="num">44d</td><td class="num dup">0.769</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk on">&#9650;</td><td class="id">#100</td><td class="ttl">Give YouTube and TikTok their own copy of each video, so they stop burying it as &#8216;reused content&#8217;</td><td class="stat-l wait">Waiting</td><td class="num">42d</td><td class="num dup hot">0.842</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#101</td><td class="ttl">Auto-make a click-worthy thumbnail for each video &#8212; right now there isn&#8217;t one</td><td class="stat-l wait">Waiting</td><td class="num">42d</td><td class="num dup">0.554</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#102</td><td class="ttl">A stalled sports data fetch can freeze a video run for 30 minutes &#8212; add the same timeout the true-crime pipeline already has</td><td class="stat-l wait">Waiting</td><td class="num">42d</td><td class="num dup">0.716</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#103</td><td class="ttl">Add a high-paying niche (money/business explainers) &#8212; same effort per video, 2&#8211;4x the ad rate</td><td class="stat-l wait">Waiting</td><td class="num">42d</td><td class="num dup">0.581</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk on">&#9650;</td><td class="id">#109</td><td class="ttl">Your sports videos skip the &#8216;will this get demonetized?&#8217; safety check that true-crime and history already run</td><td class="stat-l wait">Waiting</td><td class="num">41d</td><td class="num dup hot">0.807</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#110</td><td class="ttl">The crash-recovery safety net can wrongly kill a video that&#8217;s still rendering &#8212; and make you pay to render it twice</td><td class="stat-l wait">Waiting</td><td class="num">41d</td><td class="num dup">0.763</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#114</td><td class="ttl">TikTok auto-publish is silently broken whenever YouTube posts first &#8212; the second platform never goes live</td><td class="stat-l wait">Waiting</td><td class="num">41d</td><td class="num dup">0.795</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#115</td><td class="ttl">Stop re-buying the same AI images every video &#8212; cache &amp; reuse atmospheric stills to cut the image bill</td><td class="stat-l wait">Waiting</td><td class="num">41d</td><td class="num dup">0.634</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+              <tr><td class="mk">&#183;</td><td class="id">#118</td><td class="ttl">Teach the app to copy your videos people actually WATCH &#8212; not just the ones that got shown</td><td class="stat-l wait">Waiting</td><td class="num">41d</td><td class="num dup">0.677</td><td style="padding-left:30px"><span class="row-act"><button type="button">Approve</button><button class="no" type="button">Decline</button></span></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- APPROVED, NOT YET BUILT -->
+      <section class="band">
+        <span class="tag">Approved, not yet built</span>
+        <span class="tag-r">11 &#183; the Builder picks these up in order</span>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th class="mk" scope="col"></th>
+                <th scope="col" style="width:52px">Ref</th>
+                <th scope="col">Idea</th>
+                <th scope="col" style="width:96px">Status</th>
+                <th class="num" scope="col" style="width:64px">Age</th>
+                <th scope="col" style="width:140px;padding-left:30px">Build</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td class="mk on">+</td><td class="id">#17</td><td class="ttl mute">Protect the channel from demonetization: extend the anti-repetition gate to every factory</td><td class="stat-l">Approved</td><td class="num">50d</td><td class="stat-l off" style="padding-left:30px">PR #112 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#27</td><td class="ttl mute">Let the channel earn money before it&#8217;s monetized: put links &amp; CTAs on every video</td><td class="stat-l">Approved</td><td class="num">50d</td><td class="stat-l off" style="padding-left:30px">PR #113 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#51</td><td class="ttl mute">The AI voice mispronounces names, places &amp; acronyms &#8212; add a pronunciation step before every voiceover</td><td class="stat-l">Approved</td><td class="num">48d</td><td class="stat-l off" style="padding-left:30px">PR #123 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#57</td><td class="ttl mute">Your paid premium voice can quietly break &#8212; the app swaps in the free robot voice and never tells you</td><td class="stat-l">Approved</td><td class="num">47d</td><td class="stat-l off" style="padding-left:30px">PR #116 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#58</td><td class="ttl mute">Auto-post every video to Instagram &amp; Facebook too, not just YouTube + TikTok</td><td class="stat-l">Approved</td><td class="num">47d</td><td class="stat-l off" style="padding-left:30px">PR #117 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#70</td><td class="ttl mute">Video preview won&#8217;t play on Mac/iPhone &#8212; you can&#8217;t reliably review before it auto-posts</td><td class="stat-l">Approved</td><td class="num">44d</td><td class="stat-l off" style="padding-left:30px">PR #119 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#77</td><td class="ttl mute">Your TikTok videos are too short to ever earn &#8212; make a 60s+ cut for TikTok only</td><td class="stat-l">Approved</td><td class="num">44d</td><td class="stat-l off" style="padding-left:30px">PR #124 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#82</td><td class="ttl mute">Some sports videos silently fail to render when the AI hook has a comma or % &#8212; fix the text escaping</td><td class="stat-l">Approved</td><td class="num">44d</td><td class="stat-l off" style="padding-left:30px">PR #125 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#88</td><td class="ttl mute">Stop TikTok from silently shadowbanning you &#8212; human-like posting + a &#8216;your reach just died&#8217; alert</td><td class="stat-l">Approved</td><td class="num">44d</td><td class="stat-l off" style="padding-left:30px">PR #120 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#90</td><td class="ttl mute">Cut your AI writing bill by ~90% with prompt caching &#8212; same videos, lower cost</td><td class="stat-l">Approved</td><td class="num">44d</td><td class="stat-l off" style="padding-left:30px">PR #121 open</td></tr>
+              <tr><td class="mk on">+</td><td class="id">#126</td><td class="ttl mute">Apply the picked redesign: Style 2 &#8220;Warm Creator&#8221;, light default, single nav</td><td class="stat-l">Approved</td><td class="num">31d</td><td class="stat-l off" style="padding-left:30px">PR #131 open</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="foot">
+        <span>Waiting 23</span>
+        <span>Approved 11</span>
+        <span>Redrafting 0</span>
+        <span>Closed 20</span>
+        <span>Dedup threshold 0.805 &#183; MiniLM-L6-v2</span>
+      </div>
+
+    </div>
+  </main>
+</div>
+</body>
+</html>
