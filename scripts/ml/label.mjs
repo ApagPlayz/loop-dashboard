@@ -177,21 +177,34 @@ const HARD_STRATA = new Set(["dense_only", "lex_top"]);
 
 // Titles alone are often too thin to judge a pair, so pull the real issue/PR
 // body out of the corpus and show an excerpt. Keyed by `${type}#${number}`.
-const bodyByKey = (() => {
+const docByKey = (() => {
   const map = new Map();
   const corpusPath = path.join(ROOT, "data", "corpus.jsonl");
   if (!existsSync(corpusPath)) return map;
   for (const line of readFileSync(corpusPath, "utf-8").split("\n")) {
-    if (!line.trim()) continue;
+    if (!line.trim() || line.trim().startsWith("#")) continue;
     try {
       const doc = JSON.parse(line);
-      map.set(`${doc.type}#${doc.number}`, doc.body ?? "");
+      map.set(`${doc.type}#${doc.number}`, doc);
     } catch {
       // A malformed corpus line costs us one excerpt, not the session.
     }
   }
   return map;
 })();
+
+// Whether each side shipped is one of the strongest signals available: two
+// merged PRs are almost never the same work, because you would not merge the
+// same change twice.
+function statusLine(doc) {
+  if (!doc) return "";
+  const when = String(doc.created_at ?? "").slice(0, 10);
+  let state;
+  if (doc.merged_at) state = green("MERGED");
+  else if (doc.state === "closed") state = yellow("closed, not merged");
+  else state = cyan("still open");
+  return `${state}${when ? dim(`, filed ${when}`) : ""}`;
+}
 
 // Markdown headings, bullets and code fences add noise at this width; strip to
 // prose so the excerpt spends its characters on meaning.
@@ -225,11 +238,12 @@ function wrap(text, width, indent) {
 let showFullBody = false;
 
 function fmtSide(label, num, type, title, url) {
-  const body = bodyByKey.get(`${type}#${num}`);
-  const text = excerpt(body, showFullBody ? 4000 : 320);
+  const doc = docByKey.get(`${type}#${num}`);
+  const text = excerpt(doc?.body, showFullBody ? 6000 : 850);
+  const status = statusLine(doc);
   return (
-    `  ${bold(label)} [${type.toUpperCase()} #${num}]\n    ${title}\n` +
-    `${wrap(text, 66, "      ")}\n    ${dim(url)}`
+    `  ${bold(label)} [${type.toUpperCase()} #${num}]  ${status}\n    ${bold(title)}\n` +
+    `${wrap(text, 68, "      ")}\n    ${dim(url)}`
   );
 }
 
@@ -257,10 +271,16 @@ function renderPrompt(row) {
     }`,
   );
   console.log("-".repeat(72));
+  console.log(dim("  ask: if I do A, do I still need to do B?"));
   console.log(
-    `  ${green("1")}=duplicate  ${green("2")}=related  ${green("3")}=unrelated  ${cyan("s")}=skip  ${cyan(
-      "u",
-    )}=undo  ${cyan("b")}=${showFullBody ? "shorter text" : "full text"}  ${cyan("q")}=quit&save`,
+    `  ${green("1")}=no, B is pointless   ${green("2")}=yes, but same feature   ${green(
+      "3",
+    )}=yes, unrelated work`,
+  );
+  console.log(
+    `  ${cyan("s")}=skip  ${cyan("u")}=undo  ${cyan("b")}=${
+      showFullBody ? "shorter text" : "FULL text"
+    }  ${cyan("q")}=quit&save`,
   );
   console.log(
     `  labelled ${done} / ${total} — ${c.duplicate} duplicate, ${c.related} related, ${c.unrelated} unrelated`,
