@@ -192,3 +192,42 @@ security hole, and a broken JSON parser silently corrupts every AI feature. Test
 (higher effort, lower value at this stage).
 
 **When:** 2026-09-01.
+
+---
+
+## 11. Text the dashboard relays into a repo is sanitized, not trusted
+
+**Decided:** every caller-supplied string the dashboard posts to GitHub next to an "@claude"
+goes through `lib/relay-safety.ts` first — length-capped, invisible characters stripped,
+@-mentions rewritten to "(at)", fence markers defused, and the remainder fenced between the
+existing `UNTRUSTED_OPEN`/`UNTRUSTED_CLOSE` markers from `lib/prompt-safety.ts`. The "@claude"
+that actually wakes the agent is the route's own text, outside the fence. Structured inputs
+(issue number, action) are validated against integers and an explicit allowlist before any
+GitHub call happens.
+
+**Why:** `config/loop-template/workflows/claude-mention.yml` decides who may steer the mention
+agent by looking up the **comment author's** repository permission and accepting only
+`admin`/`maintain`. That is sound when a person comments and useless when the dashboard does:
+the author of anything we post is the dashboard's own GitHub token, which is an admin. The gate
+passes automatically, and the relayed text reaches a job with `contents: write`,
+`pull-requests: write`, `issues: write`, `actions: write` and Bash. A control meant to ask "may
+this person steer the agent?" instead certifies whatever we forward — an authorization gate
+inverted into an amplifier. Session auth on those routes (`proxy.ts`, commit `aac0fc6`) is the
+first line of defence; this is the second, for a guessed password or a future read-only/demo
+deployment.
+
+**Rejected:** truncating over-long input (sends the agent a mangled instruction nobody wrote —
+reject with a 4xx instead), and fencing only the `wake: true` path (an unfenced comment still
+sits in a thread that a later "@claude" feeds to the agent in full).
+
+**Still open — the stronger fix, deliberately not applied here:** the workflow should gate on
+something other than the comment author, because the author is a machine identity we control.
+Options, roughly in order of strength: (a) require the mention to come from a human `sender`
+whose permission is admin/maintain **and** refuse when the sender is the repo's own token or an
+App identity; (b) have the dashboard sign what it relays and have the workflow verify the
+signature; (c) drop the relay entirely and have the dashboard trigger the agent through
+`workflow_dispatch` with structured inputs rather than by writing English into a comment.
+Not done in this pass because `config/loop-template/workflows/` is synced into other repos and
+changing it has blast radius beyond the dashboard.
+
+**When:** 2026-09-02.
