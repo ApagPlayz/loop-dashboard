@@ -52,17 +52,35 @@ All verified by running it, not by assertion.
   / AWS Bedrock behind one interface, with forced-tool-use structured output, JSON-schema
   enforcement, retry on malformed output, and an error taxonomy.
 - **Docker container** built and health-checked locally (301 MB, multi-stage, non-root).
-- **LangGraph.js installed** (`@langchain/langgraph` 1.4.13, `@langchain/core` 1.2.9) —
-  TypeScript-native, no Python runtime added.
+- **A working LangGraph human-in-the-loop agent** (`lib/agent/`, `scripts/triage-cli.mjs`).
+  Four nodes: `load_backlog → assess → propose → apply_decisions`, with `interrupt()` as the
+  first executing statement in the final node and a `MemorySaver` checkpointer.
+  **Verified live** against `ApagPlayz/content-generation-platform` on the local CLI backend:
+  halted after 32.6s with `__interrupt__` set and no actions in state; `getState()` showed
+  `next: ["apply_decisions"]` while paused and `next: []` after resume; supplying different
+  decisions than the model proposed produced correspondingly different actions. **Nothing was
+  written to GitHub** — dry-run is the default and `--apply` is required to write.
+  *Honest caveat:* assessment verdicts wobble between runs on the same issues (#132 came back
+  needs-info / decline / needs-info across three runs). The interrupt is what makes that
+  acceptable — the model proposes, the human decides. Do not oversell the assessment step.
+  `lib/agent/` has no Next.js or path-alias imports, so it lifts to AgentCore unchanged.
+- **Amazon Titan Text Embeddings V2 backend** (`lib/dedup/embed.ts`) — the previously stubbed
+  `bedrock` path, implemented via `InvokeModelCommand` with the request/response shape taken
+  from AWS's published docs. 1024 dims, credentials from the default AWS chain, bounded
+  concurrency with backoff on throttling, and it **never silently falls back to the local
+  model**. Indexes are per-backend (`embeddings-local.json` / `embeddings-titan.json`) so both
+  encoders coexist, and `evaluate.mjs` scores every available encoder side by side on the same
+  gold set. `@aws-sdk/client-bedrock-runtime` was promoted from transitive to a direct
+  dependency so a lockfile change cannot silently remove it.
 
 ### What is NOT true yet — do not claim these
 
-- **Nothing has ever run on AWS. There is still no AWS account.** `aws sts get-caller-identity`
-  returns `NoCredentials`.
-- **No live Bedrock call has ever been made**, by any path.
+- **Nothing has ever run on AWS.** As of writing there was no account; the owner has since
+  created one but `aws login` had not yet been run.
+- **No live Bedrock or Titan call has ever been made**, by any path. The Titan code is tested
+  against a mocked SDK only.
 - The duplicate-detection system has **no measured result** — `metrics/dedup-eval.json` holds
   random labels and is stamped `synthetic-smoke-test`. It needs `data/gold-pairs.jsonl` labelled.
-- The LangGraph agent was **in progress and is unfinished** when this was written.
 - `"55/60 successful runs"` from earlier handoffs is **misleading** — median Scout run is 15s,
   most "successes" are agents standing down. Do not put it on a resume.
 
@@ -177,25 +195,33 @@ Stateless cookies mean **auth works across any number of containers** with no st
 
 ## Current state
 
-`main` is clean and **7 commits ahead of `origin/main` — nothing has been pushed.**
+`main` is clean, **88 tests passing**, `tsc` clean, and **11 commits ahead of `origin/main` —
+nothing has been pushed.** Both build agents completed; no partial work is outstanding.
 
-Two agents were running when this was written and were **stopped mid-flight** at the owner's
-instruction; check `git status` for partial work before continuing:
-1. **Titan embedding backend** — implement `bedrock` in `lib/dedup/embed.ts` using Amazon Titan
-   Text Embeddings v2, and extend `evaluate.mjs` to compare MiniLM vs Titan on the same gold set.
-2. **Minimal LangGraph triage agent** — `lib/agent/`, 4 nodes, human-in-the-loop `interrupt()`,
-   dry-run by default.
+**The scoped execution plan is `docs/plans/tonight-2026-09-02.md`** — read it alongside this.
 
 ---
 
 ## Next steps, in priority order
 
-### 1. AWS account — the only hard blocker (owner, ~20 min, browser)
+### 1. `aws login` — the only hard blocker (owner, ~5 min)
 
-Nothing with "AWS" in it can start without this. aws.amazon.com → create account → **$10 budget
-alert first** → MFA on root → IAM Identity Center admin user → `aws login`.
+The AWS account now exists. Run `aws login`, then `aws sts get-caller-identity` to confirm.
+Also set the $10 budget alert and root MFA if not already done. **Use `us-east-1`, never
+change it.** An IAM Identity Center admin user is the correct practice but was deferred for
+speed — do it before this becomes a habit.
 
-**Use `us-east-1` and never change it.**
+### 1b. Run Titan for real (~30 min, unblocked by 1)
+
+```bash
+EMBEDDING_BACKEND=bedrock node scripts/ml/build-index.mjs   # → data/embeddings-titan.json
+node scripts/ml/evaluate.mjs
+node scripts/ml/compare-encoders.mjs
+```
+**Titan needs no use-case form** (that form is Anthropic-specific; Amazon's own models aren't
+sold through AWS Marketplace). Costs about half a cent. **This is what makes the AWS bullet
+true.** Even with zero labels it yields a real result: Spearman rank correlation and top-k
+Jaccard between MiniLM and Titan.
 
 ### 2. Amazon Titan embeddings — the fastest honest AWS + ML + evaluation win
 
@@ -218,7 +244,7 @@ Every row carries both titles, both GitHub URLs, and all four method scores. Row
 to prevent threshold drift. `evaluate.mjs` refuses to run on an incomplete file and names the
 first offending pair. **Without this there is no measured result at all.**
 
-### 4. Finish the LangGraph agent
+### 4. LangGraph agent — DONE, notes retained for whoever extends it
 
 Verified API notes for v1.4.13 (confirmed by running it, not from memory):
 - `import { StateGraph, Annotation, START, END, MemorySaver, Command, interrupt } from "@langchain/langgraph"`
