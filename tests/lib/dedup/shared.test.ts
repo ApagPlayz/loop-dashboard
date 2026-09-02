@@ -136,18 +136,29 @@ describe("buildMethods", () => {
 
 /* ------------------------------------------------------------------ */
 /* loadAllEmbeddings — integration check against the real repo state.  */
-/* build-index.mjs was run as part of this work and wrote              */
-/* data/embeddings-local.json; data/embeddings-titan.json does not     */
-/* exist because there is no AWS account yet, which is exactly the     */
-/* "absent, not zeroed" case this function exists to handle.           */
+/* Both indexes have now been built (Titan ran live on Bedrock on      */
+/* 2026-09-02), so this asserts what must hold whichever indexes are   */
+/* present: each one loads under its own backend and dimensionality,   */
+/* and an index that was never built reads as absent rather than as a  */
+/* zeroed vector set. Do not pin this to "titan is missing" again —    */
+/* that encodes a moment in time, not an invariant.                    */
 /* ------------------------------------------------------------------ */
 
 describe("loadAllEmbeddings (real repo files)", () => {
-  test("finds the local index and correctly reports titan as absent", async () => {
+  test("loads each index that exists under its own backend, absent otherwise", async () => {
     const sets = await loadAllEmbeddings();
+
     expect(sets.local).toBeDefined();
     expect(sets.local?.backend).toBe("local");
     expect(sets.local?.numbers?.length).toBeGreaterThan(0);
-    expect(sets.titan).toBeUndefined();
+    expect(sets.local?.dims).toBe(384);
+
+    // Titan is optional: present only once build-index has been run against
+    // Bedrock. Absent must mean undefined, never an empty/zeroed set.
+    if (sets.titan === undefined) return;
+    expect(sets.titan.backend).toBe("bedrock");
+    expect(sets.titan.dims).toBe(1024);
+    expect(sets.titan.numbers?.length).toBeGreaterThan(0);
+    expect(sets.titan.numbers?.length).toBe(sets.local?.numbers?.length);
   });
 });
