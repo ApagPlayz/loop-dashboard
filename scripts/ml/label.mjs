@@ -335,6 +335,28 @@ function handleKey(ch) {
 }
 
 function main() {
+  // Without a terminal on stdin there is nobody to press a key: input hits EOF
+  // immediately and we would "save" zero labels and exit looking successful.
+  // Refuse loudly instead. --allow-no-tty is the escape hatch for test harnesses
+  // that legitimately pipe keystrokes in.
+  if (!process.stdin.isTTY && !process.argv.includes("--allow-no-tty")) {
+    console.error(
+      [
+        "",
+        "  This labeller needs a real terminal — stdin is not a TTY, so it would",
+        "  read end-of-input straight away and record nothing.",
+        "",
+        "  Open Terminal and run:",
+        "",
+        `    cd ${JSON.stringify(process.cwd())} && node scripts/ml/label.mjs`,
+        "",
+        "  (Running it through a pipe, or via Claude Code's ! prefix, hits this.)",
+        "",
+      ].join("\n"),
+    );
+    process.exit(2);
+  }
+
   printBanner();
 
   if (queue.length === 0) {
