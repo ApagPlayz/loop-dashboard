@@ -1,7 +1,10 @@
 # Semantic near-duplicate detection over CGP proposals
 
-Backlog §3, "Build first". Everything here is built and has been run except the
-one step only a human can do: **labelling the gold set**.
+Backlog §3, "Build first". Everything here is built. Two steps are still
+blocked on something only a human (or AWS) can provide: **labelling the gold
+set**, and **an AWS account** to actually run the Titan v2 backend (2026-09-02
+update below — the code is written, typechecked, and unit-tested with a mocked
+AWS SDK, but has never made a real InvokeModel call).
 
 The goal is to tell, for two GitHub issues/PRs in
 `ApagPlayz/content-generation-platform`, whether they are the same request. The
@@ -18,11 +21,12 @@ keyword baseline that is already in the repo.
 | --- | --- |
 | `scripts/ml/extract-corpus.mjs` | Pulls every issue + PR through `gh api` → `data/corpus.jsonl` |
 | `lib/dedup/baseline.ts` | The two lexical baselines: `overlap` (the in-repo one) and `bm25` (written here) |
-| `lib/dedup/embed.ts` | Dense embeddings, with a `local \| bedrock` backend switch |
-| `scripts/ml/build-index.mjs` | Embeds the corpus → `data/embeddings.json` |
+| `lib/dedup/embed.ts` | Dense embeddings, `local` (MiniLM) and `bedrock` (Titan v2) backends, both implemented |
+| `scripts/ml/build-index.mjs` | Embeds the corpus → `data/embeddings-local.json` or `data/embeddings-titan.json` (backend-specific; also mirrors to `data/embeddings.json`) |
 | `scripts/ml/generate-pairs.mjs` | Stratified sample of pairs to label → `data/gold-pairs-unlabeled.jsonl` |
-| `scripts/ml/evaluate.mjs` | Scores every method → `metrics/dedup-eval.json` |
-| `scripts/ml/_shared.mjs` | Loading + the four methods behind one interface + a seeded RNG |
+| `scripts/ml/evaluate.mjs` | Scores every method (both dense encoders, when both indexes exist) → `metrics/dedup-eval.json` |
+| `scripts/ml/compare-encoders.mjs` | Reads `metrics/dedup-eval.json` and prints a readable comparison table, plus a label-free MiniLM-vs-Titan section |
+| `scripts/ml/_shared.mjs` | Loading (single- or dual-backend) + the method list behind one interface + a seeded RNG |
 
 The `.mjs` scripts import the `.ts` libraries directly by path. Node 26 strips
 TypeScript types natively, so there is no build step and no loader flag. (Node
@@ -37,21 +41,40 @@ cosmetic. `node --no-warnings …` silences it.)
 # 1. Corpus. Needs the gh CLI authenticated. Idempotent — safe to re-run daily.
 node scripts/ml/extract-corpus.mjs
 
-# 2. Embeddings. First run downloads the model; later runs are offline.
+# 2. Embeddings, local backend (MiniLM, no AWS needed). First run downloads
+#    the model; later runs are offline. Writes data/embeddings-local.json
+#    (and mirrors to data/embeddings.json for backward compatibility).
 node scripts/ml/build-index.mjs
+
+# 2b. Embeddings, Bedrock backend (Titan v2) — ONLY once an AWS account with
+#     Bedrock model access to amazon.titan-embed-text-v2:0 exists. Writes
+#     data/embeddings-titan.json. Credentials from the default AWS provider
+#     chain (env vars / ~/.aws / SSO / ECS task role) — never put keys here.
+EMBEDDING_BACKEND=bedrock node scripts/ml/build-index.mjs
 
 # 3. The pairs to label.
 node scripts/ml/generate-pairs.mjs
 
-# 4. Evaluation. With no labelled file this runs as a smoke test (see below).
+# 4. Evaluation. Scores every lexical baseline PLUS every dense index that
+#    exists (dense_local, dense_titan — either, both, or neither). With no
+#    labelled file this runs as a smoke test (see below).
 node scripts/ml/evaluate.mjs
+
+# 5. Optional readable comparison table + label-free MiniLM-vs-Titan section.
+#    Reads metrics/dedup-eval.json — rerun step 4 first if it's stale.
+node scripts/ml/compare-encoders.mjs
 ```
 
 Useful flags: `--repo=owner/name`, `--seed=N`, `--total=150` (pair budget),
-`--gold=path`, `--bootstrap=2000`, `--smoke`.
+`--gold=path`, `--bootstrap=2000`, `--smoke` (evaluate.mjs); `--metrics=path`
+(compare-encoders.mjs).
 
 Environment: `EMBEDDING_BACKEND=local|bedrock` (default `local`),
-`EMBEDDING_DTYPE=fp32|q8` (default `fp32`).
+`EMBEDDING_DTYPE=fp32|q8` (default `fp32`, local backend only),
+`EMBEDDING_BEDROCK_DIMENSIONS=1024|512|256` (default `1024`, bedrock only),
+`EMBEDDING_BEDROCK_MODEL` (override the Titan model id, bedrock only),
+`DASHBOARD_AI_BEDROCK_REGION` / `AWS_REGION` (region, default `us-east-1`,
+bedrock only).
 
 ---
 
@@ -89,10 +112,13 @@ numbers are meaningless on purpose.
 
 ---
 
-## The four methods
+## The methods
 
-All four are wired identically and scored from the same pair list, so the
-baseline is not handicapped.
+Three lexical baselines plus one dense method PER embedding index that
+actually exists (`dense_local` for MiniLM, `dense_titan` for Titan v2 — either,
+both, or neither, never a method that silently scores 0 for a backend that
+was never built). All are wired identically and scored from the same pair
+list, so no method is handicapped by being wired up differently.
 
 - **`overlap`** — the approach already shipping in `lib/tool-fit.ts`: tokenize,
   drop tokens ≤ 2 chars and a 30-word stopword list, count distinct shared
@@ -110,7 +136,11 @@ baseline is not handicapped.
 - **`bm25`** — Okapi BM25, ~70 lines, no dependency. k1 = 1.5, b = 0.75,
   IDF = ln(1 + (N − df + 0.5)/(df + 0.5)). Asymmetric by construction, so the
   pair score is the mean of both directions.
-- **`dense`** — cosine similarity of the MiniLM embeddings.
+- **`dense_local`** — cosine similarity of the MiniLM (`local` backend)
+  embeddings.
+- **`dense_titan`** — cosine similarity of the Titan v2 (`bedrock` backend)
+  embeddings. Present only once `data/embeddings-titan.json` exists (backlog
+  §2 — needs an AWS account). **Not yet run** — see "Bedrock status" below.
 
 Titles are weighted ×2 and code fences are stripped for every method equally.
 
@@ -126,6 +156,11 @@ Titles are weighted ×2 and code fences are stripped for every method equally.
 | overlap vs dense | 0.450 | 0.22 |
 | bm25 vs dense | 0.508 | 0.49 |
 | overlap_norm vs dense | 0.410 | 0.37 |
+
+(This table predates the local/titan split — `dense` here is what
+`metrics/dedup-eval.json` now calls `dense_local`. The equivalent
+`dense_local` vs `dense_titan` row is added automatically once both indexes
+exist; see "Bedrock status" below.)
 
 This is **not** a quality measurement — without labels there is no notion of
 correct. It answers a cheaper question worth answering before spending an hour
@@ -253,18 +288,78 @@ intervals overlap. Report the interval, not the point estimate.
 
 ---
 
+## Bedrock status (2026-09-02)
+
+`EMBEDDING_BACKEND=bedrock` is now **implemented**, not a stub — it calls
+Amazon Titan Text Embeddings V2 (`amazon.titan-embed-text-v2:0`) via
+`InvokeModelCommand` from `@aws-sdk/client-bedrock-runtime`. That package is
+present in `node_modules` only as a **transitive** dependency of
+`@anthropic-ai/bedrock-sdk` (which lib/map-ai.ts depends on directly) — it is
+not in `package.json` itself, so a future lockfile change to
+`@anthropic-ai/bedrock-sdk` could remove it without warning. If Bedrock
+embeddings ever stop resolving, that dependency chain is where to look first.
+
+**It has never made a real InvokeModel call — there is still no AWS account
+(backlog §2).** What *has* been verified:
+
+- `npx tsc --noEmit` is clean with the real (not mocked) type definitions from
+  `@aws-sdk/client-bedrock-runtime`.
+- `tests/lib/dedup/embed.test.ts` unit-tests the whole path against a mocked
+  `BedrockRuntimeClient`/`InvokeModelCommand`: the request body matches AWS's
+  documented Titan v2 contract exactly (`inputText`, `dimensions`, `normalize`
+  — verified against the AWS docs, not guessed), the response is parsed
+  correctly, region resolution (`DASHBOARD_AI_BEDROCK_REGION` >
+  `AWS_REGION` > `us-east-1` default) is correct, `EMBEDDING_BEDROCK_MODEL`
+  and `EMBEDDING_BEDROCK_DIMENSIONS` overrides actually change the request
+  (not just the recorded label), a dimension mismatch in the response throws,
+  `ThrottlingException` retries with backoff, and anything else throws
+  immediately with a message that says "Refusing to fall back to the local
+  model" — never a silent fallback.
+- The **local** path was re-verified end to end on 2026-09-02 after this
+  change (`node scripts/ml/build-index.mjs`, `evaluate.mjs`,
+  `compare-encoders.mjs` all ran clean) — the file-layout change (backend-
+  specific index paths) did not break anything already working.
+- The multi-encoder comparison mechanism itself (`dense_local` + `dense_titan`
+  scored side by side, `method_agreement`'s label-free Spearman/Jaccard
+  between them) was verified by temporarily pointing a **copy** of the local
+  index at `data/embeddings-titan.json`, running the full pipeline, confirming
+  Spearman = 1.0 / Jaccard = 1.0 (correct, since it was a literal copy — a
+  sanity check, not a result), then **deleting that file** before finishing.
+  `data/embeddings-titan.json` does not exist in the repo; nothing here claims
+  a Titan result that wasn't produced by Titan.
+
+**1024 dims chosen for Titan v2** (the API default, and the model's full
+Matryoshka-trained width) rather than 512 or 256: at 132 documents the
+storage/latency cost of the extra dimensions is a few hundred KB, and staying
+at full width keeps "which model" the only axis of variation in the
+local-vs-Titan comparison instead of adding "which truncation" as a second
+one. `EMBEDDING_BEDROCK_DIMENSIONS` overrides it if cost ever matters at a
+larger corpus.
+
+**What to run once an AWS account with Bedrock access to
+`amazon.titan-embed-text-v2:0` exists**, in order:
+
+```bash
+EMBEDDING_BACKEND=bedrock node scripts/ml/build-index.mjs   # → data/embeddings-titan.json
+node scripts/ml/evaluate.mjs                                 # scores dense_local + dense_titan together
+node scripts/ml/compare-encoders.mjs                          # readable table + label-free comparison
+```
+
+No code changes needed — the same harness that already scores MiniLM will
+pick up the Titan index automatically once it exists.
+
 ## Not done, on purpose
 
-- **Bedrock embeddings.** `EMBEDDING_BACKEND=bedrock` throws a specific error
-  naming what is missing. It deliberately does not fall back to the local model,
-  because that would let local results be reported as Bedrock results. The
-  implementation notes (Titan Text Embeddings V2, `InvokeModelCommand`, 1024
-  dims not 384) are in the stub. Blocked on backlog §2 — there is no AWS
-  account. Once it exists, rerunning the *same* harness with the flag flipped
-  produces the backend-comparison table for free.
-- **Tests.** `vitest` is installed but `vitest.config.ts` is owned by another
-  agent right now, so no test files were added to avoid a collision. What is
-  worth testing, roughly in order:
+- **The label-free MiniLM-vs-Titan comparison** (Spearman rank correlation and
+  top-100 Jaccard overlap, exactly like the existing overlap-vs-bm25-vs-dense
+  table above) is wired and tested but has no real numbers yet — it needs
+  `data/embeddings-titan.json`, i.e. it needs the AWS account. This is the one
+  piece of the model-comparison deliverable that is genuinely blocked on
+  something outside this repo, not on missing code.
+- **Tests for the pre-existing lexical baselines.** `tests/lib/dedup/` now
+  exists (added alongside the Bedrock work) but only covers `embed.ts` and
+  `scripts/ml/_shared.mjs`'s `buildMethods`/`loadAllEmbeddings`. Still worth
+  adding, roughly in order:
   1. `buildBm25Index` — IDF and the length-normalisation term against
      hand-computed values on a 3-document toy corpus; the non-negative IDF
      variant specifically.

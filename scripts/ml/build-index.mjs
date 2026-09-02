@@ -4,15 +4,25 @@
  *
  * Reads `data/corpus.jsonl`, embeds every document with whichever backend
  * EMBEDDING_BACKEND selects (default "local" = Xenova/all-MiniLM-L6-v2 running
- * in-process via onnxruntime), and writes `data/embeddings.json`.
+ * in-process via onnxruntime; "bedrock" = Amazon Titan Text Embeddings V2 via
+ * AWS Bedrock), and writes a backend-specific index so both can coexist:
  *
- * The first run downloads the model (~23 MB) into the transformers cache; every
- * later run is offline. Timing for both is printed so the cost is on the record
- * rather than estimated.
+ *   local   → data/embeddings-local.json
+ *   bedrock → data/embeddings-titan.json
+ *
+ * Every run also mirrors its output to data/embeddings.json (whichever backend
+ * ran last), so anything still reading the old single-file path keeps working.
+ *
+ * The first "local" run downloads the model (~23 MB quantised, ~90 MB fp32)
+ * into the transformers cache; every later run is offline. Timing for both is
+ * printed so the cost is on the record rather than estimated. The "bedrock"
+ * backend needs AWS credentials (default provider chain) and Bedrock model
+ * access to amazon.titan-embed-text-v2:0 in the target region.
  *
  * Usage:
- *   node scripts/ml/build-index.mjs
- *   EMBEDDING_BACKEND=bedrock node scripts/ml/build-index.mjs   # throws, by design
+ *   node scripts/ml/build-index.mjs                              # local
+ *   EMBEDDING_BACKEND=bedrock node scripts/ml/build-index.mjs     # Titan v2, needs AWS
+ *   node scripts/ml/compare-encoders.mjs                          # after both exist
  */
 
 import { createHash } from "node:crypto";
@@ -26,14 +36,27 @@ import {
   embeddingBackend,
   embeddingModelId,
   embeddingDtype,
-  EMBEDDING_DIMS,
+  expectedEmbeddingDims,
   MAX_CHARS,
 } from "../../lib/dedup/embed.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
 const CORPUS = path.join(ROOT, "data", "corpus.jsonl");
-const OUT = path.join(ROOT, "data", "embeddings.json");
+
+// Backend-specific output, so a local index and a Titan index can coexist and
+// be scored side by side by evaluate.mjs. "titan" rather than "bedrock" for
+// the filename because that is the actual model family being compared against
+// MiniLM — "bedrock" is the AWS product name, not a model.
+const OUT_BY_BACKEND = {
+  local: path.join(ROOT, "data", "embeddings-local.json"),
+  bedrock: path.join(ROOT, "data", "embeddings-titan.json"),
+};
+// Legacy single-file path from before the local/titan split. Every build also
+// writes here so scripts that only know the old layout keep working; it always
+// mirrors whichever backend was built most recently, so treat it as "the last
+// index built", not "the local index".
+const LEGACY_OUT = path.join(ROOT, "data", "embeddings.json");
 
 /** 6 decimals is ~1e-6 precision on unit vectors — far below anything that
  *  moves a cosine score, and it halves the file size versus full precision. */
@@ -49,6 +72,8 @@ async function main() {
   const backend = embeddingBackend();
   const model = embeddingModelId();
   const dtype = embeddingDtype();
+  const expectedDims = expectedEmbeddingDims();
+  const OUT = OUT_BY_BACKEND[backend];
   console.log(`Backend: ${backend}  model: ${model}  dtype: ${dtype}`);
   console.log(`Embedding ${docs.length} documents (truncated to ${MAX_CHARS} chars each) …`);
 
@@ -79,8 +104,12 @@ async function main() {
     vectors: vectors.map((v) => Array.from(v, round6)),
   };
 
+  const json = JSON.stringify(index);
   await fs.mkdir(path.dirname(OUT), { recursive: true });
-  await fs.writeFile(OUT, JSON.stringify(index), "utf-8");
+  await fs.writeFile(OUT, json, "utf-8");
+  // Backward-compat mirror: always the most recently built index, whichever
+  // backend. Anything still reading data/embeddings.json directly keeps working.
+  await fs.writeFile(LEGACY_OUT, json, "utf-8");
   const bytes = (await fs.stat(OUT)).size;
 
   // A quick sanity check that the vectors are actually unit-length — if mean
@@ -94,8 +123,9 @@ async function main() {
   const worst = Math.max(...norms.map((n) => Math.abs(n - 1)));
 
   console.log(`Wrote ${OUT}  (${(bytes / 1024).toFixed(0)} KB)`);
+  console.log(`Wrote ${LEGACY_OUT}  (backward-compat mirror)`);
   console.log(
-    `dims=${dims}${dims === EMBEDDING_DIMS ? "" : ` (WARNING: expected ${EMBEDDING_DIMS})`}  ` +
+    `dims=${dims}${dims === expectedDims ? "" : ` (WARNING: expected ${expectedDims})`}  ` +
       `elapsed=${(elapsedMs / 1000).toFixed(1)}s  ` +
       `${(elapsedMs / docs.length).toFixed(0)} ms/doc  ` +
       `truncated=${truncated}/${docs.length}  ` +

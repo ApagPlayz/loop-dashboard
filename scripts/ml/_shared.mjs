@@ -19,6 +19,12 @@ import { cosineSim } from "../../lib/dedup/embed.ts";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(__dirname, "..", "..");
 export const CORPUS_PATH = path.join(ROOT, "data", "corpus.jsonl");
+// Backend-specific indexes (see build-index.mjs). EMBEDDINGS_PATH is the
+// legacy single-file path from before the local/titan split — build-index.mjs
+// still mirrors its most recent build there, so it is kept as a last-resort
+// fallback in loadAllEmbeddings() below, not as the primary path.
+export const EMBEDDINGS_LOCAL_PATH = path.join(ROOT, "data", "embeddings-local.json");
+export const EMBEDDINGS_TITAN_PATH = path.join(ROOT, "data", "embeddings-titan.json");
 export const EMBEDDINGS_PATH = path.join(ROOT, "data", "embeddings.json");
 export const UNLABELED_PATH = path.join(ROOT, "data", "gold-pairs-unlabeled.jsonl");
 export const LABELED_PATH = path.join(ROOT, "data", "gold-pairs.jsonl");
@@ -45,6 +51,34 @@ export async function loadEmbeddings(file = EMBEDDINGS_PATH) {
   }
 }
 
+/**
+ * Load every backend-specific embedding index that exists on disk, keyed
+ * "local" / "titan". Either, both, or neither may be present — a missing one
+ * is simply absent from the result, the same "absent, not zeroed" contract
+ * `loadEmbeddings` already has for the single-index case. This is what lets
+ * evaluate.mjs score MiniLM and Titan side by side in one run once both
+ * indexes exist, and score just one (or neither, falling back to the lexical
+ * baselines only) when only one has been built.
+ *
+ * Falls back to the legacy single-file data/embeddings.json ONLY when neither
+ * backend-specific file exists, labelling it by the `backend` field the file
+ * already carries — so a repo that has not re-run build-index.mjs since the
+ * local/titan split still evaluates correctly.
+ */
+export async function loadAllEmbeddings() {
+  const out = {};
+  const local = await loadEmbeddings(EMBEDDINGS_LOCAL_PATH);
+  if (local) out.local = local;
+  const titan = await loadEmbeddings(EMBEDDINGS_TITAN_PATH);
+  if (titan) out.titan = titan;
+
+  if (!local && !titan) {
+    const legacy = await loadEmbeddings(EMBEDDINGS_PATH);
+    if (legacy) out[legacy.backend === "bedrock" ? "titan" : "local"] = legacy;
+  }
+  return out;
+}
+
 /** Read a .jsonl file into an array. Lines starting with `#` are comments. */
 export async function readJsonl(file) {
   const raw = await fs.readFile(file, "utf-8");
@@ -59,45 +93,61 @@ export async function readJsonl(file) {
 /* Methods                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Build one cosine-similarity dense method from one embedding index. */
+function buildDenseMethod(name, docs, embeddingIndex) {
+  const vec = new Map();
+  embeddingIndex.numbers.forEach((n, i) => vec.set(n, embeddingIndex.vectors[i]));
+  const titles = new Map(docs.map((d) => [d.number, d.title]));
+  const order = docs.map((d) => d.number);
+  const score = (a, b) => {
+    const va = vec.get(a);
+    const vb = vec.get(b);
+    if (!va || !vb) return 0;
+    return cosineSim(va, vb);
+  };
+  return {
+    name,
+    scorePair: score,
+    rank(queryNumber, topK) {
+      const out = order
+        .filter((n) => n !== queryNumber)
+        .map((n) => ({ number: n, title: titles.get(n) ?? "", score: score(queryNumber, n) }));
+      out.sort((x, y) => y.score - x.score || x.number - y.number);
+      return typeof topK === "number" ? out.slice(0, topK) : out;
+    },
+  };
+}
+
 /**
  * Build every scoring method over the same corpus.
  *
  * Each method is `{ name, scorePair(a, b), rank(n, k) }`, so the harness can
- * treat the lexical baselines and the dense model identically — which is the
- * whole point: the baseline is not handicapped by being wired up differently.
+ * treat the lexical baselines and every dense encoder identically — which is
+ * the whole point: no method is handicapped by being wired up differently.
  *
- * `dense` is omitted (not zeroed) when no embedding index exists, so a missing
- * index shows up as an absent method rather than as a method that scores 0.
+ * `embeddings` accepts two shapes so both the old and new callers work:
+ *   - a single index object (has `.numbers`) → one method named "dense",
+ *     exactly the pre-split behaviour.
+ *   - a `{ local?, titan?, ... }` map (what `loadAllEmbeddings()` returns) →
+ *     one method per present key, named `dense_local` / `dense_titan` / …
+ *
+ * A backend absent from `embeddings` produces no method at all (never a
+ * method that silently scores 0), so a run with only the local index built
+ * simply omits `dense_titan` rather than reporting it as uniformly bad.
  */
-export function buildMethods(docs, embeddingIndex) {
+export function buildMethods(docs, embeddings) {
   const methods = [
     buildOverlapIndex(docs, "raw"),
     buildOverlapIndex(docs, "normalized"),
     buildBm25Index(docs),
   ];
 
-  if (embeddingIndex) {
-    const vec = new Map();
-    embeddingIndex.numbers.forEach((n, i) => vec.set(n, embeddingIndex.vectors[i]));
-    const titles = new Map(docs.map((d) => [d.number, d.title]));
-    const order = docs.map((d) => d.number);
-    const score = (a, b) => {
-      const va = vec.get(a);
-      const vb = vec.get(b);
-      if (!va || !vb) return 0;
-      return cosineSim(va, vb);
-    };
-    methods.push({
-      name: "dense",
-      scorePair: score,
-      rank(queryNumber, topK) {
-        const out = order
-          .filter((n) => n !== queryNumber)
-          .map((n) => ({ number: n, title: titles.get(n) ?? "", score: score(queryNumber, n) }));
-        out.sort((x, y) => y.score - x.score || x.number - y.number);
-        return typeof topK === "number" ? out.slice(0, topK) : out;
-      },
-    });
+  const isSingleIndex = !!embeddings?.numbers;
+  const indices = isSingleIndex ? { dense: embeddings } : embeddings || {};
+
+  for (const [label, index] of Object.entries(indices)) {
+    if (!index) continue;
+    methods.push(buildDenseMethod(label === "dense" ? "dense" : `dense_${label}`, docs, index));
   }
 
   return methods;

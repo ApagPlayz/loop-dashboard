@@ -44,7 +44,7 @@ import {
   METRICS_PATH,
   LABELS,
   loadCorpus,
-  loadEmbeddings,
+  loadAllEmbeddings,
   buildMethods,
   readJsonl,
   rng,
@@ -493,10 +493,16 @@ async function main() {
   // into the pair file: that way a re-embedded index or a changed tokenizer is
   // reflected immediately, and the gold file only ever needs to carry labels.
   const docs = await loadCorpus();
-  const embeddings = await loadEmbeddings();
-  const methods = buildMethods(docs, embeddings);
-  if (!embeddings) {
-    console.warn("WARNING: no data/embeddings.json — the dense method is absent from this run.\n");
+  const embeddingSets = await loadAllEmbeddings(); // { local?, titan? }
+  const methods = buildMethods(docs, embeddingSets);
+  const embeddingLabels = Object.keys(embeddingSets);
+  if (embeddingLabels.length === 0) {
+    console.warn(
+      "WARNING: no data/embeddings-local.json or data/embeddings-titan.json — no dense " +
+        "method is present in this run. Run scripts/ml/build-index.mjs first.\n",
+    );
+  } else {
+    console.log(`Dense encoders in this run: ${embeddingLabels.map((l) => `dense_${l}`).join(", ")}\n`);
   }
 
   const results = {};
@@ -531,11 +537,21 @@ async function main() {
     corpus: {
       documents: docs.length,
       total_pairs: (docs.length * (docs.length - 1)) / 2,
-      embedding_model: embeddings?.model ?? null,
-      embedding_backend: embeddings?.backend ?? null,
-      embedding_dtype: embeddings?.dtype ?? null,
-      embedding_dims: embeddings?.dims ?? null,
-      index_matches_corpus: embeddings ? embeddings.numbers.length === docs.length : null,
+      // One entry per dense encoder actually present in this run (see
+      // `dense_<label>` under `results`). Empty when neither index exists.
+      embeddings: Object.fromEntries(
+        Object.entries(embeddingSets).map(([label, idx]) => [
+          label,
+          {
+            model: idx.model,
+            backend: idx.backend,
+            dtype: idx.dtype ?? null,
+            dims: idx.dims,
+            built_at: idx.builtAt ?? null,
+            index_matches_corpus: idx.numbers.length === docs.length,
+          },
+        ]),
+      ),
     },
     gold_set: {
       pairs: rows.length,

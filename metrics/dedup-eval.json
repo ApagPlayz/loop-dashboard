@@ -1,16 +1,21 @@
 {
-  "generated_at": "2026-09-01T21:20:41.752Z",
+  "generated_at": "2026-09-02T18:40:35.180Z",
   "labels": "synthetic-smoke-test",
   "warning": "SYNTHETIC RANDOM LABELS. Every metric in this file is meaningless. Do not quote it.",
   "gold_file": "data/gold-pairs-unlabeled.jsonl",
   "corpus": {
     "documents": 132,
     "total_pairs": 8646,
-    "embedding_model": "Xenova/all-MiniLM-L6-v2",
-    "embedding_backend": "local",
-    "embedding_dtype": "fp32",
-    "embedding_dims": 384,
-    "index_matches_corpus": true
+    "embeddings": {
+      "local": {
+        "model": "Xenova/all-MiniLM-L6-v2",
+        "backend": "local",
+        "dtype": "fp32",
+        "dims": 384,
+        "built_at": "2026-09-02T18:35:43.722Z",
+        "index_matches_corpus": true
+      }
+    }
   },
   "gold_set": {
     "pairs": 150,
@@ -32,7 +37,7 @@
     "overlap",
     "overlap_norm",
     "bm25",
-    "dense"
+    "dense_local"
   ],
   "bootstrap": {
     "replicates": 1000,
@@ -50,18 +55,18 @@
     "spearman_all_pairs": {
       "overlap|overlap_norm": 0.7543,
       "overlap|bm25": 0.9629,
-      "overlap|dense": 0.45,
+      "overlap|dense_local": 0.45,
       "overlap_norm|bm25": 0.7611,
-      "overlap_norm|dense": 0.4098,
-      "bm25|dense": 0.5075
+      "overlap_norm|dense_local": 0.4098,
+      "bm25|dense_local": 0.5075
     },
     "jaccard_top_k": {
       "overlap|overlap_norm": 0.2821,
       "overlap|bm25": 0.3423,
-      "overlap|dense": 0.2195,
+      "overlap|dense_local": 0.2195,
       "overlap_norm|bm25": 0.4184,
-      "overlap_norm|dense": 0.3699,
-      "bm25|dense": 0.4925
+      "overlap_norm|dense_local": 0.3699,
+      "bm25|dense_local": 0.4925
     }
   },
   "results": {
@@ -3552,7 +3557,7 @@
           }
         ]
       },
-      "dense": {
+      "dense_local": {
         "n_pairs": 150,
         "n_positive": 24,
         "n_negative": 126,
@@ -3594,17 +3599,17 @@
         },
         "bootstrap_95ci": {
           "average_precision": {
-            "lo": 0.0856,
-            "hi": 0.229,
+            "lo": 0.0829,
+            "hi": 0.231,
             "n_replicates": 1000
           },
           "roc_auc": {
-            "lo": 0.2779,
-            "hi": 0.5165,
+            "lo": 0.28,
+            "hi": 0.5051,
             "n_replicates": 1000
           },
           "precision_at_best_f1": {
-            "lo": 0.1,
+            "lo": 0.1067,
             "hi": 0.22,
             "n_replicates": 1000
           },
@@ -3614,7 +3619,7 @@
             "n_replicates": 1000
           },
           "f1_at_best_f1": {
-            "lo": 0.1818,
+            "lo": 0.1928,
             "hi": 0.3607,
             "n_replicates": 1000
           }
@@ -8470,7 +8475,7 @@
           }
         ]
       },
-      "dense": {
+      "dense_local": {
         "n_pairs": 150,
         "n_positive": 56,
         "n_negative": 94,
@@ -8512,28 +8517,28 @@
         },
         "bootstrap_95ci": {
           "average_precision": {
-            "lo": 0.2465,
-            "hi": 0.4157,
+            "lo": 0.2475,
+            "hi": 0.4122,
             "n_replicates": 1000
           },
           "roc_auc": {
             "lo": 0.311,
-            "hi": 0.4991,
+            "hi": 0.4972,
             "n_replicates": 1000
           },
           "precision_at_best_f1": {
-            "lo": 0.2973,
-            "hi": 0.4615,
+            "lo": 0.3056,
+            "hi": 0.4589,
             "n_replicates": 1000
           },
           "recall_at_best_f1": {
-            "lo": 0.9423,
+            "lo": 0.9362,
             "hi": 1,
             "n_replicates": 1000
           },
           "f1_at_best_f1": {
-            "lo": 0.4574,
-            "hi": 0.6256,
+            "lo": 0.4632,
+            "hi": 0.6286,
             "n_replicates": 1000
           }
         },
