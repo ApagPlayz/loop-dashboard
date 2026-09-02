@@ -24,6 +24,7 @@ keyword baseline that is already in the repo.
 | `lib/dedup/embed.ts` | Dense embeddings, `local` (MiniLM) and `bedrock` (Titan v2) backends, both implemented |
 | `scripts/ml/build-index.mjs` | Embeds the corpus → `data/embeddings-local.json` or `data/embeddings-titan.json` (backend-specific; also mirrors to `data/embeddings.json`) |
 | `scripts/ml/generate-pairs.mjs` | Stratified sample of pairs to label → `data/gold-pairs-unlabeled.jsonl` |
+| `scripts/ml/label.mjs` | Interactive, resumable one-keypress labelling CLI → `data/gold-pairs.jsonl` |
 | `scripts/ml/evaluate.mjs` | Scores every method (both dense encoders, when both indexes exist) → `metrics/dedup-eval.json` |
 | `scripts/ml/compare-encoders.mjs` | Reads `metrics/dedup-eval.json` and prints a readable comparison table, plus a label-free MiniLM-vs-Titan section |
 | `scripts/ml/_shared.mjs` | Loading (single- or dual-backend) + the method list behind one interface + a seeded RNG |
@@ -175,10 +176,19 @@ before claiming BM25 is a meaningfully stronger baseline.
 ## What the owner has to do — the only blocking step
 
 ```bash
-cp data/gold-pairs-unlabeled.jsonl data/gold-pairs.jsonl
-# fill in the "label" field on all 150 lines
+node scripts/ml/label.mjs         # interactive, resumable, one keypress per pair
 node scripts/ml/evaluate.mjs      # picks up data/gold-pairs.jsonl automatically
 ```
+
+`scripts/ml/label.mjs` is the fast path: it shows one pair at a time (titles,
+URLs, every method's score, and the stratum), takes a single keypress —
+`1`=duplicate, `2`=related, `3`=unrelated, `s`=skip, `u`=undo, `q`=quit — and
+saves `data/gold-pairs.jsonl` after every answer, so a crash or Ctrl-C never
+loses work and re-running it resumes exactly where it left off. It labels the
+hardest, most informative strata first (`dense_only`, then `lex_top`), so a
+partial session still covers the pairs that matter most. Doing it by hand
+(`cp data/gold-pairs-unlabeled.jsonl data/gold-pairs.jsonl` and editing the
+`"label"` field directly) still works if preferred.
 
 Each line already carries both titles, both GitHub URLs, and every method's
 score. Allowed values, exactly:
