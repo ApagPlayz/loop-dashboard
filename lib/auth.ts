@@ -32,6 +32,43 @@ export const AUTH_COOKIE = "loop_dash_session";
 const THIRTY_DAYS_SECONDS = 30 * 24 * 60 * 60;
 export const COOKIE_MAX_AGE = THIRTY_DAYS_SECONDS;
 
+/**
+ * The scheme the *viewer* used, which is what decides whether the session
+ * cookie gets the Secure flag. `req.url` only ever describes the last hop, so
+ * behind a proxy it says "http" even when the browser is on TLS.
+ *
+ * Three sources, in this order:
+ *
+ *   1. `cloudfront-forwarded-proto` — required for the AWS deployment, and it has
+ *      to be checked FIRST. CloudFront treats `X-Forwarded-*` as reserved: it
+ *      strips the header from viewer requests, silently ignores it as a custom
+ *      origin header, and returns 502 ("the CloudFront function tried to add a
+ *      disallowed header") if a CloudFront Function sets it. Its own header is
+ *      the only way through, and it only reaches the origin when the
+ *      distribution uses an origin request policy that forwards CloudFront
+ *      headers — see infra/deploy.sh.
+ *   2. `x-forwarded-proto` — the convention every ALB, nginx and Vercel edge
+ *      uses. It cannot be checked first, because Next.js's standalone server
+ *      defaults it to the scheme of its OWN socket when no proxy set it. Behind
+ *      CloudFront that is always "http", so preferring it would pin every
+ *      deployed request to "http" and silently drop the cookie's Secure flag.
+ *   3. The request URL's own scheme, for a direct connection.
+ *
+ * Anything upstream that terminates TLS must be trusted for this to mean
+ * anything; on this deployment the task's security group only admits CloudFront,
+ * so nothing else can set these headers.
+ */
+export function viewerProtocol(req: Request): string {
+  const forwarded =
+    req.headers.get("cloudfront-forwarded-proto") ??
+    req.headers.get("x-forwarded-proto");
+  if (forwarded) {
+    // A chain of proxies appends: "https, http". The client-facing hop is first.
+    return forwarded.split(",")[0]!.trim().toLowerCase();
+  }
+  return new URL(req.url).protocol.slice(0, -1);
+}
+
 /** Bump (via env) to invalidate every outstanding session cookie. */
 function getKeyVersion(): string {
   return (process.env.SESSION_KEY_VERSION ?? "1").trim() || "1";

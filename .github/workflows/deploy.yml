@@ -1,28 +1,32 @@
 # ---------------------------------------------------------------------------
-# NOT YET RUNNABLE. This workflow deploys the dashboard container to ECS
-# Fargate, and it needs an AWS account, an ECR repo, an ECS cluster/service,
-# and an OIDC-trusted IAM role that do not exist yet (Phase 2 provisioning,
-# see docs/plans/aws-bedrock-multitenant-plan-2026-08-31.md §2.3). Until
-# those are created and the repo variables/secrets below are set, this
-# workflow will fail at the "configure-aws-credentials" step. That's
-# expected — leave it in place, don't delete it, and don't try to make it
-# pass by inventing values.
+# Deploys the dashboard container to the ECS Fargate stack that now exists in
+# account 777164055831 / us-east-1 (created 2026-09-02). See infra/deploy.sh
+# for what each resource is and why it is shaped that way; this workflow is the
+# CI mirror of that script.
 #
-# What someone needs to supply before this can run (see the placeholders
-# marked below):
-#   - vars.AWS_REGION            e.g. "us-east-1"
-#   - vars.AWS_ACCOUNT_ID        the target AWS account
-#   - vars.AWS_DEPLOY_ROLE_ARN   an IAM role trusting this repo's GitHub OIDC
-#                                 provider, with permission to push to ECR
-#                                 and call ecs:UpdateService
-#   - vars.ECR_REPOSITORY        e.g. "loop-dashboard"
-#   - vars.ECS_CLUSTER           the ECS cluster name
-#   - vars.ECS_SERVICE           the ECS service name
+# STILL NOT RUNNABLE until one thing is created by hand: an IAM role that
+# trusts this repo's GitHub OIDC provider. Everything else it references is
+# live. Create the role, then set these repo variables under
+# Settings -> Secrets and variables -> Actions -> Variables:
 #
-# Set repo variables (not secrets — none of these are sensitive) under
-# Settings -> Secrets and variables -> Actions -> Variables. No long-lived
-# AWS access keys are used anywhere in this workflow: auth is GitHub OIDC ->
-# short-lived STS credentials, via aws-actions/configure-aws-credentials.
+#   AWS_REGION            us-east-1
+#   AWS_ACCOUNT_ID        777164055831
+#   AWS_DEPLOY_ROLE_ARN   arn:aws:iam::777164055831:role/<your-oidc-deploy-role>
+#   ECR_REPOSITORY        loop-dashboard
+#   ECS_CLUSTER           loop-dashboard
+#   ECS_SERVICE           loop-dashboard
+#   CLOUDFRONT_DIST_ID    E1B8EXHI4E3CYX
+#
+# The deploy role needs: ecr:GetAuthorizationToken, ecr:BatchCheckLayerAvailability,
+# ecr:InitiateLayerUpload, ecr:UploadLayerPart, ecr:CompleteLayerUpload,
+# ecr:PutImage, ecs:RegisterTaskDefinition, ecs:UpdateService, ecs:DescribeServices,
+# ecs:ListTasks, ecs:DescribeTasks, ec2:DescribeNetworkInterfaces,
+# cloudfront:GetDistributionConfig, cloudfront:UpdateDistribution,
+# cloudfront:CreateInvalidation, and iam:PassRole for loopDashboardTaskExecutionRole
+# and loopDashboardTaskRole.
+#
+# No long-lived AWS access keys are used anywhere: auth is GitHub OIDC ->
+# short-lived STS credentials via aws-actions/configure-aws-credentials.
 # ---------------------------------------------------------------------------
 
 name: Deploy to ECS
@@ -41,15 +45,20 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  AWS_REGION: ${{ vars.AWS_REGION }} # PLACEHOLDER — set as a repo variable, e.g. "us-east-1"
-  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }} # PLACEHOLDER — e.g. "loop-dashboard"
-  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }} # PLACEHOLDER — the ECS cluster name
-  ECS_SERVICE: ${{ vars.ECS_SERVICE }} # PLACEHOLDER — the ECS service name
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+  CLOUDFRONT_DIST_ID: ${{ vars.CLOUDFRONT_DIST_ID }}
 
 jobs:
   build-and-deploy:
     name: Build, push, and deploy
-    runs-on: ubuntu-latest
+    # ARM runner on purpose: the task definition pins cpuArchitecture ARM64
+    # (Fargate Graviton, ~20% cheaper), and cross-building linux/arm64 under
+    # QEMU segfaults — Next.js 16 + Turbopack dies with "uncaught target
+    # signal 11". Build natively on the target architecture instead.
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -57,8 +66,6 @@ jobs:
       - name: Configure AWS credentials via GitHub OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # PLACEHOLDER — arn:aws:iam::<AWS_ACCOUNT_ID>:role/<deploy-role-name>
-          # Must trust token.actions.githubusercontent.com scoped to this repo.
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
@@ -72,17 +79,28 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build \
+            --platform linux/arm64 \
             -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
             -t "$ECR_REGISTRY/$ECR_REPOSITORY:latest" \
             .
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           docker push "$ECR_REGISTRY/$ECR_REPOSITORY:latest"
 
-      - name: Force a new ECS deployment
+      - name: Register a new task definition revision
+        id: taskdef
+        run: |
+          TD_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://infra/task-definition.json \
+            --region "$AWS_REGION" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "arn=$TD_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to ECS
         run: |
           aws ecs update-service \
             --cluster "$ECS_CLUSTER" \
             --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.taskdef.outputs.arn }}" \
             --force-new-deployment \
             --region "$AWS_REGION"
 
@@ -92,3 +110,23 @@ jobs:
             --cluster "$ECS_CLUSTER" \
             --services "$ECS_SERVICE" \
             --region "$AWS_REGION"
+
+      # The service has no load balancer (an ALB would roughly triple the
+      # monthly bill), so the task's public DNS name changes on every
+      # deployment. CloudFront holds the stable HTTPS URL and has to be
+      # re-pointed at the new task.
+      - name: Point CloudFront at the new task
+        run: ./infra/refresh-cloudfront-origin.sh
+
+      - name: Verify the deployment actually serves traffic
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' \
+              "https://$(aws cloudfront get-distribution --id "$CLOUDFRONT_DIST_ID" \
+                --query 'Distribution.DomainName' --output text)/api/health" || true)
+            if [ "$code" = "200" ]; then echo "health check OK"; exit 0; fi
+            echo "attempt $i: HTTP $code"
+            sleep 10
+          done
+          echo "health check never returned 200" >&2
+          exit 1

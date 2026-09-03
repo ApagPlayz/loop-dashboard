@@ -1,0 +1,54 @@
+{
+  "family": "loop-dashboard",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "runtimePlatform": {
+    "cpuArchitecture": "ARM64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "executionRoleArn": "arn:aws:iam::777164055831:role/loopDashboardTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::777164055831:role/loopDashboardTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "777164055831.dkr.ecr.us-east-1.amazonaws.com/loop-dashboard:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 3000, "protocol": "tcp" }],
+      "environment": [
+        { "name": "NODE_ENV", "value": "production" },
+        { "name": "PORT", "value": "3000" },
+        { "name": "HOSTNAME", "value": "0.0.0.0" }
+      ],
+      "secrets": [
+        {
+          "name": "DASHBOARD_PASSWORD",
+          "valueFrom": "arn:aws:ssm:us-east-1:777164055831:parameter/loop-dashboard/DASHBOARD_PASSWORD"
+        },
+        {
+          "name": "SESSION_SECRET",
+          "valueFrom": "arn:aws:ssm:us-east-1:777164055831:parameter/loop-dashboard/SESSION_SECRET"
+        }
+      ],
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget -q -O - http://127.0.0.1:3000/api/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 30
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/loop-dashboard",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

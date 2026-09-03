@@ -5,6 +5,7 @@ import {
   createAuthCookie,
   verifyAuthCookie,
   verifyPassword,
+  viewerProtocol,
 } from "../../lib/auth";
 
 /**
@@ -177,5 +178,43 @@ describe("SESSION_SECRET fallback", () => {
     // cookie too, since the password doubles as the HMAC key in this mode.
     process.env.DASHBOARD_PASSWORD = "a-different-password-entirely";
     expect(await freshAuth.verifyAuthCookie(cookie)).toBe(false);
+  });
+});
+
+describe("viewerProtocol", () => {
+  const req = (headers: Record<string, string>, url = "http://10.0.0.5:3000/api/login") =>
+    new Request(url, { headers });
+
+  test("falls back to the request's own scheme when nothing is in front", () => {
+    expect(viewerProtocol(req({}))).toBe("http");
+    expect(viewerProtocol(req({}, "https://example.com/api/login"))).toBe("https");
+  });
+
+  test("honours x-forwarded-proto from a normal reverse proxy", () => {
+    expect(viewerProtocol(req({ "x-forwarded-proto": "https" }))).toBe("https");
+  });
+
+  /**
+   * The regression that broke the AWS deploy twice. Next.js's standalone server
+   * defaults x-forwarded-proto to the scheme of its own socket, so behind
+   * CloudFront that header is ALWAYS present and ALWAYS "http". Checking it
+   * first means cloudfront-forwarded-proto is never reached and the session
+   * cookie silently loses its Secure flag on a TLS connection.
+   */
+  test("cloudfront-forwarded-proto wins over a self-assigned x-forwarded-proto", () => {
+    expect(
+      viewerProtocol(
+        req({ "x-forwarded-proto": "http", "cloudfront-forwarded-proto": "https" }),
+      ),
+    ).toBe("https");
+  });
+
+  test("reads the client-facing hop from a proxy chain", () => {
+    expect(viewerProtocol(req({ "x-forwarded-proto": "https, http" }))).toBe("https");
+    expect(viewerProtocol(req({ "x-forwarded-proto": "HTTPS" }))).toBe("https");
+  });
+
+  test("does not invent https when the viewer really was on http", () => {
+    expect(viewerProtocol(req({ "cloudfront-forwarded-proto": "http" }))).toBe("http");
   });
 });
