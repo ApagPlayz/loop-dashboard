@@ -1,7 +1,9 @@
 {
   "family": "loop-dashboard",
   "networkMode": "awsvpc",
-  "requiresCompatibilities": ["FARGATE"],
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
   "cpu": "256",
   "memory": "512",
   "runtimePlatform": {
@@ -15,12 +17,33 @@
       "name": "web",
       "image": "777164055831.dkr.ecr.us-east-1.amazonaws.com/loop-dashboard:latest",
       "essential": true,
-      "portMappings": [{ "containerPort": 3000, "protocol": "tcp" }],
+      "portMappings": [
+        {
+          "containerPort": 3000,
+          "protocol": "tcp"
+        }
+      ],
       "environment": [
-        { "name": "NODE_ENV", "value": "production" },
-        { "name": "PORT", "value": "3000" },
-        { "name": "HOSTNAME", "value": "0.0.0.0" },
-        { "name": "LOOP_DASHBOARD_PUBLIC_DEMO", "value": "1" }
+        {
+          "name": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "name": "PORT",
+          "value": "3000"
+        },
+        {
+          "name": "HOSTNAME",
+          "value": "0.0.0.0"
+        },
+        {
+          "name": "LOOP_DASHBOARD_PUBLIC_DEMO",
+          "value": "1"
+        },
+        {
+          "name": "DEDUP_INFER_FUNCTION_URL",
+          "value": "https://bq5cpecxctstuewl6jyszdfye40odikx.lambda-url.us-east-1.on.aws/"
+        }
       ],
       "secrets": [
         {

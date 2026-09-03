@@ -1,5 +1,7 @@
 # Handoff — AI/ML + AWS resume sprint (2026-09-02)
 
+> **SUPERSEDED by `handoff-2026-09-03-aws-architecture-shipped.md` (2026-09-03)** — read that file instead; this one is kept for history.
+
 **Written under time pressure: the owner has job applications going out TONIGHT.**
 Read the "What is true right now" section first — that is what can honestly go on a resume today.
 
