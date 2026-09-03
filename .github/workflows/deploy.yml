@@ -4,29 +4,47 @@
 # for what each resource is and why it is shaped that way; this workflow is the
 # CI mirror of that script.
 #
-# STILL NOT RUNNABLE until one thing is created by hand: an IAM role that
-# trusts this repo's GitHub OIDC provider. Everything else it references is
-# live. Create the role, then set these repo variables under
-# Settings -> Secrets and variables -> Actions -> Variables:
+# Auth is GitHub OIDC -> short-lived STS credentials. No long-lived AWS access
+# keys exist anywhere in this repo, and none should ever be added.
+#
+# The IAM side was created 2026-09-03 and is live:
+#
+#   OIDC provider  arn:aws:iam::777164055831:oidc-provider/token.actions.githubusercontent.com
+#   Deploy role    arn:aws:iam::777164055831:role/loopDashboardGitHubDeployRole
+#   Inline policy  loopDashboardDeployPermissions
+#
+# The role's trust policy is pinned to exactly one subject —
+# "repo:ApagPlayz/loop-dashboard:ref:refs/heads/main" — so a workflow on a
+# branch, a tag, a pull_request, or a fork cannot assume it. That is also why
+# this workflow only triggers on main: a run from anywhere else will fail at
+# the assume-role step by design, not by accident.
+#
+# The permission policy is resource-scoped rather than "ecs:*"/"ecr:*": ECR
+# pushes are limited to the loop-dashboard repository, ecs:UpdateService to the
+# one service ARN, CloudFront writes to distribution E1B8EXHI4E3CYX, and
+# iam:PassRole to loopDashboardTaskExecutionRole + loopDashboardTaskRole with an
+# iam:PassedToService=ecs-tasks.amazonaws.com condition. Only three actions are
+# on "*", because AWS gives them no resource-level support:
+# ecr:GetAuthorizationToken, ecs:RegisterTaskDefinition, and
+# ec2:DescribeNetworkInterfaces (ecs:ListTasks is "*" too but carries an
+# ecs:cluster condition).
+#
+# Configuration lives in repo *variables*, not secrets — none of it is
+# sensitive, and a role ARN is useless without the trust policy above:
 #
 #   AWS_REGION            us-east-1
 #   AWS_ACCOUNT_ID        777164055831
-#   AWS_DEPLOY_ROLE_ARN   arn:aws:iam::777164055831:role/<your-oidc-deploy-role>
+#   AWS_DEPLOY_ROLE_ARN   arn:aws:iam::777164055831:role/loopDashboardGitHubDeployRole
 #   ECR_REPOSITORY        loop-dashboard
 #   ECS_CLUSTER           loop-dashboard
 #   ECS_SERVICE           loop-dashboard
 #   CLOUDFRONT_DIST_ID    E1B8EXHI4E3CYX
 #
-# The deploy role needs: ecr:GetAuthorizationToken, ecr:BatchCheckLayerAvailability,
-# ecr:InitiateLayerUpload, ecr:UploadLayerPart, ecr:CompleteLayerUpload,
-# ecr:PutImage, ecs:RegisterTaskDefinition, ecs:UpdateService, ecs:DescribeServices,
-# ecs:ListTasks, ecs:DescribeTasks, ec2:DescribeNetworkInterfaces,
-# cloudfront:GetDistributionConfig, cloudfront:UpdateDistribution,
-# cloudfront:CreateInvalidation, and iam:PassRole for loopDashboardTaskExecutionRole
-# and loopDashboardTaskRole.
-#
-# No long-lived AWS access keys are used anywhere: auth is GitHub OIDC ->
-# short-lived STS credentials via aws-actions/configure-aws-credentials.
+# Application secrets (DASHBOARD_PASSWORD, SESSION_SECRET) are NOT handled here.
+# They live in SSM Parameter Store as SecureStrings and are injected into the
+# container by the task execution role via the "secrets" block in
+# infra/task-definition.json. This workflow never reads them, so the deploy role
+# deliberately has no ssm:GetParameter permission.
 # ---------------------------------------------------------------------------
 
 name: Deploy to ECS
