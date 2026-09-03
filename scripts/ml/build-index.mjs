@@ -39,6 +39,12 @@ import {
   expectedEmbeddingDims,
   MAX_CHARS,
 } from "../../lib/dedup/embed.ts";
+import {
+  ARTIFACTS,
+  artifactBucket,
+  contentAddressedKey,
+  putObjectText,
+} from "../../lib/dedup/artifact-store.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -62,6 +68,59 @@ const LEGACY_OUT = path.join(ROOT, "data", "embeddings.json");
  *  moves a cosine score, and it halves the file size versus full precision. */
 function round6(x) {
   return Math.round(x * 1e6) / 1e6;
+}
+
+/**
+ * Should this build push its index to S3?
+ *
+ * Defaults to on whenever AWS credentials look present, because an index that
+ * exists only on the laptop that built it is exactly the problem S3 is here to
+ * fix — a build that quietly skips the upload leaves `latest.json` stale, which
+ * is worse than not uploading at all. Explicit overrides both ways:
+ *
+ *   ML_ARTIFACT_UPLOAD=1|true|always   force on (and fail loudly if it can't)
+ *   ML_ARTIFACT_UPLOAD=0|false|never   force off
+ *
+ * "Credentials look present" covers the two shapes this actually runs under:
+ * static env keys (CI) and a named/default profile or SSO cache (this laptop).
+ * It is a heuristic for *whether to try*, not a claim that the call will
+ * succeed — a wrong guess surfaces as a real error from S3, not a silent skip.
+ */
+function shouldUpload() {
+  const raw = (process.env.ML_ARTIFACT_UPLOAD ?? "").toLowerCase();
+  if (["0", "false", "never", "off", "no"].includes(raw)) return false;
+  if (["1", "true", "always", "on", "yes"].includes(raw)) return true;
+  return Boolean(
+    process.env.AWS_ACCESS_KEY_ID ||
+      process.env.AWS_PROFILE ||
+      process.env.AWS_ROLE_ARN ||
+      process.env.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI ||
+      process.env.AWS_WEB_IDENTITY_TOKEN_FILE ||
+      process.env.HOME, // ~/.aws/credentials or the SSO cache may be there
+  );
+}
+
+/**
+ * Upload the freshly built index under two keys: the moving `latest.json` the
+ * runtime loader reads, and an immutable content-addressed copy so a specific
+ * build can be pinned by sha without depending on an S3 version id. The bucket
+ * is versioned, so overwriting `latest.json` still preserves every prior build.
+ *
+ * Ordering matters: the content-addressed copy goes first, so `latest.json`
+ * never points at a build whose archive copy failed to land.
+ */
+async function uploadIndex(backend, json) {
+  const label = backend === "bedrock" ? "titan" : "local";
+  const artifactName = backend === "bedrock" ? "embeddings-titan" : "embeddings-local";
+  const latestKey = ARTIFACTS[artifactName].key;
+  const sha = createHash("sha256").update(json).digest("hex");
+  const bucket = artifactBucket();
+
+  await putObjectText(contentAddressedKey(label, sha), json, "application/json");
+  await putObjectText(latestKey, json, "application/json");
+
+  console.log(`Uploaded s3://${bucket}/${contentAddressedKey(label, sha)}`);
+  console.log(`Uploaded s3://${bucket}/${latestKey}  (sha256 ${sha.slice(0, 12)}…)`);
 }
 
 async function main() {
@@ -124,6 +183,17 @@ async function main() {
 
   console.log(`Wrote ${OUT}  (${(bytes / 1024).toFixed(0)} KB)`);
   console.log(`Wrote ${LEGACY_OUT}  (backward-compat mirror)`);
+
+  // S3 is the source of truth; the local file is now the fallback copy. Upload
+  // AFTER the local write so a failed upload still leaves a usable local index,
+  // and let a failure be fatal rather than a warning — a build that reports
+  // success while `latest.json` still points at the previous index is how a
+  // stale artifact gets evaluated for a week without anyone noticing.
+  if (shouldUpload()) {
+    await uploadIndex(backend, json);
+  } else {
+    console.log("Skipped S3 upload (ML_ARTIFACT_UPLOAD disabled or no AWS credentials).");
+  }
   console.log(
     `dims=${dims}${dims === expectedDims ? "" : ` (WARNING: expected ${expectedDims})`}  ` +
       `elapsed=${(elapsedMs / 1000).toFixed(1)}s  ` +

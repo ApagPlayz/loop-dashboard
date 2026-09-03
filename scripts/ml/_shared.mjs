@@ -15,6 +15,7 @@ import { fileURLToPath } from "node:url";
 
 import { parseCorpus, buildOverlapIndex, buildBm25Index } from "../../lib/dedup/baseline.ts";
 import { cosineSim } from "../../lib/dedup/embed.ts";
+import { loadAllEmbeddingIndexes } from "../../lib/dedup/artifact-store.ts";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export const ROOT = path.resolve(__dirname, "..", "..");
@@ -66,11 +67,12 @@ export async function loadEmbeddings(file = EMBEDDINGS_PATH) {
  * local/titan split still evaluates correctly.
  */
 export async function loadAllEmbeddings() {
-  const out = {};
-  const local = await loadEmbeddings(EMBEDDINGS_LOCAL_PATH);
-  if (local) out.local = local;
-  const titan = await loadEmbeddings(EMBEDDINGS_TITAN_PATH);
-  if (titan) out.titan = titan;
+  // S3 first (with a per-artifact fallback to data/embeddings-*.json baked into
+  // artifact-store itself), so this is not a second copy of that fallback logic
+  // — it is the one loader, called from here.
+  const out = await loadAllEmbeddingIndexes();
+  const local = out.local ?? null;
+  const titan = out.titan ?? null;
 
   if (!local && !titan) {
     const legacy = await loadEmbeddings(EMBEDDINGS_PATH);
