@@ -105,6 +105,15 @@ const EXPECTED_ANONYMOUS_SURFACE: Record<string, "always-public" | "demo"> = {
   "GET /api/health": "always-public",
   "POST /api/login": "always-public",
   "POST /api/logout": "always-public",
+  // Deliberate addition. The scheduled refresh (vercel.json, `0 */6 * * *`)
+  // authenticates with `Authorization: Bearer <CRON_SECRET>` and carries no
+  // session cookie, so the proxy was rejecting every tick before the route's
+  // own check could run — the job had never succeeded. It is the one handler
+  // allowed to run for a cookie-less caller because it authorises ITSELF and
+  // fails closed: 500 when CRON_SECRET is unset, 401 without a matching
+  // bearer token (constant-time compare over SHA-256 digests). See the
+  // dedicated test below, which pins that reasoning.
+  "GET /api/reporter/cron": "always-public",
 
   // Answered from the snapshot; handler never runs.
   "GET /api/map/projects": "demo",
@@ -205,7 +214,8 @@ describe("the anonymous API surface", () => {
       "/api/map/process-chat",
       "/api/reporter/refresh",
       "/api/reporter/summarize",
-      "/api/reporter/cron",
+      // /api/reporter/cron also spends, but it is deliberately NOT here: it is
+      // the one route that authorises itself. Its own test is directly below.
       "/api/tools/catalog/refresh",
       "/api/tools/fit",
     ];
@@ -214,6 +224,25 @@ describe("the anonymous API surface", () => {
         expect(anonymousOutcome(route, method)).toBe("denied");
       }
     }
+  });
+
+  it("lets the cron trigger past the proxy, and only because it authorises itself", () => {
+    // The proxy gates on the session cookie. Vercel Cron sends a bearer token
+    // and no cookie, so every tick of `0 */6 * * *` was being refused before
+    // the handler ran. GET is allowed through; nothing else is.
+    expect(anonymousOutcome("/api/reporter/cron", "GET")).toBe("always-public");
+    for (const method of ["POST", "PATCH", "PUT", "DELETE", "HEAD"]) {
+      expect(anonymousOutcome("/api/reporter/cron", method)).toBe("denied");
+    }
+    // …and the exemption is only defensible while the handler itself fails
+    // closed. If any of these three guards is removed, this test fails and the
+    // ALWAYS_PUBLIC_API entry must go with it.
+    const src = readFileSync(path.join(API_ROOT, "reporter/cron/route.ts"), "utf8");
+    expect(src).toContain("process.env.CRON_SECRET");
+    expect(src).toMatch(/if\s*\(!secret\)[\s\S]*?status:\s*500/); // no secret → refuse
+    expect(src).toContain('startsWith("Bearer ")'); // header, not a query param
+    expect(src).toContain("timingSafeEqual"); // constant-time compare
+    expect(src).not.toMatch(/searchParams\.get\(\s*["']token["']\s*\)/); // no ?token= revival
   });
 
   it("blocks the launcher and local-filesystem routes", () => {
@@ -287,13 +316,19 @@ describe("readCookie", () => {
 });
 
 describe("isAlwaysPublic", () => {
-  it("allows only the three audited paths, and only their real methods", () => {
+  it("allows only the audited paths, and only their real methods", () => {
     expect(isAlwaysPublic("/api/health", "GET")).toBe(true);
     expect(isAlwaysPublic("/api/login", "POST")).toBe(true);
     expect(isAlwaysPublic("/api/logout", "POST")).toBe(true);
+    // The scheduled trigger, which presents a bearer token instead of a cookie.
+    expect(isAlwaysPublic("/api/reporter/cron", "GET")).toBe(true);
     // Wrong method on a public path is not public.
     expect(isAlwaysPublic("/api/health", "POST")).toBe(false);
     expect(isAlwaysPublic("/api/login", "GET")).toBe(false);
+    expect(isAlwaysPublic("/api/reporter/cron", "POST")).toBe(false);
+    // The sibling routes are not covered by the cron exemption.
+    expect(isAlwaysPublic("/api/reporter", "GET")).toBe(false);
+    expect(isAlwaysPublic("/api/reporter/refresh", "POST")).toBe(false);
     // Prefix games.
     expect(isAlwaysPublic("/api/health/../ideas", "GET")).toBe(false);
     expect(isAlwaysPublic("/api/healthz", "GET")).toBe(false);

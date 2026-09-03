@@ -12,8 +12,10 @@
  *
  * An audit of all 68 routes under `app/api/**` found exactly three that are safe
  * to *execute* for an anonymous caller (`/api/health`, `/api/login`,
- * `/api/logout`). Every other route reads live private GitHub data, calls a paid
- * model, touches the filesystem, or writes something. So rather than trying to
+ * `/api/logout`), plus one that carries its own bearer-token check and fails
+ * closed without it (`/api/reporter/cron`, the scheduled trigger, which has no
+ * cookie to present). Every other route reads live private GitHub data, calls a
+ * paid model, touches the filesystem, or writes something. So rather than trying to
  * make sixty-five handlers individually safe — a check that has to be right
  * sixty-five times, and again for every route added later — the proxy answers
  * anonymous API reads itself, out of a frozen snapshot, and refuses everything
@@ -98,11 +100,20 @@ export async function isOwnerRequest(req: Request): Promise<boolean> {
  *   a publicly-reachable password form is a brute-force target in a way a
  *   private one never was.
  * - `/api/logout` only clears a cookie.
+ * - `/api/reporter/cron` is the scheduled-refresh trigger (vercel.json, every
+ *   six hours). A cron caller has no session cookie — it presents
+ *   `Authorization: Bearer <CRON_SECRET>` — so the proxy was rejecting it
+ *   before its own check could run and the job had never once succeeded.
+ *   Listing it here is safe *because that route fails closed on its own*: it
+ *   500s when `CRON_SECRET` is unset, requires the bearer header, and compares
+ *   it in constant time over SHA-256 digests. GET only — it exports nothing
+ *   else. If that route ever loses its own check, remove this line with it.
  */
 const ALWAYS_PUBLIC_API: Record<string, readonly string[]> = {
   "/api/health": ["GET", "HEAD"],
   "/api/login": ["POST"],
   "/api/logout": ["POST"],
+  "/api/reporter/cron": ["GET"],
 };
 
 /**
