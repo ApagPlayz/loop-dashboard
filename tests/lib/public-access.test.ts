@@ -218,6 +218,13 @@ describe("the anonymous API surface", () => {
       // the one route that authorises itself. Its own test is directly below.
       "/api/tools/catalog/refresh",
       "/api/tools/fit",
+      // The backlog-triage agent. POST spends on the model, and its resume can
+      // label and comment on a private repo in bulk — the single most expensive
+      // route to leave open. Deliberately given no demo fixture, so the proxy
+      // 403s an anonymous caller before the handler exists to it.
+      "/api/triage",
+      "/api/triage/123",
+      "/api/triage/123/decisions",
     ];
     for (const route of llmRoutes) {
       for (const method of ["GET", "POST", "PATCH", "DELETE"]) {

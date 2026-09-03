@@ -35,13 +35,34 @@ export type TriageOptions = {
   threadId?: string;
 };
 
+/** Extra knobs for `TriageSession.resume`. */
+export type ResumeOptions = {
+  /**
+   * Flip `apply` at resume time rather than at start.
+   *
+   * The CLI decides dry-run-vs-apply before the graph ever runs (`--apply`),
+   * because there is one human at one terminal. The dashboard cannot: the owner
+   * only knows whether these particular writes are worth making AFTER seeing the
+   * proposals, which is the entire point of the interrupt. So the resume carries
+   * `Command({ resume, update: { apply } })`, which writes the `apply` channel
+   * before the pending `apply_decisions` task re-runs and reads it.
+   *
+   * Omit it and the value chosen at start stands — which is `false`. Dry-run
+   * stays the default in every path.
+   */
+  apply?: boolean;
+};
+
 export type TriageSession = {
   threadId: string;
   /** What the human is being asked to decide. */
   review: ReviewRequest;
   proposals: Proposal[];
   /** Resume the halted graph with the human's decisions. */
-  resume(decisions: Decision[]): Promise<{ actions: PlannedAction[]; decisions: Decision[] }>;
+  resume(
+    decisions: Decision[],
+    opts?: ResumeOptions,
+  ): Promise<{ actions: PlannedAction[]; decisions: Decision[] }>;
 };
 
 /**
@@ -75,8 +96,19 @@ export async function startTriage(opts: TriageOptions = {}): Promise<TriageSessi
     threadId,
     review,
     proposals: review.proposals,
-    async resume(decisions: Decision[]) {
-      const done = await graph.invoke(new Command({ resume: decisions }), config);
+    async resume(decisions: Decision[], resumeOpts: ResumeOptions = {}) {
+      // Two calls rather than one call with a conditional Command: `Command`'s
+      // node-name generic is inferred from the params object, so a ternary
+      // produces a union of two Command types that `invoke` will not accept.
+      // `update` is omitted entirely when the caller said nothing, so a plain
+      // resume() behaves exactly as it did before this option existed.
+      const done =
+        resumeOpts.apply === undefined
+          ? await graph.invoke(new Command({ resume: decisions }), config)
+          : await graph.invoke(
+              new Command({ resume: decisions, update: { apply: resumeOpts.apply } }),
+              config,
+            );
       return {
         actions: (done.actions ?? []) as PlannedAction[],
         decisions: (done.decisions ?? []) as Decision[],

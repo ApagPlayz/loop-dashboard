@@ -25,11 +25,14 @@
 #     Next.js 16 + Turbopack dies under QEMU with "uncaught target signal 11".
 #     Fargate Graviton is also ~20% cheaper. The x86_64 pin only applies to
 #     ECS Express Mode, which this stack does not use.
-#   * desiredCount stays at 1. Six module-level in-memory stores
+#   * desiredCount stays at 1. Seven module-level in-memory stores
 #     (lib/reporter-store.ts, app/api/reporter/route.ts, lib/map-ai-jobs.ts,
-#     lib/launcher-jobs.ts, lib/tool-fit-jobs.ts, lib/queues-evidence.ts)
-#     assume a single process; background-job polling 404s with more than one
-#     task. Never raise this without moving that state out of process memory.
+#     lib/launcher-jobs.ts, lib/tool-fit-jobs.ts, lib/queues-evidence.ts,
+#     lib/triage-jobs.ts) assume a single process; background-job polling 404s
+#     with more than one task. Never raise this without moving that state out of
+#     process memory. lib/triage-jobs.ts is the strictest of the seven: it holds
+#     a LangGraph paused mid-interrupt(), which cannot be moved to another task
+#     at all without swapping the MemorySaver for a persistent checkpointer.
 #   * Container health check hits /api/health, not /. "/" 307-redirects to
 #     /login, so a health check on "/" never goes healthy.
 #   * LOOP_DASHBOARD_LOCAL_MODE is deliberately absent. Six launcher routes

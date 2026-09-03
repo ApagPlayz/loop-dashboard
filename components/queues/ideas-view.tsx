@@ -11,6 +11,7 @@ import { DuplicateSummary } from "./duplicate-hint";
 import CustomIdea from "./custom-idea";
 import AutomationPanel from "./automation-panel";
 import ScoutSettings from "./scout-settings";
+import TriagePanel from "./triage-panel";
 
 type TabKey = "waiting" | "approved" | "redraft" | "closed";
 
@@ -134,6 +135,13 @@ function IdeasInner() {
 
   const panels = (
     <>
+      {/* The human half of the LangGraph agent's interrupt(). Sits above the
+          automation controls because it is the answer to the problem those
+          controls create: the Scout files proposals faster than anyone reads
+          them, and this is where a backlog gets read in one pass. Collapsed
+          until asked for, and it starts nothing on its own — running it costs a
+          model call. */}
+      <TriagePanel project={project} projectLabel={projectLabel} onChanged={load} />
       <AutomationPanel
         project={project}
         projectLabel={projectLabel}
