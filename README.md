@@ -166,7 +166,9 @@ Everything is `us-east-1`. The pieces, and why each is the way it is:
 
 No ALB, no WAF, no custom domain or ACM certificate, no VPC private subnets, no RDS, no Cognito, no EventBridge, and **no CloudWatch alarms**. Those appear in the planning document, not in the account. There is no auto-scaling, no multi-region, and no uptime measurement, because there is one task in one region and nothing is measuring it.
 
-Two honest gaps. **Anthropic's Claude models on Bedrock do not work on this account yet** — the use-case entitlement has not been granted, and every model ID returns `permission_error` or a 404. The code path is written and unit-tested; Amazon Titan embeddings on Bedrock are proven live and doing real work. AI drafting therefore runs through the local Claude CLI or the Anthropic API, not Bedrock. And **human access to the AWS account still runs through the root identity** rather than a scoped IAM role with short-lived credentials — the CI path is federated and clean, the human path is not yet, and it is the weakest thing in the setup.
+One honest gap: **human access to the AWS account still runs through the root identity** rather than a scoped IAM role with short-lived credentials. The CI path is federated and clean; the human path is not yet, and it is the weakest thing in the setup.
+
+A note on Bedrock, because the failure mode here is worth knowing. Both halves of the Bedrock integration are verified live: Amazon Titan Text Embeddings V2 built the embedding index, and Anthropic Claude answers real requests — Sonnet 4.5, Haiku 4.5 and Opus 4.5 all invoke successfully. But current Claude models on Bedrock are **inference-profile only**, so the model ID must carry a `us.` (or `global.`) prefix. Passing the bare `anthropic.claude-sonnet-4-5-…` ID fails with a `ValidationException` telling you on-demand throughput is not supported for it, and going through the wrong endpoint surfaces the same situation as a `permission_error` or a 404 — all three read like "you do not have access" when the entitlement is in fact granted and the request shape is simply wrong. That misdiagnosis cost real time here, which is why it is written down. The local default remains the Claude CLI, so day-to-day runs cost nothing.
 
 ---
 
@@ -318,6 +320,6 @@ Multi-stage `deps → builder → runner` on `node:22-alpine`, shipping only the
 
 ## A note on what this repo claims
 
-Every number here traces to a file or a command you can run. Where something is measured, the interval is reported next to it. Where something is confounded, the confound is named and its scope stated. Where something is planned but not built — alarms, a load balancer, multi-tenancy, Claude on Bedrock — it is listed as not built.
+Every number here traces to a file or a command you can run. Where something is measured, the interval is reported next to it. Where something is confounded, the confound is named and its scope stated. Where something is planned but not built — alarms, a load balancer, multi-tenancy — it is listed as not built.
 
 The unglamorous findings are in here on purpose: an evaluation that could not separate two models, a model that was never built because the data had a leak in it, a task count pinned to one by in-memory state. They are the parts most likely to be true.

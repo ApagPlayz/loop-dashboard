@@ -24,7 +24,7 @@ model call, and the five interrupt behaviours printed out of a live process.
 | 1 | `echo "" \| node scripts/triage-cli.mjs --repo=ApagPlayz/content-generation-platform --limit=8` | `cli` (claude-sonnet-5) | 33.3 s total, halted at the interrupt after **26.5 s** | 8 issues triaged, 8 dry-run actions |
 | 2 | `echo "126=d 114=n 110=s" \| node scripts/triage-cli.mjs --limit=8` | `cli` | ~34 s | same 8 issues, **3 human overrides changed 3 actions** |
 | 3 | `node scripts/triage-interrupt-proof.mjs --limit=8` | `cli` | **55.9 s** (two full graph runs) | all five interrupt proofs below |
-| 4 | `DASHBOARD_AI_BACKEND=bedrock … node scripts/triage-cli.mjs --limit=4` | `bedrock` | 1.0 s | **failed — AWS account entitlement, see "Bedrock" below** |
+| 4 | `DASHBOARD_AI_BACKEND=bedrock … node scripts/triage-cli.mjs --limit=4` | `bedrock` | 1.0 s | **failed at the time** — see "Bedrock" below, and the RESOLVED note under it: the cause was partly a missing entitlement (since granted) and partly a wrong model-ID form plus the wrong endpoint. Claude on Bedrock works now. |
 
 All runs were prefixed with `DASHBOARD_AI_BACKEND=cli` except run 4.
 
@@ -288,9 +288,37 @@ is pending. Amazon Titan embeddings on the same account and region still work fi
 (re-verified tonight), which confirms this is Anthropic-model entitlement specifically, not
 Bedrock access in general.
 
-**Owner action required:** submit the Anthropic use-case details form in the Bedrock console
-for account `<ACCOUNT_ID>`. Until then `DASHBOARD_AI_BACKEND=cli` is the working path locally,
-and Bedrock stays the deployment story rather than a demonstrated one.
+**Owner action required:** submit the Anthropic use-case details form in the Bedrock console.
+Until then `DASHBOARD_AI_BACKEND=cli` is the working path locally, and Bedrock stays the
+deployment story rather than a demonstrated one.
+
+> ### RESOLVED later the same night (2026-09-02) — read this before quoting the table above
+>
+> The observations above were accurate when recorded, but the conclusion drawn from them was
+> only half right. Two separate things were happening:
+>
+> 1. **A genuine missing entitlement**, since fixed. The Anthropic use-case form was submitted
+>    (`aws bedrock put-use-case-for-model-access`) and model agreements created
+>    (`aws bedrock create-foundation-model-agreement`). **Granted:** Sonnet 4.5, Sonnet 4.6,
+>    Haiku 4.5, Opus 4.5. **Not granted:** Sonnet 5 and Opus 5 — AWS routes those to Sales,
+>    which is why `anthropic.claude-sonnet-5` returned `permission_error` and always would have.
+> 2. **Two request-shape faults that are indistinguishable from a missing entitlement**, and
+>    which account for the rest of the table:
+>    - Current Claude models on Bedrock are **inference-profile-only**. The ID needs a `us.`
+>      (or `global.`) prefix. A bare `anthropic.claude-sonnet-4-5-…` fails with
+>      `ValidationException: Invocation of model ID … with on-demand throughput isn't supported.`
+>    - The **`bedrock-mantle` endpoint has no entry for the granted models**, so every `mantle`
+>      row above 404s regardless of entitlement. `DASHBOARD_AI_BEDROCK_API=invoke` is the
+>      working path.
+>
+> **Re-verified by direct `invoke-model` calls after the grant:** `us.anthropic.claude-sonnet-4-5-20250929-v1:0`,
+> `us.anthropic.claude-haiku-4-5-20251001-v1:0` and `us.anthropic.claude-opus-4-5-20251101-v1:0`
+> all return real completions. Claude on Bedrock works on this account.
+>
+> The lesson worth keeping: `permission_error`, `not_found_error` and a 404 "use case details"
+> message all read like "you do not have access" while two of the three were actually "your
+> request is shaped wrong." Confirm the model ID form and the endpoint before concluding an
+> entitlement is missing.
 
 The `api` backend was not reachable either: `.env.local` contains `GITHUB_TOKEN`,
 `DASHBOARD_PASSWORD`, `SESSION_SECRET` and `LOOP_DASHBOARD_LOCAL_MODE` — there is **no**
