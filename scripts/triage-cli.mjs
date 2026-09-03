@@ -19,15 +19,19 @@
  *   12=d 15=n 18=s   override those issues (a=approve d=decline n=needs-info s=skip)
  *   q                quit without resuming
  *
- * Why `runnerImport`: lib/map-ai.ts uses TypeScript syntax that Node's
- * strip-only loader can't handle (parameter properties), so we borrow Vite —
- * already present via vitest — to transpile the lib/ tree on the fly.
+ * Why the Vite loader: lib/ is TypeScript written in Next.js style (parameter
+ * properties, extensionless relative imports) that Node's strip-only loader
+ * can't resolve, so we borrow Vite — already present via vitest. See
+ * scripts/lib/load-ts.mjs for why it holds a server open rather than using
+ * `runnerImport`.
  */
 
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
+
+import { tsLoader } from "./lib/load-ts.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -159,6 +163,9 @@ async function readDecisionLine(prompt) {
 /* Main                                                                */
 /* ------------------------------------------------------------------ */
 
+/** Set once the Vite loader is up, so the `finally` below can shut it down. */
+let closeLoader = async () => {};
+
 async function main() {
   const slug = flag("repo", DEFAULT_REPO_SLUG);
   const [owner, name] = slug.split("/");
@@ -171,9 +178,10 @@ async function main() {
   }
 
   // Vite transpiles the TS lib/ tree for us (see header note).
-  const { runnerImport } = await import("vite");
-  const { module: agent } = await runnerImport(path.join(ROOT, "lib", "agent", "index.ts"));
-  const { module: ai } = await runnerImport(path.join(ROOT, "lib", "map-ai.ts"));
+  const load = await tsLoader();
+  closeLoader = load.close;
+  const agent = await load("lib/agent/index.ts");
+  const ai = await load("lib/map-ai.ts");
 
   console.log(`\nBacklog triage — ${slug}`);
   console.log(`  mode      : ${apply ? "APPLY (will write to GitHub)" : "DRY RUN (no writes)"}`);
@@ -219,7 +227,9 @@ async function main() {
   if (!apply) console.log("\nNothing was written. Re-run with --apply to actually do it.");
 }
 
-main().catch((err) => {
-  console.error(`\ntriage-cli failed: ${err?.message ?? err}`);
-  process.exitCode = 1;
-});
+main()
+  .catch((err) => {
+    console.error(`\ntriage-cli failed: ${err?.message ?? err}`);
+    process.exitCode = 1;
+  })
+  .finally(() => closeLoader());
