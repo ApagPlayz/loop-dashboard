@@ -11,12 +11,20 @@ import {
   ProjectError,
   type Project,
 } from "@/lib/projects";
+import { isPublicViewer } from "@/lib/demo/viewer";
+import { DEMO_METRICS_HISTORY, DEMO_DASHBOARD_MD } from "@/lib/demo/fixtures-pages";
 
 // Always fetch fresh from GitHub on each request.
 export const dynamic = "force-dynamic";
 
-/** One daily snapshot in metrics/loop-metrics.json. */
-type Snapshot = {
+/**
+ * One daily snapshot in metrics/loop-metrics.json.
+ *
+ * Exported so lib/demo/fixtures-pages.ts can type its frozen demo history
+ * against this exact shape instead of a hand-copied duplicate that could
+ * silently drift from what this page actually parses.
+ */
+export type Snapshot = {
   date: string;
   prs_opened: number;
   prs_merged: number;
@@ -73,10 +81,23 @@ export default async function MetricsPage() {
     return <MetricsUnavailable error={err} />;
   }
 
-  const [{ snapshots, parseError }, dashboardMd] = await Promise.all([
-    loadMetrics(repo),
-    getFileContent("LOOP-DASHBOARD.md", undefined, repo),
-  ]);
+  // Demo: both reads below hit getFileContent() straight against GitHub,
+  // which 404s for the fictional loop-demo/* repo (and isn't proxied — only
+  // /api/* requests are). Supply the frozen fixtures instead so the stat
+  // cards, history table and rendered write-up all have real content.
+  let snapshots: Snapshot[] | null;
+  let parseError: boolean;
+  let dashboardMd: string | null;
+  if (await isPublicViewer()) {
+    snapshots = DEMO_METRICS_HISTORY;
+    parseError = false;
+    dashboardMd = DEMO_DASHBOARD_MD;
+  } else {
+    [{ snapshots, parseError }, dashboardMd] = await Promise.all([
+      loadMetrics(repo),
+      getFileContent("LOOP-DASHBOARD.md", undefined, repo),
+    ]);
+  }
 
   const latest =
     snapshots && snapshots.length > 0 ? snapshots[snapshots.length - 1] : null;

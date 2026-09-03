@@ -2,17 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Info } from "lucide-react";
 import { NAV_ITEMS, PROJECT_NAV, GLOBAL_NAV, type NavItem } from "@/lib/nav";
 import { useProject } from "@/components/project-context";
 import ProjectSwitcher from "@/components/map/project-switcher";
+// From lib/demo/world.ts, not lib/public-access.ts: this is a Client Component,
+// and public-access imports lib/auth.ts. See the constant's comment for why.
+import { DEMO_SNAPSHOT_LABEL } from "@/lib/demo/world";
 
 /**
  * App shell: a fixed left sidebar on desktop, a fixed bottom tab bar on mobile.
  * The global project switcher sits at the top of the sidebar; the nav is split
  * into a "This project" group (scoped) and a "Global" group (shared). Active
  * section is derived from the current pathname.
+ *
+ * `demoMode` comes from the server layout (`isPublicViewer()` — see
+ * lib/demo/viewer.ts) and never changes client-side. When true this renders
+ * the anonymous-visitor experience: a banner explaining the data is a frozen,
+ * invented snapshot rather than the owner's live private repos, and a
+ * "Sign in" link wherever "Sign out" would otherwise be — signing out of a
+ * session the visitor never had would just be confusing.
  */
-export default function AppShell({ children }: { children: React.ReactNode }) {
+export default function AppShell({
+  children,
+  demoMode,
+}: {
+  children: React.ReactNode;
+  demoMode: boolean;
+}) {
   const pathname = usePathname();
   const { project, setProject, refreshProjects } = useProject();
 
@@ -47,7 +64,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="border-t border-zinc-800 p-3">
-          <LogoutButton />
+          {demoMode ? <SignInLink /> : <LogoutButton />}
         </div>
       </aside>
 
@@ -57,12 +74,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-500" />
           <ProjectSwitcher selected={project} onSelect={onSelect} />
         </div>
-        <LogoutButton compact />
+        {demoMode ? <SignInLink compact /> : <LogoutButton compact />}
       </header>
 
       {/* Content */}
       <main className="md:pl-60">
         <div className="mx-auto max-w-5xl px-4 pb-24 pt-6 md:px-8 md:pb-10">
+          {demoMode && <DemoBanner />}
           {children}
         </div>
       </main>
@@ -144,5 +162,54 @@ function LogoutButton({ compact = false }: { compact?: boolean }) {
     >
       Sign out
     </button>
+  );
+}
+
+/**
+ * Replaces `LogoutButton` for anonymous demo visitors. It's a real link (not a
+ * button that calls /api/logout) — there is no session to clear, just a page
+ * to send the visitor to.
+ */
+function SignInLink({ compact = false }: { compact?: boolean }) {
+  return (
+    <Link
+      href="/login"
+      className={`text-zinc-400 transition hover:text-zinc-100 ${
+        compact
+          ? "shrink-0 text-xs"
+          : "block w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-zinc-800"
+      }`}
+    >
+      Sign in
+    </Link>
+  );
+}
+
+/**
+ * Persistent, dismissable-by-navigation-only notice shown at the top of every
+ * page for anonymous visitors. `role="status"` makes it an assistive-tech
+ * landmark without the interruption of `alert` — this isn't an error, it's
+ * context the visitor should have before trusting anything below it.
+ *
+ * Amber rather than red on purpose: nothing is wrong. The data really is a
+ * frozen, invented snapshot standing in for the owner's live private repos
+ * (see lib/demo/world.ts for why it's fictional data, not real backlog text).
+ */
+function DemoBanner() {
+  return (
+    <div
+      role="status"
+      className="mb-6 flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-2.5 text-xs text-amber-200 sm:items-center sm:text-sm"
+    >
+      <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-400 sm:mt-0" />
+      <p>
+        You&apos;re viewing a read-only demo of a real system. The data below is an
+        invented snapshot, not the owner&apos;s live private repositories. {DEMO_SNAPSHOT_LABEL}.{" "}
+        <Link href="/login" className="font-medium text-amber-100 underline underline-offset-2 hover:text-white">
+          Sign in
+        </Link>{" "}
+        to use live data.
+      </p>
+    </div>
   );
 }

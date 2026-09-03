@@ -13,6 +13,8 @@
 import { getOctokit, getFileContent, commitFile, type RepoConfig } from "./github";
 import { AGENTS } from "./map-agents";
 import type { AgentMeta } from "./map-types";
+import { DEMO_PROJECTS } from "./demo/world";
+import { isPublicViewer } from "./demo/viewer";
 
 /* ------------------------------------------------------------------ */
 /* Registry                                                            */
@@ -81,6 +83,16 @@ function parseRegistry(raw: string | null): Project[] | null {
  * throw and the caller surfaces it.
  */
 export async function listProjects(force = false): Promise<Project[]> {
+  // The demo registry is returned BEFORE the cache is read or written, on
+  // purpose. Every screen gets its RepoConfig from this function, so this one
+  // branch is what guarantees a signed-out visitor's page render can never name
+  // — let alone read — a real repository, even if a GITHUB_TOKEN is added to
+  // the deployment later. It must not share a cache slot with the owner's real
+  // registry in either direction: caching it here would serve the fake list to
+  // the owner for the next 60 seconds, and reading the owner's cached list here
+  // would hand real private repo names to the public.
+  if (await isPublicViewer()) return DEMO_PROJECTS;
+
   if (!force && registryCache && Date.now() - registryCache.at < REGISTRY_TTL_MS) {
     return registryCache.projects;
   }

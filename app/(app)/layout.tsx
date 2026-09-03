@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import AppShell from "@/components/app-shell";
 import { ProjectProvider, PROJECT_COOKIE } from "@/components/project-context";
 import { listProjects, PILOT_PROJECT, type Project } from "@/lib/projects";
+import { isPublicViewer } from "@/lib/demo/viewer";
 
 // Everything under this route group renders inside the authenticated app shell.
 // The /login page lives outside the group, so it stays chrome-free.
@@ -28,9 +29,14 @@ export default async function AppGroupLayout({
     projects[0]?.key ??
     PILOT_PROJECT.key;
 
+  // Drives the demo banner and the sign-in/sign-out swap in AppShell — see
+  // lib/public-access.ts for why an anonymous visitor gets a frozen snapshot
+  // rather than an error.
+  const demoMode = await isPublicViewer();
+
   return (
     <ProjectProvider initialProject={initialProject} initialProjects={projects}>
-      <AppShell>{children}</AppShell>
+      <AppShell demoMode={demoMode}>{children}</AppShell>
     </ProjectProvider>
   );
 }

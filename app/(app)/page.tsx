@@ -6,6 +6,8 @@ import ProjectCards, { StatusPill } from "@/components/overview/project-cards";
 import { GLOBAL_NAV } from "@/lib/nav";
 import { listProjects, PILOT_PROJECT, type Project } from "@/lib/projects";
 import { loadOverview, type ProjectSnapshot } from "@/lib/overview";
+import { isPublicViewer } from "@/lib/demo/viewer";
+import { DEMO_OVERVIEW } from "@/lib/demo/fixtures-pages";
 
 // Live counts straight from GitHub on every request.
 export const dynamic = "force-dynamic";
@@ -36,7 +38,13 @@ export default async function OverviewPage() {
     projects[0]?.key ??
     PILOT_PROJECT.key;
 
-  const snapshots = await loadOverview(projects);
+  // Demo: loadOverview() calls listIssues()/listPRs() straight against GitHub,
+  // which 404s for the fictional loop-demo/* repos (and isn't proxied — only
+  // /api/* requests are). Show the frozen snapshot instead so the landing page
+  // looks like a live project rather than two "unreachable" cards.
+  const snapshots = (await isPublicViewer())
+    ? DEMO_OVERVIEW
+    : await loadOverview(projects);
   const current =
     snapshots.find((s) => s.key === currentKey) ?? snapshots[0] ?? null;
 

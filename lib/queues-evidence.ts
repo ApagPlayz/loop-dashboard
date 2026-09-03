@@ -151,25 +151,47 @@ export async function readEvidenceFile(
   return { bytes, contentType: contentTypeFor(key) };
 }
 
-function contentTypeFor(path: string): string {
+/**
+ * Content types we are willing to hand back for a file that came out of a CI
+ * artifact — i.e. content this app did not author and cannot vouch for.
+ *
+ * `svg` is deliberately ABSENT. An SVG is an XML *document*: served as
+ * `image/svg+xml` from our own origin and opened directly (or in an iframe),
+ * any `<script>` inside it runs as us, with our cookies. A build agent that can
+ * upload an evidence artifact could therefore store XSS on the dashboard's
+ * origin. Falling through to `application/octet-stream` — which
+ * `readEvidenceFile`'s caller pairs with `Content-Disposition: attachment`,
+ * `nosniff` and a `default-src 'none'; sandbox` CSP — makes that inert.
+ * Likewise no `html`, `xml`, `xhtml` or `pdf`: same class of problem.
+ */
+const EVIDENCE_CONTENT_TYPES: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  webm: "video/webm",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  ogg: "audio/ogg",
+  m4a: "audio/mp4",
+  txt: "text/plain; charset=utf-8",
+  log: "text/plain; charset=utf-8",
+  json: "application/json; charset=utf-8",
+};
+
+/** True when the type is safe to render inline (image/video/audio only). */
+export function evidenceRendersInline(contentType: string): boolean {
+  return (
+    contentType.startsWith("image/") ||
+    contentType.startsWith("video/") ||
+    contentType.startsWith("audio/")
+  );
+}
+
+export function contentTypeFor(path: string): string {
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
-  const map: Record<string, string> = {
-    png: "image/png",
-    jpg: "image/jpeg",
-    jpeg: "image/jpeg",
-    gif: "image/gif",
-    webp: "image/webp",
-    svg: "image/svg+xml",
-    webm: "video/webm",
-    mp4: "video/mp4",
-    mov: "video/quicktime",
-    mp3: "audio/mpeg",
-    wav: "audio/wav",
-    ogg: "audio/ogg",
-    m4a: "audio/mp4",
-    txt: "text/plain; charset=utf-8",
-    log: "text/plain; charset=utf-8",
-    json: "application/json; charset=utf-8",
-  };
-  return map[ext] ?? "application/octet-stream";
+  return EVIDENCE_CONTENT_TYPES[ext] ?? "application/octet-stream";
 }

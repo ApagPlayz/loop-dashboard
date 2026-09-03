@@ -8,6 +8,8 @@ import { resolveProject } from "@/lib/projects";
 import PromoteChip from "@/components/tools/promote-chip";
 import AddToolForm from "@/components/tools/add-tool-form";
 import RequestChange from "@/components/tools/request-change";
+import { isPublicViewer } from "@/lib/demo/viewer";
+import { DEMO_CAPABILITY_INVENTORY } from "@/lib/demo/fixtures-pages";
 
 type Kind = "tool" | "mcp" | "skill";
 
@@ -198,11 +200,19 @@ export default async function CapabilityInventory({
   let agents: AgentCapabilities[] = [];
   let shared: SharedCapabilities = { builtinTools: [], mcpServers: [], skills: [] };
   let error = false;
-  try {
-    const { repo } = await resolveProject(projectKey);
-    ({ agents, shared } = await loadCapabilityInventory(repo));
-  } catch {
-    error = true;
+
+  if (await isPublicViewer()) {
+    // Demo: loadCapabilityInventory() reads .github/workflows/*.yml straight
+    // off GitHub, which 404s for the fictional demo repo (and isn't proxied —
+    // only /api/* requests are). Show the frozen inventory instead.
+    ({ agents, shared } = DEMO_CAPABILITY_INVENTORY);
+  } else {
+    try {
+      const { repo } = await resolveProject(projectKey);
+      ({ agents, shared } = await loadCapabilityInventory(repo));
+    } catch {
+      error = true;
+    }
   }
 
   if (error) {

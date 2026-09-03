@@ -1,7 +1,13 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
-const rootDir = path.dirname(new URL(import.meta.url).pathname);
+// fileURLToPath, not `new URL(...).pathname`. A file: URL percent-encodes its
+// path, and this repo lives under ".../Claude Projects/..." — so .pathname
+// yields "Claude%20Projects" and the alias below silently pointed at a
+// directory that does not exist. Every "@/..." import then failed to resolve,
+// which is why the existing tests all reach for relative paths instead.
+const rootDir = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   test: {

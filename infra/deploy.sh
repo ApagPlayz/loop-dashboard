@@ -34,6 +34,14 @@
 #     /login, so a health check on "/" never goes healthy.
 #   * LOOP_DASHBOARD_LOCAL_MODE is deliberately absent. Six launcher routes
 #     gate on it and must stay 404 in the cloud.
+#   * LOOP_DASHBOARD_PUBLIC_DEMO=1 is deliberately PRESENT, and only here. It
+#     makes the distribution publicly viewable without a password: anonymous
+#     visitors get pages plus API reads answered from a frozen invented snapshot
+#     by proxy.ts, and a 403 for everything else — no route handler runs for
+#     them at all. The owner's session is untouched; signing in restores live
+#     data and every mutation. Read lib/public-access.ts before changing this,
+#     and note that tests/lib/public-access.test.ts pins the exact set of
+#     anonymously-reachable endpoints: adding one has to be a deliberate diff.
 #   * GITHUB_TOKEN is deliberately absent. The token in .env.local is the
 #     GitHub CLI's account-wide OAuth token (gho_); it must not go to the
 #     cloud. Add a scoped fine-grained PAT as an SSM SecureString and a
