@@ -10,6 +10,11 @@
 
 import { getOctokit, type RepoConfig } from "@/lib/github";
 import { loadEvidenceManifest, readEvidenceFile } from "@/lib/queues-evidence";
+import {
+  findQueueDuplicates,
+  primeDuplicateIndex,
+  type DuplicateReport,
+} from "@/lib/dedup/queue-duplicates";
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -38,6 +43,13 @@ export type IdeasPayload = {
   approved: IdeaSummary[]; // approved
   redraft: IdeaSummary[]; // redraft
   closed: IdeaSummary[]; // recently closed that carried one of the idea labels
+  /**
+   * Near-duplicate pairs within the four tabs above, from the embedding index
+   * in `lib/dedup/`. Decoration, never a precondition: `null` whenever the
+   * index is unavailable, stale, or scoped to a different repo, and the screen
+   * renders exactly as it did before this field existed.
+   */
+  duplicates: DuplicateReport | null;
 };
 
 /** A single comment on an issue or PR. */
@@ -248,6 +260,11 @@ export async function loadIdeas(
   // of the three live tabs (they key off the other labels) and not in the
   // closed tab (it isn't closed). The idea vanished from the dashboard while
   // still sitting open on GitHub.
+  // Start fetching the embedding index NOW, so the artifact read overlaps with
+  // the eight GitHub queries below rather than adding to them. By the time the
+  // scoring step runs, the cache is warm and it is pure arithmetic.
+  primeDuplicateIndex();
+
   const [openLists, closedLists] = await Promise.all([
     Promise.all(IDEA_LABELS.map((l) => listIdeasByLabel(repoConfig, l))),
     Promise.all(IDEA_LABELS.map((l) => listClosedIdeasByLabel(repoConfig, l))),
@@ -277,7 +294,19 @@ export async function loadIdeas(
     .sort(byClosed)
     .slice(0, CLOSED_TAB_SIZE);
 
-  return { waiting, approved, redraft, closed };
+  // Scored over exactly what the four tabs are about to render, so every match
+  // the UI links to is an idea the owner can actually see. This never throws
+  // and never blocks: it returns null on any failure and the screen is
+  // unchanged. No text is embedded here — the vectors already exist. See
+  // lib/dedup/queue-duplicates.ts for why this is not the deployed Lambda.
+  const duplicates = await findQueueDuplicates(repoConfig, [
+    ...waiting,
+    ...approved,
+    ...redraft,
+    ...closed,
+  ]);
+
+  return { waiting, approved, redraft, closed, duplicates };
 }
 
 function byNewest(a: IdeaSummary, b: IdeaSummary) {

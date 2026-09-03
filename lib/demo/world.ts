@@ -90,6 +90,11 @@ export const DEMO_SHAS = {
 
 /** Issue numbers used by the ideas fixtures (and referenced from testing). */
 export const DEMO_IDEA_NUMBERS = {
+  // The newest proposal in the demo queue, and deliberately a near-restatement
+  // of `sharedNotebooks` — the demo has to show the near-duplicate strip doing
+  // its job, and the job only exists because a Scout that never reads the queue
+  // proposes the same thing twice.
+  viewOnlyLink: 218,
   offlineQueue: 214,
   sharedNotebooks: 211,
   exportMarkdown: 208,

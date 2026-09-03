@@ -32,6 +32,7 @@
  */
 
 import type { DemoFixture } from "@/lib/demo/types";
+import type { DuplicateReport } from "@/lib/dedup/queue-duplicates";
 import {
   DEMO_OWNER,
   DEMO_IDEA_NUMBERS,
@@ -78,6 +79,27 @@ function hoursAgo(hours: number): string {
 /* ------------------------------------------------------------------ */
 
 const IDEAS: Record<number, IdeaSummary> = {
+  [DEMO_IDEA_NUMBERS.viewOnlyLink]: {
+    number: DEMO_IDEA_NUMBERS.viewOnlyLink,
+    title: "Let people send a notebook as a view-only link, without signing up",
+    body: `**Problem:** There is still no way to put a notebook in front of somebody who doesn't use Aurora Notes. Exporting or screenshotting is what people do instead, and both lose the formatting that made them write it here in the first place.
+
+**Proposal:** Generate a revocable, read-only URL per notebook that renders it in a reader view with no edit affordances and no sign-up wall. Owners can revoke from notebook settings; links lapse on their own after a month unless renewed.
+
+**Why now:** It comes up in nearly every churn interview, and it unblocks the lightweight sharing people are currently doing badly by hand.
+
+**How we'd verify:** Mint a link, open it from a signed-out browser, assert the content renders and that no write endpoint answers through that token, then revoke and assert the URL stops resolving.`,
+    htmlUrl: demoRepoUrl(`issues/${DEMO_IDEA_NUMBERS.viewOnlyLink}`),
+    createdAt: daysAgo(1),
+    updatedAt: daysAgo(1),
+    commentCount: 0,
+    labels: ["proposal"],
+    author: AGENT,
+    authorAvatar: "",
+    state: "open",
+    closedAt: null,
+    stateReason: null,
+  },
   [DEMO_IDEA_NUMBERS.sharedNotebooks]: {
     number: DEMO_IDEA_NUMBERS.sharedNotebooks,
     title: "Share a notebook read-only with a link, no account required",
@@ -241,8 +263,53 @@ const IDEA_COMMENTS: Record<number, ThreadComment[]> = {
   ],
 };
 
+/**
+ * The near-duplicate report the real route computes from the embedding index in
+ * `lib/dedup/` (see `findQueueDuplicates`). Invented like everything else here,
+ * but shaped field-for-field like the real one and internally consistent with
+ * it: symmetric — the pair appears on BOTH cards — scores above the stated
+ * threshold, and `scored + unindexed.length` equal to the number of distinct
+ * ideas across the four tabs (6). The index is stamped six hours old, which is
+ * younger than every idea in the demo queue — so nothing is `unindexed` and the
+ * summary line above the tabs says so rather than quietly implying it.
+ */
+const IDEAS_DUPLICATES: DuplicateReport = {
+  // The precision-first operating point swept for dense_titan in
+  // metrics/dedup-eval.json. Real number, public method — no private data.
+  threshold: 0.842,
+  thresholdSource: "metrics",
+  method: "dense_titan",
+  model: "amazon.titan-embed-text-v2:0",
+  indexBuiltAt: daysAgo(0, 6),
+  indexSource: "s3",
+  scored: 6,
+  unindexed: [],
+  pairs: {
+    [DEMO_IDEA_NUMBERS.viewOnlyLink]: [
+      {
+        number: DEMO_IDEA_NUMBERS.sharedNotebooks,
+        title: IDEAS[DEMO_IDEA_NUMBERS.sharedNotebooks]!.title,
+        htmlUrl: IDEAS[DEMO_IDEA_NUMBERS.sharedNotebooks]!.htmlUrl,
+        score: 0.9137,
+      },
+    ],
+    [DEMO_IDEA_NUMBERS.sharedNotebooks]: [
+      {
+        number: DEMO_IDEA_NUMBERS.viewOnlyLink,
+        title: IDEAS[DEMO_IDEA_NUMBERS.viewOnlyLink]!.title,
+        htmlUrl: IDEAS[DEMO_IDEA_NUMBERS.viewOnlyLink]!.htmlUrl,
+        score: 0.9137,
+      },
+    ],
+  },
+};
+
 const IDEAS_PAYLOAD: IdeasPayload = {
-  waiting: [IDEAS[DEMO_IDEA_NUMBERS.sharedNotebooks]!],
+  // Newest first, matching loadIdeas' `byNewest` sort.
+  waiting: [
+    IDEAS[DEMO_IDEA_NUMBERS.viewOnlyLink]!,
+    IDEAS[DEMO_IDEA_NUMBERS.sharedNotebooks]!,
+  ],
   approved: [IDEAS[DEMO_IDEA_NUMBERS.offlineQueue]!],
   redraft: [IDEAS[DEMO_IDEA_NUMBERS.exportMarkdown]!],
   // Newest-closed first, matching loadIdeas' `byClosed` sort.
@@ -250,6 +317,7 @@ const IDEAS_PAYLOAD: IdeasPayload = {
     IDEAS[DEMO_IDEA_NUMBERS.searchRanking]!,
     IDEAS[DEMO_IDEA_NUMBERS.duplicateDetection]!,
   ],
+  duplicates: IDEAS_DUPLICATES,
 };
 
 /* ------------------------------------------------------------------ */

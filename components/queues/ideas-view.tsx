@@ -7,6 +7,7 @@ import { useProject } from "@/components/project-context";
 import { TabBar, ErrorPanel, EmptyState, Spinner } from "./ui";
 import { ToastProvider } from "./toast";
 import IdeaCard from "./idea-card";
+import { DuplicateSummary } from "./duplicate-hint";
 import CustomIdea from "./custom-idea";
 import AutomationPanel from "./automation-panel";
 import ScoutSettings from "./scout-settings";
@@ -110,6 +111,9 @@ function IdeasInner() {
         <span className="text-xs text-zinc-500">
           Viewing: <span className="text-zinc-300">{projectLabel}</span>
         </span>
+        {/* Renders nothing when there is no duplicate report — a project with
+            no embedding index looks exactly as it did before. */}
+        <DuplicateSummary report={data?.duplicates ?? null} />
       </div>
       <button
         onClick={() => setShowCustom(true)}
@@ -202,6 +206,7 @@ function IdeasInner() {
               idea={idea}
               project={project}
               onChanged={load}
+              duplicates={data.duplicates}
             />
           ))}
         </div>

@@ -461,10 +461,47 @@ at the same quality, not one model quietly reproducing the other.
      regression that would silently invalidate the baseline comparison.
   5. `extract-corpus.mjs` null handling — `body: null`, missing `user`,
      `merged_at` absent on issues.
-- **Shipping it into the product** (backlog §3 step 6: Scout checks the index
-  before filing, queue UI shows "similar to #114 (0.87)"). The threshold now
-  exists (0.842, swept above) and the model is deployed — but nothing in the
-  dashboard UI calls it yet. That wiring is the remaining work.
+- **Scout checking the index before it files** (backlog §3 step 6, first half).
+  That is the case the Lambda exists for — text that is not in the corpus yet —
+  and it is still not wired.
+
+The other half of step 6 — *"queue UI shows 'similar to #114 (0.87)'"* — **is
+done**. See `lib/dedup/queue-duplicates.ts` and §"Shipped into the product"
+below.
+
+## Shipped into the product
+
+The Ideas screen scores its own queue for near-duplicates and shows the match,
+its number, its title and its cosine score on the card, above the 0.842 line.
+
+**The scoring runs in the Next.js server, not in the Lambda, and that is
+deliberate.** Every idea on the Ideas screen is *already in the index* — its
+vector was computed when the index was built — so scoring the queue against
+itself is a map lookup and a dot product: **no embedding call, no Bedrock spend,
+no model load, no runtime credentials beyond the S3 read `artifact-store.ts`
+already does and already falls back from.** Measured: 0.67 ms to score a 44-idea
+queue (946 pairs at 1024 dims) once the index is loaded, 5 ms cold off the local
+file. Routing it through the Function URL would instead mean signing SigV4 from
+the web tier and paying for one `InvokeModel` **per idea per page view** to
+re-derive a vector that is sitting in the index the Lambda then downloads.
+
+Consequences worth stating plainly:
+
+- **The deployed Lambda is still called by nothing.** This feature did not
+  change that. Its remaining job is unseen text (the Scout case above).
+- The threshold is **read out of `metrics/dedup-eval.json` at runtime**, so
+  re-running `evaluate.mjs` moves the product's operating point. The constants
+  in `queue-duplicates.ts` are a documented fallback. The Lambda still
+  hard-codes 0.842 with no propagation.
+- Titan is preferred; MiniLM is the fallback, **and the threshold moves with
+  it** (0.828, its own swept operating point) — a threshold calibrated for one
+  encoder means nothing applied to another. Which encoder answered is reported
+  and shown in the UI.
+- An idea filed after the last `build-index.mjs` run has no vector. It is
+  reported as `unindexed` and counted in the line above the tabs, rather than
+  being silently scored as "no duplicates found".
+- Every failure returns `null` and the Ideas screen renders exactly as it did
+  before the feature existed.
 
 ## Downstream of this pipeline
 

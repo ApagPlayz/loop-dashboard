@@ -283,3 +283,54 @@ permission, because the app's secrets are injected into the container by the *ta
 role, not by CI — the pipeline never handles them.
 
 **When:** 2026-09-03.
+
+---
+
+## 12. Near-duplicate detection scores in the web tier, not in the deployed Lambda
+
+**Decided:** the Ideas screen finds near-duplicate proposals by loading the precomputed
+embedding index through `lib/dedup/artifact-store.ts` and taking dot products **in the
+Next.js server**, inside the existing `GET /api/ideas` request. It does not call
+`loop-dashboard-dedup-infer`, the deployed IAM-authed Function URL that does the same
+scoring in AWS.
+
+**Why:** every idea on that screen is *already in the index*. Its vector was computed when
+`build-index.mjs` ran, so scoring the queue against itself is a `Map` lookup and a dot
+product — **no embedding call, no Bedrock spend, no ONNX model in the web tier (which the
+alpine container cannot run anyway), no runtime AWS credentials beyond the S3 read the
+artifact store already does and already falls back from.** Measured on the pilot queue:
+0.67 ms to score 44 ideas (946 pairs at 1024 dims) warm, 5 ms cold off the local file. That
+cost is why it runs on every queue load rather than behind a button — there is nothing to
+defer.
+
+Calling the Function URL would mean signing SigV4 from the web tier, holding credentials
+for it there, and paying for one `InvokeModel` **per idea per page view** to re-derive a
+vector sitting in the very index the Lambda then downloads from S3. Slower, billable, more
+failure modes, same number.
+
+**What this does NOT mean:** the Lambda was not a mistake and is not dead code. It scores
+text that is **not** in the corpus — which is exactly the Scout's case (§3 step 6 of the
+backlog: check before filing). That remains unwired. Stated plainly because it is on a
+résumé: **the endpoint is deployed, healthy, and still called by nothing in the product.**
+
+**Rejected:**
+- **Call the Function URL from `/api/ideas`.** The name-drop option. See above.
+- **Re-embed with the local MiniLM backend in-process.** 90 MB ONNX download into a request
+  path, on a musl container where `onnxruntime-node` is unreliable — to recompute vectors
+  that already exist. This is the mistake §8.4 of ARCHITECTURE.md warns about, one screen
+  over.
+- **A separate `/api/ideas/duplicates` route.** It would have to re-run `loadIdeas()` —
+  eight paginated GitHub queries — to know which ideas to score, doubling the screen's
+  GitHub cost for one extra round trip. Folding it into the existing payload also means the
+  public demo's anonymous API surface is **unchanged**: no new route, no new fixture path,
+  no edit to the exact-match assertion in `tests/lib/public-access.test.ts`.
+- **Hard-coding 0.842.** The threshold is read from `metrics/dedup-eval.json` at runtime, so
+  re-running `evaluate.mjs` moves the product's operating point; the constants in
+  `queue-duplicates.ts` are a documented fallback carrying the eval's own caveats. The
+  Lambda still hard-codes it, which is the drift this avoids.
+- **Reusing Titan's threshold for the MiniLM fallback index.** 0.842 was swept for Titan;
+  MiniLM's own precision-first point is 0.828. A threshold calibrated for one encoder means
+  nothing applied to another, so the threshold moves with the index and the UI names which
+  encoder produced the score.
+
+**When:** 2026-09-03.

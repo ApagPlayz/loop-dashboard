@@ -480,6 +480,15 @@ textarea), **Decline** (optional reason). A **"Custom idea"** modal can file int
 registered project, drafts with Claude, supports **microphone dictation** (Web Speech API), and
 attaches catalog integrations.
 
+A card also carries a **near-duplicate strip** when the ML pipeline (§6) found one: the matched
+issue's number, title, cosine score and a link, over the line *"Similarity ≥ 0.842 · Titan v2
+embeddings · index built N hours ago"*. It sits outside the header `<button>` (a link cannot live
+inside one) and outside the expanded panel, so the owner sees it without clicking. The relation is
+symmetric — both cards show it. A line above the tabs reports how much of the queue was actually
+checked (`2 flagged · 44 scored`, plus `N not in the index` when the index predates an idea), so a
+**stale index is visible rather than implied**. All of it is `null`-tolerant decoration: no index,
+no strip, no error, screen unchanged.
+
 **`/builds`** — three tabs; drafts are listed with a Draft pill but **excluded from the count**,
 matching how the Builder counts its own slots. An expanded `PRCard` shows a red **conflict** or
 amber **stale (≥10 commits behind)** banner offering **"Rebuild fresh"**, the Auditor verdict
@@ -1207,6 +1216,8 @@ invoice.*
 4. **Nothing calls the Lambda.** A working, correctly-secured, genuinely least-privilege
    endpoint that no app route, client or script invokes. Its 5 invocations were its own
    deployment tests. A completeness gap, not a risk (its `AWS_IAM` auth means it is not exposed).
+   Still true after the Ideas screen shipped near-duplicate detection: that path scores
+   precomputed vectors in-process and calls nothing remote but S3 — see §6.1.
 5. **Single AZ, single task, circuit breaker disabled.** Because CloudFront points at an
    ephemeral DNS name, **every** task replacement — deploy, host retirement, health-check
    failure — changes the origin and 502s the site until `refresh-cloudfront-origin.sh` runs. In
@@ -1259,13 +1270,21 @@ the 2026-09-01 brainstorm. The task: given two issues/PRs, are they the same req
 
 | Path | Status |
 |---|---|
-| The Next.js app | **Not wired at all.** `lib/dedup/*` is imported *only* by `scripts/ml/*.mjs` and the tests. Zero route handlers, pages or components import it. |
-| AWS Lambda | **Deployed and live** (§5) — `loop-dashboard-dedup-infer`, IAM-authed Function URL, 5 invocations, 0 errors. |
+| The Next.js app | **Wired, in-process.** `lib/dedup/queue-duplicates.ts` → `lib/queues.ts`'s `loadIdeas()` → `GET /api/ideas` → the Ideas screen, which shows "Possible duplicate #27 · 0.862" on the card. It reads the precomputed index through `artifact-store.ts` and **embeds nothing at request time** — every idea on that screen already has a vector, so scoring is a lookup and a dot product (0.67 ms for a 44-idea queue). |
+| AWS Lambda | **Deployed and live** (§5) — `loop-dashboard-dedup-infer`, IAM-authed Function URL — and **still called by nothing.** |
 | The Scout itself | **Never calls it.** |
 
-So the model is **served but not consumed**. "Offline/analysis-only" understates it — there is a
-real, working endpoint. "In the request path" would be wrong. The accurate statement:
-**deployed as a standalone service, integrated into no product flow.**
+The distinction that matters: the *model* is in a product flow; the *Lambda* is not. The Lambda's
+job is scoring text that is **not** in the corpus (a proposal the Scout is about to file). The
+Ideas screen's job is scoring text that **is** — so paying one `InvokeModel` per idea per page
+view to re-derive a vector already sitting in the index would be slower, billable, and would need
+runtime AWS credentials in the web tier, all to arrive at the same number. See
+`lib/dedup/queue-duplicates.ts`'s header and `docs/design-decisions.md` §12.
+
+**Do not "fix" this by pointing the Ideas screen at the Function URL.** That is the change this
+table exists to pre-empt: it reads like an improvement ("we deployed a Lambda, use it") and is a
+regression on every axis. If you want the Lambda consumed, wire it to the Scout, which has the
+use case it was actually built for.
 
 ### 6.2 The methods
 
@@ -1492,7 +1511,7 @@ node scripts/ml/label.mjs                 # human labelling → data/gold-pairs.
 node scripts/ml/evaluate.mjs --gold=data/gold-pairs-llm.jsonl   # → metrics/dedup-eval.json
 node scripts/ml/compare-encoders.mjs      # stdout table; recomputes nothing
 ./infra/deploy-dedup-inference.sh         # idempotent create-or-update of the Lambda
-npx vitest run tests/lib/dedup/           # 41 dedup tests
+npx vitest run tests/lib/dedup/           # 42 dedup tests
 ```
 
 **Three traps in that sequence — see §9 for the full list:** `--gold` is **mandatory** in

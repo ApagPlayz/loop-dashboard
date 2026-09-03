@@ -12,7 +12,9 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { IdeaSummary, ThreadComment } from "@/lib/queues";
+import type { DuplicateReport } from "@/lib/dedup/queue-duplicates";
 import { Markdown, relativeTime, Spinner, ErrorPanel } from "./ui";
+import { DuplicateStrip } from "./duplicate-hint";
 import CommentThread from "./comment-thread";
 import IdeaChat from "./idea-chat";
 import { useIdeaChat } from "./use-idea-chat";
@@ -36,10 +38,17 @@ export default function IdeaCard({
   idea,
   project,
   onChanged,
+  duplicates = null,
 }: {
   idea: IdeaSummary;
   project: string;
   onChanged: () => void;
+  /**
+   * The whole queue's duplicate report, or null when there isn't one. Passed
+   * down rather than fetched here: it is computed once for the queue, and a
+   * per-card fetch would be N requests for one answer.
+   */
+  duplicates?: DuplicateReport | null;
 }) {
   const toast = useToast();
   const [open, setOpen] = useState(false);
@@ -212,6 +221,17 @@ export default function IdeaCard({
           </div>
         </div>
       </button>
+
+      {/* Near-duplicates, from the embedding index. Outside the header button
+          (a link cannot live inside one) and outside the `open` branch, so the
+          owner sees it without expanding the card. Absent whenever there is no
+          index — never an error state. */}
+      {duplicates && (
+        <DuplicateStrip
+          matches={duplicates.pairs[String(idea.number)] ?? []}
+          report={duplicates}
+        />
+      )}
 
       {/* Expanded */}
       {open && (
