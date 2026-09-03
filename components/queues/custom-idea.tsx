@@ -27,6 +27,8 @@ import {
   Puzzle,
   Plus,
   Wrench,
+  Files,
+  Search,
 } from "lucide-react";
 import Modal from "@/components/map/modal";
 import CatalogBrowser from "@/components/tools/catalog-browser";
@@ -35,6 +37,35 @@ import { Spinner, Markdown } from "./ui";
 import { useToast } from "./toast";
 import { useSpeech } from "./use-speech";
 import { useCustomIdeaChat, type AttachedTool, type SuggestedTool } from "./use-custom-idea-chat";
+
+/* ------------------------------------------------------------------ */
+/* Duplicate check — types mirroring POST /api/ideas/custom/dedup      */
+/* ------------------------------------------------------------------ */
+
+type DuplicateDraftMatch = {
+  number: number;
+  type: string | null;
+  title: string | null;
+  score: number;
+  htmlUrl: string;
+};
+
+type DuplicateDraftResult =
+  | {
+      available: true;
+      matches: DuplicateDraftMatch[];
+      duplicate: boolean;
+      threshold: number;
+      thresholdSource: "metrics" | "builtin";
+      model: string;
+      indexedDocuments: number;
+      indexBuiltAt: string;
+      lambdaMs: number;
+    }
+  | { available: false; reason: string };
+
+/** Least draft worth spending a Bedrock call on. Mirrors the route's MIN_CHARS. */
+const DUPLICATE_MIN_CHARS = 20;
 
 /** Small type icon for integration chips (mirrors the catalog's type colors). */
 const TYPE_ICON: Record<AttachedTool["type"], { icon: React.ReactNode; chip: string }> = {
@@ -83,6 +114,68 @@ export default function CustomIdea({
     reset,
   } = chat;
 
+  /* ---------------------------------------------------------------- */
+  /* Duplicate check                                                   */
+  /*                                                                   */
+  /* An EXPLICIT action, not a debounce on the textarea. Every check is */
+  /* one billable Titan embedding of the draft (the composer's text is  */
+  /* not in the index — that is the whole reason it has to be embedded  */
+  /* at all). Debouncing a textarea fires every time the owner pauses   */
+  /* to think, which on a long draft is dozens of calls to answer a     */
+  /* question that is only worth asking once the idea is coherent. A    */
+  /* button also makes the result trustworthy: it says "I checked THIS  */
+  /* text", not "I checked some earlier version of it".                 */
+  /*                                                                    */
+  /* Result state lives here rather than in useCustomIdeaChat because   */
+  /* it is not part of the draft: persisting it to sessionStorage would */
+  /* restore a verdict about text the owner may since have rewritten.   */
+  /* ---------------------------------------------------------------- */
+  const [dupChecking, setDupChecking] = useState(false);
+  const [dupResult, setDupResult] = useState<DuplicateDraftResult | null>(null);
+  const [dupCheckedKey, setDupCheckedKey] = useState<string | null>(null);
+
+  // Identity of exactly what would be sent. Re-clicking with an unchanged
+  // draft is free: the cached result is reused rather than re-embedded.
+  const draftKey = useMemo(
+    () => JSON.stringify([projectKey, draft.title.trim(), draft.body.trim()]),
+    [projectKey, draft.title, draft.body],
+  );
+  const dupStale = dupResult !== null && dupCheckedKey !== draftKey;
+  const dupCheckable = (draft.title.trim() + draft.body.trim()).length >= DUPLICATE_MIN_CHARS;
+
+  async function checkDuplicates() {
+    if (dupChecking || !dupCheckable) return;
+    // Already answered for this exact text — reuse it rather than pay for a
+    // second identical embedding. A FAILED check is not an answer, so a
+    // timeout or a transient 5xx stays retryable.
+    if (dupResult?.available && dupCheckedKey === draftKey) return;
+    const key = draftKey;
+    setDupChecking(true);
+    try {
+      const res = await fetch("/api/ideas/custom/dedup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          project: projectKey,
+          title: draft.title,
+          body: draft.body,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as DuplicateDraftResult | null;
+      setDupResult(
+        data ?? { available: false, reason: "The duplicate check couldn't run just now." },
+      );
+      setDupCheckedKey(key);
+    } catch {
+      // Never a toast.error: this is decoration on a draft, and a failed check
+      // must not read like a failed action.
+      setDupResult({ available: false, reason: "Couldn't reach the duplicate check." });
+      setDupCheckedKey(key);
+    } finally {
+      setDupChecking(false);
+    }
+  }
+
   const isCurrentProject = projectKey === project;
   const projectLabel = useMemo(
     () => projects.find((p) => p.key === projectKey)?.label ?? projectKey,
@@ -92,6 +185,8 @@ export default function CustomIdea({
   function clearDraft() {
     speech.stop();
     reset();
+    setDupResult(null);
+    setDupCheckedKey(null);
   }
 
   function closeAll() {
@@ -227,6 +322,15 @@ export default function CustomIdea({
                     </div>
                   </details>
                 )}
+
+                <DuplicateCheck
+                  checking={dupChecking}
+                  result={dupResult}
+                  stale={dupStale}
+                  checkable={dupCheckable}
+                  disabled={submitting}
+                  onCheck={() => void checkDuplicates()}
+                />
               </div>
 
               {/* (b) The chat — keeps refining the draft */}
@@ -323,6 +427,166 @@ export default function CustomIdea({
         </Modal>
       )}
     </Modal>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Duplicate check panel                                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * "Has this already been proposed?" for the draft, before it is filed.
+ *
+ * This is the one surface in the product that calls the deployed inference
+ * Lambda (`infra/lambda-dedup-infer/`, via `POST /api/ideas/custom/dedup`).
+ * The Ideas screen scores its cards locally because their vectors already
+ * exist; a draft has no vector, so it has to be embedded, and that is exactly
+ * what the service is for.
+ *
+ * It never blocks anything. Every failure — unconfigured, no credentials,
+ * timeout, 403 — renders as one grey line of explanation next to a Submit
+ * button that stays enabled.
+ */
+function DuplicateCheck({
+  checking,
+  result,
+  stale,
+  checkable,
+  disabled,
+  onCheck,
+}: {
+  checking: boolean;
+  result: DuplicateDraftResult | null;
+  /** The draft changed since this result was produced. */
+  stale: boolean;
+  /** Enough text to be worth a billable embedding call. */
+  checkable: boolean;
+  disabled?: boolean;
+  onCheck: () => void;
+}) {
+  const hits = result?.available ? result.matches : [];
+  // Only matches at or above the calibrated operating point are shown. The
+  // Lambda returns the top K regardless of score, and a 0.41 "match" presented
+  // as a possible duplicate is exactly the kind of unexplainable result that
+  // teaches an owner to ignore the feature.
+  const flagged = result?.available ? hits.filter((m) => m.score >= result.threshold) : [];
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/60 p-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          Already proposed?
+        </p>
+        <button
+          onClick={onCheck}
+          disabled={disabled || checking || !checkable || (!!result?.available && !stale)}
+          title={
+            !checkable
+              ? "Write a bit more of the idea first."
+              : result?.available && !stale
+                ? "This exact draft has already been checked."
+                : "Embeds the draft and scores it against the backlog."
+          }
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs font-medium text-zinc-200 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {checking ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Search className="h-3.5 w-3.5" />
+          )}
+          {checking
+            ? "Checking…"
+            : stale
+              ? "Check again"
+              : result && !result.available
+                ? "Try again"
+                : "Check for duplicates"}
+        </button>
+      </div>
+
+      {!result && !checking && (
+        <p className="mt-2 text-xs text-zinc-500">
+          Checks this draft against the backlog before you file it.
+        </p>
+      )}
+
+      {result && !result.available && (
+        <p className="mt-2 text-xs text-zinc-500">{result.reason}</p>
+      )}
+
+      {result?.available && (
+        <div className="mt-2">
+          {stale && (
+            <p className="mb-2 text-[11px] text-amber-300">
+              You&apos;ve edited the draft since this check — run it again.
+            </p>
+          )}
+
+          {flagged.length === 0 ? (
+            <p className="text-xs text-zinc-400">
+              Nothing in the backlog scores at or above {result.threshold}. Closest was{" "}
+              {hits[0] ? `#${hits[0].number} at ${hits[0].score.toFixed(3)}` : "nothing"}.
+            </p>
+          ) : (
+            <>
+              <div className="flex items-center gap-1.5">
+                <Files className="h-3.5 w-3.5 text-violet-300" />
+                <span className="text-xs font-semibold text-violet-300">
+                  {flagged.length === 1
+                    ? "This looks like an existing item"
+                    : "This looks like existing items"}
+                </span>
+              </div>
+              <ul className="mt-1.5 space-y-1.5">
+                {flagged.map((m) => (
+                  <li key={m.number}>
+                    <a
+                      href={m.htmlUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="group flex items-start gap-2 rounded-lg -mx-1.5 px-1.5 py-1 transition hover:bg-violet-500/10"
+                    >
+                      <span className="shrink-0 pt-px text-xs tabular-nums text-zinc-500 group-hover:text-violet-300">
+                        #{m.number}
+                      </span>
+                      <span className="min-w-0 flex-1 text-sm leading-snug text-zinc-300 group-hover:text-zinc-100">
+                        {m.title ?? "(no title in the corpus)"}
+                      </span>
+                      <span className="shrink-0 rounded-full bg-violet-500/15 px-2 py-0.5 text-xs font-medium tabular-nums text-violet-200">
+                        {m.score.toFixed(3)}
+                      </span>
+                      <ExternalLink className="mt-1 h-3 w-3 shrink-0 text-zinc-600 group-hover:text-violet-300" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+
+          {/* The provenance line. "0.86" means nothing without the encoder, the
+              operating point, and where that operating point came from — and an
+              unexplained number is the kind that gets "fixed" by the next
+              person to read it. */}
+          <p
+            className="mt-2 text-[11px] leading-relaxed text-zinc-600"
+            title={
+              `Cosine similarity between Titan v2 embeddings of your draft and each of the ` +
+              `${result.indexedDocuments} indexed issues and pull requests. Anything at or above ` +
+              `${result.threshold} is flagged — the precision-first operating point swept on a ` +
+              `150-pair labelled set (${
+                result.thresholdSource === "metrics"
+                  ? "read from metrics/dedup-eval.json"
+                  : "built-in fallback; metrics/dedup-eval.json was unreadable"
+              }), where it measured precision 0.909 and recall 0.800. It was tuned on the data it ` +
+              `was scored on, so treat those as optimistic.`
+            }
+          >
+            Titan v2 · {result.indexedDocuments} indexed documents · flagged at ≥{" "}
+            {result.threshold} · {result.lambdaMs} ms
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 

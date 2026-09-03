@@ -1123,10 +1123,13 @@ why `infra/refresh-cloudfront-origin.sh` must re-point it after every deploy.
      ▼                      ▼                         ✗ GitHub API — NO TOKEN
    SSM (2 params,      CloudWatch Logs               ✗ Bedrock — task role empty
    injected at task    /ecs/loop-dashboard           ✗ S3 — task role empty
-   start by the        (14-day retention)            ✗ Lambda — never called
+   start by the        (14-day retention)            ✗ Lambda — task role lacks
+                                                       lambda:InvokeFunctionUrl
    EXECUTION role)
 
-  ── SEPARATE, UNCONNECTED PATH ──
+  ── SEPARATE PATH — reached from the app, but only where credentials exist ──
+  POST /api/ideas/custom/dedup (custom-idea composer, owner-only)
+    └─► lib/dedup/infer-client.ts — SigV4, service "lambda"
   SigV4 caller ──► Lambda Function URL (AWS_IAM auth)
                    loop-dashboard-dedup-infer · nodejs22.x · arm64 · 512 MB · 15 s · no VPC
                      ├─► Bedrock InvokeModel  amazon.titan-embed-text-v2:0
@@ -1213,11 +1216,16 @@ invoice.*
 3. **Human/CLI access to the account runs through the root identity rather than a scoped IAM
    role with short-lived credentials.** The CI path is already federated (OIDC, no stored keys);
    the human path should be moved to match it.
-4. **Nothing calls the Lambda.** A working, correctly-secured, genuinely least-privilege
-   endpoint that no app route, client or script invokes. Its 5 invocations were its own
-   deployment tests. A completeness gap, not a risk (its `AWS_IAM` auth means it is not exposed).
-   Still true after the Ideas screen shipped near-duplicate detection: that path scores
-   precomputed vectors in-process and calls nothing remote but S3 — see §6.1.
+4. **The Lambda is called by one route, and the deployment cannot call it yet.**
+   `POST /api/ideas/custom/dedup` → `lib/dedup/infer-client.ts` signs SigV4 and posts the
+   owner's *draft* to the Function URL; the composer surfaces the match before he files.
+   That is the case the function was built for — draft text has no vector in the index, so
+   it must be embedded, whereas the Ideas screen's cards already have vectors and are
+   scored in-process (§6.1). **Two things are still missing in the cloud**: the task
+   definition sets no `DEDUP_INFER_FUNCTION_URL`, and the task role has no
+   `lambda:InvokeFunctionUrl` (item 1) — so in production the check reports itself
+   unavailable and the composer works exactly as before. It is exercised locally against
+   an `aws login` session.
 5. **Single AZ, single task, circuit breaker disabled.** Because CloudFront points at an
    ephemeral DNS name, **every** task replacement — deploy, host retirement, health-check
    failure — changes the origin and 502s the site until `refresh-cloudfront-origin.sh` runs. In
@@ -1271,7 +1279,7 @@ the 2026-09-01 brainstorm. The task: given two issues/PRs, are they the same req
 | Path | Status |
 |---|---|
 | The Next.js app | **Wired, in-process.** `lib/dedup/queue-duplicates.ts` → `lib/queues.ts`'s `loadIdeas()` → `GET /api/ideas` → the Ideas screen, which shows "Possible duplicate #27 · 0.862" on the card. It reads the precomputed index through `artifact-store.ts` and **embeds nothing at request time** — every idea on that screen already has a vector, so scoring is a lookup and a dot product (0.67 ms for a 44-idea queue). |
-| AWS Lambda | **Deployed and live** (§5) — `loop-dashboard-dedup-infer`, IAM-authed Function URL — and **still called by nothing.** |
+| AWS Lambda | **Deployed, live, and now called** (§5) — `loop-dashboard-dedup-infer`, IAM-authed Function URL. `POST /api/ideas/custom/dedup` → `lib/dedup/infer-client.ts` signs SigV4 and sends the owner's **unfiled draft** from the custom-idea composer, which has no vector to look up. Needs `DEDUP_INFER_FUNCTION_URL` **and** `lambda:InvokeFunctionUrl` on the task role; neither is set on the deployment yet, so in production it degrades to "not configured". |
 | The Scout itself | **Never calls it.** |
 
 The distinction that matters: the *model* is in a product flow; the *Lambda* is not. The Lambda's

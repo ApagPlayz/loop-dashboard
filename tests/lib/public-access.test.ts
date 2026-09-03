@@ -208,6 +208,11 @@ describe("the anonymous API surface", () => {
       "/api/ideas/123/chat",
       "/api/ideas/custom/ai",
       "/api/ideas/custom/chat",
+      // Embeds the owner's draft with Titan through the dedup inference Lambda
+      // — one billable Bedrock InvokeModel per call, and the only route in the
+      // app that can invoke that function. Anonymous reach would be a way to
+      // spend money AND to probe the private backlog's contents by similarity.
+      "/api/ideas/custom/dedup",
       "/api/launch/analyze",
       "/api/map/agent/123/draft",
       "/api/map/loop-edit",

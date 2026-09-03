@@ -30,8 +30,14 @@
  * would be strictly slower, strictly more expensive, and strictly more things
  * that can break, in exchange for nothing.
  *
- * So: the Lambda stays as it is, and is still called by nothing in the product.
- * That is a real fact about the deployment and it should be stated as one.
+ * So: the Lambda stays as it is, and this screen keeps scoring locally.
+ *
+ * The Lambda IS called by the product — from `lib/dedup/infer-client.ts`, for
+ * the case it was built for: the custom-idea composer, where the owner's draft
+ * has never been embedded and there is no vector to look up. The two paths are
+ * complementary, not rival: indexed text is scored in-process, un-indexed text
+ * goes to the service. Do not "unify" them by routing this screen through the
+ * Lambda — the paragraph above is why.
  *
  * This also keeps the promise ARCHITECTURE.md §8.4 makes about `lib/dedup`:
  * embeddings go where they are needed and nowhere else. Nothing here loads an
@@ -266,8 +272,13 @@ async function loadIndexPreferringTitan(): Promise<{
 /**
  * The swept operating point for `backend`, out of the metrics artifact when it
  * can be read and the built-in constant when it cannot. Never throws.
+ *
+ * Exported because the composer's draft check (`lib/dedup/infer-client.ts`)
+ * has to send the SAME number to the Lambda that this screen scores with.
+ * Two independently-chosen thresholds over the same encoder would make "0.86
+ * is a duplicate" mean two different things in two places in one product.
  */
-async function thresholdFor(
+export async function dedupThreshold(
   backend: IndexBackend,
 ): Promise<{ threshold: number; thresholdSource: "metrics" | "builtin" }> {
   try {
@@ -297,7 +308,7 @@ async function thresholdFor(
 async function buildScoringContext(): Promise<ScoringContext | null> {
   const loaded = await loadIndexPreferringTitan();
   if (!loaded) return null;
-  const { threshold, thresholdSource } = await thresholdFor(loaded.backend);
+  const { threshold, thresholdSource } = await dedupThreshold(loaded.backend);
   return {
     backend: loaded.backend,
     index: loaded.index,

@@ -487,12 +487,16 @@ re-derive a vector that is sitting in the index the Lambda then downloads.
 
 Consequences worth stating plainly:
 
-- **The deployed Lambda is still called by nothing.** This feature did not
-  change that. Its remaining job is unseen text (the Scout case above).
+- **The deployed Lambda is called from the custom-idea composer, not from this
+  screen.** The two are complementary: indexed text is scored in-process here,
+  un-indexed text (a draft the owner has not filed) goes to the service via
+  `POST /api/ideas/custom/dedup` → `lib/dedup/infer-client.ts`. The Scout's own
+  check-before-filing is still unwired.
 - The threshold is **read out of `metrics/dedup-eval.json` at runtime**, so
   re-running `evaluate.mjs` moves the product's operating point. The constants
   in `queue-duplicates.ts` are a documented fallback. The Lambda still
-  hard-codes 0.842 with no propagation.
+  hard-codes 0.842 as its env default — but the composer's client now **sends**
+  the metrics-derived threshold in the request, so that path propagates too.
 - Titan is preferred; MiniLM is the fallback, **and the threshold moves with
   it** (0.828, its own swept operating point) — a threshold calibrated for one
   encoder means nothing applied to another. Which encoder answered is reported

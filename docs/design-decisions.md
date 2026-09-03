@@ -309,9 +309,17 @@ vector sitting in the very index the Lambda then downloads from S3. Slower, bill
 failure modes, same number.
 
 **What this does NOT mean:** the Lambda was not a mistake and is not dead code. It scores
-text that is **not** in the corpus — which is exactly the Scout's case (§3 step 6 of the
-backlog: check before filing). That remains unwired. Stated plainly because it is on a
-résumé: **the endpoint is deployed, healthy, and still called by nothing in the product.**
+text that is **not** in the corpus — and that case is now wired: the **custom-idea
+composer** checks the owner's unfiled draft through it (`POST /api/ideas/custom/dedup` →
+`lib/dedup/infer-client.ts`). A draft has never been embedded, so there is no vector to
+look up and no local shortcut; going through the Function URL also keeps `bedrock:InvokeModel`
+and `s3:GetObject` on the Lambda's own execution role, leaving the web tier needing exactly
+one permission (`lambda:InvokeFunctionUrl`) instead of two broader ones.
+
+Stated plainly because it is on a résumé: **the endpoint is deployed, healthy, and called by
+the product — but not yet from the deployed container**, which has neither the Function URL
+in its task definition nor that IAM permission on its task role. The Scout's own
+check-before-filing (§3 step 6 of the backlog) remains unwired.
 
 **Rejected:**
 - **Call the Function URL from `/api/ideas`.** The name-drop option. See above.
