@@ -231,3 +231,45 @@ Not done in this pass because `config/loop-template/workflows/` is synced into o
 changing it has blast radius beyond the dashboard.
 
 **When:** 2026-09-02.
+
+---
+
+## 9. OIDC trust pinned to GitHub's immutable subject claim
+
+**Decided:** the deploy role `loopDashboardGitHubDeployRole` trusts exactly two subject
+strings, both ending `:ref:refs/heads/main`, and the one that actually matches is
+`repo:ApagPlayz@44716308/loop-dashboard@1301697678:ref:refs/heads/main`.
+
+**Why the odd-looking subject:** GitHub has begun issuing *immutable* subject claims that
+embed the numeric owner id and repository id rather than their current names. The plain
+`repo:ApagPlayz/loop-dashboard:ref:refs/heads/main` that every tutorial shows was rejected
+with a bare `Not authorized to perform sts:AssumeRoleWithWebIdentity`, and CloudTrail
+redacts `requestParameters` on a failed assume-role, so the error names nothing. The
+authoritative answer came from
+`gh api /repos/OWNER/REPO/actions/oidc/customization/sub`, which reports the
+`sub_claim_prefix` GitHub will actually mint. Check that endpoint first when an OIDC trust
+policy denies for no visible reason.
+
+This is a security improvement, not just a quirk: numeric ids survive a rename, so trust
+cannot be inherited by whoever claims the old name after a repo is renamed or deleted.
+
+**Why both strings:** the name-based form is kept as a fallback so the pipeline does not
+break if GitHub serves the legacy subject during the transition. Both are exact
+`StringEquals` matches on `main`, so this is two allowed values, not a widened wildcard.
+
+**Rejected:** `StringLike` with `repo:ApagPlayz/loop-dashboard:*`. It is the usual
+shortcut, but it lets *any* ref in the repo mint deploy credentials — including a branch
+pushed by anyone who can open a PR — and those credentials can push images and update the
+running service. Scoping to a single branch costs nothing and removes that path.
+
+**Permission scoping:** resource-level everywhere it exists — ECR pushes limited to the
+`loop-dashboard` repository, `ecs:UpdateService` to the one service ARN, CloudFront writes
+to distribution `E1B8EXHI4E3CYX`, and `iam:PassRole` to the two ECS roles under an
+`iam:PassedToService=ecs-tasks.amazonaws.com` condition. Only
+`ecr:GetAuthorizationToken`, `ecs:RegisterTaskDefinition` and
+`ec2:DescribeNetworkInterfaces` sit on `"*"`, because AWS gives those three no
+resource-level support. No managed policies are attached. The role has no `ssm:GetParameter`
+permission, because the app's secrets are injected into the container by the *task execution*
+role, not by CI — the pipeline never handles them.
+
+**When:** 2026-09-03.
