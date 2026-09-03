@@ -40,7 +40,10 @@ short-lived credentials that expire on their own. A leaked log cannot leak a per
 **Rejected:** storing `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` as repo secrets — the
 common approach, but a permanent credential sitting in a settings page forever.
 
-**When:** 2026-08-31. Not yet exercised — no AWS account exists.
+**When:** 2026-08-31. **Exercised 2026-09-02**: the OIDC provider, the deploy
+role, and the trust policy (pinned to `repo:<owner>/loop-dashboard:ref:refs/heads/main`
+— one repo, one branch, so a PR or fork run cannot assume it) are live, and a
+`Deploy to ECS` run has completed successfully end to end using them.
 
 ---
 
@@ -158,7 +161,7 @@ runtime.
 currently on the list (duplicate detection, retrieval, evaluation harnesses) is served by
 embeddings plus cosine similarity and honest metrics, none of which need the Python
 ecosystem. A second runtime means a second Dockerfile, a second deploy target, a second
-dependency tree, and a second thing to break — on a project that as of today has no AWS
+dependency tree, and a second thing to break — on a project that at the time had no AWS
 account, no database, and no deployment.
 
 **Rejected:** a Python service (scikit-learn/PyTorch) and SageMaker. Standing up a training
@@ -169,10 +172,17 @@ when to leave the heavy tool alone.
 the unused `declined`/`redraft` labels wired to a reason capture first). Adding Python *at
 the point the data justifies it* is a better story than adding it up front.
 
-**Design note:** the embedding layer takes an `EMBEDDING_BACKEND` switch (`local` now,
-`bedrock` stubbed), deliberately mirroring the existing `cli | api | bedrock` pattern in
-`lib/map-ai.ts`. Swapping to a Bedrock-hosted embedding model later is one file, and rerunning
+**Design note:** the embedding layer takes an `EMBEDDING_BACKEND` switch (`local` and
+`bedrock`), deliberately mirroring the existing `cli | api | bedrock` pattern in
+`lib/map-ai.ts`. Swapping to a Bedrock-hosted embedding model is one env var, and rerunning
 the same evaluation against both gives a backend comparison for free.
+
+**How it paid off (2026-09-02):** the switch cost nothing and returned a real result. Titan
+Text Embeddings V2 (AP 0.934 [0.856, 0.987]) and local MiniLM (AP 0.937 [0.844, 0.991]) are
+statistically indistinguishable on 150 labelled pairs, so the free local encoder stayed. The
+decision to make the backend a switch rather than a rewrite is what made that measurable
+instead of hypothetical. The verdict on decision 9 itself is unchanged: still no Python, and
+still no SageMaker.
 
 **When:** 2026-09-01.
 

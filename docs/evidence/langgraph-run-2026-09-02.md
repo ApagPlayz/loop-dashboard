@@ -271,7 +271,7 @@ this account. Fill out the Anthropic use case details form before using the mode
 have already filled out the form, try again in 15 minutes.
 ```
 
-What was tried against account `777164055831` in `us-east-1`:
+What was tried against account `<ACCOUNT_ID>` in `us-east-1`:
 
 | Path | Model id | Result |
 |---|---|---|
@@ -289,7 +289,7 @@ is pending. Amazon Titan embeddings on the same account and region still work fi
 Bedrock access in general.
 
 **Owner action required:** submit the Anthropic use-case details form in the Bedrock console
-for account 777164055831. Until then `DASHBOARD_AI_BACKEND=cli` is the working path locally,
+for account `<ACCOUNT_ID>`. Until then `DASHBOARD_AI_BACKEND=cli` is the working path locally,
 and Bedrock stays the deployment story rather than a demonstrated one.
 
 The `api` backend was not reachable either: `.env.local` contains `GITHUB_TOKEN`,

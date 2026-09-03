@@ -298,9 +298,9 @@ Everything is pre-built. Three gotchas already identified:
 - **CrewAI is a dead end for this stack** — Python-only; the unofficial JS ports are abandoned.
 - `langchain-core` had a critical RCE (CVE-2025-68664, CVSS 9.3) in Dec 2025 — pin versions.
 - **The GitHub token in `.env.local` is still the GitHub CLI's OAuth token** (`gho_`, confirmed
-  by hash comparison), not a fine-grained PAT. It leaked into a local log on 2026-08-31 and is
-  **still not rotated.** Scopes: `repo`, `workflow`, `read:org`, `gist` across the whole account.
-  `gh auth logout` does **not** revoke it — that needs
+  by hash comparison), not a fine-grained PAT. Credential hygiene: replace it with a scoped
+  fine-grained PAT limited to the target repo (the `gh` CLI's own OAuth token is far broader
+  than this project needs). `gh auth logout` does **not** revoke the old token — that needs
   github.com/settings/applications → "GitHub CLI" → Revoke.
 - Scripts import `.ts` files directly by path (`../../lib/dedup/baseline.ts`) — Node 26 strips
   types natively, no loader needed. Follow that pattern.
@@ -319,7 +319,7 @@ npm run build       # full Next.js build
 
 ## Open questions for the owner
 
-1. **Rotate the GitHub token** — still outstanding since 2026-08-31.
+1. **Replace the GitHub CLI token in `.env.local` with a scoped fine-grained PAT.**
 2. **Is `CRON_SECRET` set in Vercel?** The cron fails closed without it, by design.
 3. **The CGP loop brief** — approve the 5 drafted goals in
    `docs/drafts/cgp-loop-brief-draft-2026-08-18.md`, or change them? Blocking, 5 weeks open.

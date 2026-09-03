@@ -1,6 +1,8 @@
 # ML Practices Reference: Semantic Near-Duplicate Detection
 
-Written 2026-09-01. First ML project for this dashboard: detect near-duplicate GitHub issues/proposals using text embeddings + cosine similarity, evaluated against a lexical (keyword-based) baseline. Current stack: TypeScript, local embeddings via transformers.js. Later: swap the local embedding model for a Bedrock-hosted one, once there's an AWS account.
+Written 2026-09-01 as forward-looking research, *before* any of it was built. First ML project for this dashboard: detect near-duplicate GitHub issues/proposals using text embeddings + cosine similarity, evaluated against a lexical (keyword-based) baseline. Stack at the time: TypeScript, local embeddings via transformers.js, with a Bedrock-hosted encoder as the "later, once there's an AWS account" step.
+
+> **Status, 2026-09-02 — this document has been overtaken.** The AWS account, the Bedrock Titan V2 encoder, the versioned S3 artifact store, and a Lambda inference endpoint all now exist. Read this file for the *background research and methodology* it was written to capture; read [`ml-dedup.md`](./ml-dedup.md) for what was actually built and measured. Passages below that speak in the future tense about AWS are historical.
 
 **How to read this doc.** Every claim is tagged:
 - **VERIFIED** — confirmed by actually fetching a page (AWS docs, a paper, a library's own repo/registry) on or around 2026-09-01. A source URL is given.
@@ -13,7 +15,7 @@ Everything here was researched fresh (not from training-data memory) because pri
 
 ## 1. AWS embedding options, as they exist now
 
-You don't have an AWS account yet, so none of this is urgent — but it's useful to know what you're migrating *toward*, so today's TypeScript/transformers.js choices don't box you in.
+*(Written when there was no AWS account yet, to work out what to migrate toward so the TypeScript/transformers.js choices wouldn't box anything in. Titan Text Embeddings V2 is the option that was subsequently taken.)*
 
 ### What Bedrock currently offers (VERIFIED)
 

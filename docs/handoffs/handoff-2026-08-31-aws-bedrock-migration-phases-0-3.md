@@ -4,7 +4,7 @@
 - Pivoted this session from "is the loop working?" to "can this be sold?" — three research passes done, then **phases 0–3 of the AWS migration implemented, verified and pushed** (`b703ffb`). Tree clean, `main` == `origin/main`.
 - **Nothing is deployed to AWS. There is no AWS account.** Everything is written and locally verified; not one live AWS call has ever been made.
 - **Single next action:** owner creates an AWS account + `aws login`, then Phase 4 (multi-tenancy) starts. Until then Phase 4 is mostly unverifiable.
-- **Blocked on owner:** rotate the GitHub PAT (leaked into a local agent log this session), set `CRON_SECRET` in Vercel *before the next 6-hourly cron tick*, and the still-unanswered CGP brief question below.
+- **Blocked on owner:** replace the GitHub CLI token in `.env.local` with a scoped fine-grained PAT, set `CRON_SECRET` in Vercel *before the next 6-hourly cron tick*, and the still-unanswered CGP brief question below.
 - **Still open from 2026-08-19 and now 5 weeks stale:** CGP's loop is running against a completely **empty** `docs/loop-brief.md`. Not stale — empty.
 
 ## Goal
@@ -45,7 +45,7 @@ The three research deliverables are in this repo: `docs/plans/aws-bedrock-multit
 - Template prompts are large (Scout's is 11 KB). Duplicating them across both branches was avoided using **YAML anchors/aliases**, which GitHub Actions has supported since Sept 2025.
 - **AWS Amplify caps at Next.js 15** (repo is on 16.2.10) and **App Runner stops accepting new customers 30 Apr 2026**. Both already ruled out — don't re-evaluate them. Target is ECS Fargate.
 - Gating `localCheckoutForRepo` had to happen **inside** the function (returning `null`), not at the route: the three chat routes must keep working, just without host-filesystem access. `lib/local-mode.ts`'s own doc comment says "gate at the route, never in the libraries" — that rule has this one deliberate exception.
-- **macOS `sed` is not GNU `sed`.** An agent's redaction one-liner used GNU syntax, silently failed to redact, and printed `.env.local` unmasked into its transcript — which is why the GitHub PAT needs rotating.
+- **macOS `sed` is not GNU `sed`.** An agent's redaction one-liner used GNU syntax and silently failed to redact — always verify redaction output on macOS before trusting a one-liner.
 
 ## Running & resumable
 - **Port 3000: node PID 1112 — the Content Engine, a different project. Leave it alone.** Nothing of ours is listening on 3100/3200.
@@ -74,7 +74,7 @@ The three research deliverables are in this repo: `docs/plans/aws-bedrock-multit
 - CGP is a **public** repo — anything shipped there is world-readable.
 
 ## Open questions
-1. **Rotate the GitHub PAT now?** (It leaked into a local agent log this session.)
+1. **Replace the GitHub CLI token in `.env.local` with a scoped fine-grained PAT now, or later?**
 2. **Has `CRON_SECRET` been set in Vercel?** If the dashboard is deployed there, the cron now refuses to run without it — by design, but it needs the value.
 3. **CGP brief: approve the 5 drafted goals, or change them?** (Blocking, 5 weeks open.)
 4. **Given the market finding, still build Phase 4 multi-tenancy — or open-source first and wait for demand?**

@@ -3,7 +3,7 @@
 The dedup pipeline's built artifacts live in S3, not in git. This is the layout
 and the reasoning.
 
-**Bucket:** `loop-dashboard-ml-777164055831` (us-east-1, account 777164055831)
+**Bucket:** `loop-dashboard-ml-<ACCOUNT_ID>` (us-east-1, account `<ACCOUNT_ID>`)
 **Versioning:** enabled · **Public access:** fully blocked (all four settings)
 
 ## Why

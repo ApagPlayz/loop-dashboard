@@ -98,7 +98,7 @@ Two parallel agents, at the user's request:
 - `lib/github.ts` — `dispatchWorkflow`, `commitFile`, `getFileContent`, `REPOS.primary` (the "pilot" repo constant — still used as the default for anything not yet made project-aware, e.g. the Builds page, by design/agreed scope for this session).
 - `lib/projects.ts` — project registry (`config/projects.json` in THIS repo), `resolveProject`/`resolveProjectFromUrl`.
 - Typecheck: `npx tsc --noEmit`. Lint: `npx eslint . --quiet` (project has no dedicated typecheck npm script). Build: `npm run build`.
-- Full plan for the automation-settings feature (already executed) is preserved at `/Users/alessiopagliarulo/.claude/plans/shiny-drifting-manatee.md` if you want the original design reasoning.
+- Full plan for the automation-settings feature (already executed) is preserved at `~/.claude/plans/shiny-drifting-manatee.md` if you want the original design reasoning.
 
 ## Open questions / decisions pending
 - **Commit strategy** — one commit or several logical ones? (See Next steps #4 for a suggested split.)

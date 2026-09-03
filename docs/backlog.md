@@ -13,8 +13,8 @@ later, separate question. Multi-tenancy is deferred (see `design-decisions.md` �
 
 The `GITHUB_TOKEN` in `.env.local` is **the GitHub CLI's own OAuth token** (`gho_`),
 confirmed by hash comparison — not a fine-grained PAT as `.env.example` and `README.md`
-claim. It leaked into a local agent log on 2026-08-31. Its scopes are `repo`, `workflow`,
-`read:org`, `gist` across the entire account.
+claim. The `gh` CLI's own OAuth token is far broader than this project needs, so it
+should be replaced with a token scoped to just the target repo(s).
 
 **Steps, in this order:**
 1. Create a fine-grained PAT at <https://github.com/settings/personal-access-tokens>,
@@ -24,7 +24,7 @@ claim. It leaked into a local agent log on 2026-08-31. Its scopes are `repo`, `w
    code (`app/api/map/projects/checklist/route.ts` calls `listRepoSecrets`; writing into
    `.github/workflows/` needs the Workflows permission).
 2. Put the new value in `.env.local`. No code changes needed — everything reads one variable.
-3. Revoke the leaked token: <https://github.com/settings/applications> → "GitHub CLI" →
+3. Revoke the old CLI token: <https://github.com/settings/applications> → "GitHub CLI" →
    Revoke access. `gh auth logout` does **not** revoke, per gh's own help text.
 4. `gh auth login` again to restore the CLI (revoking signs `gh` out on all devices).
 

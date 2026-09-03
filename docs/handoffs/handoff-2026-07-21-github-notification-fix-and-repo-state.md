@@ -33,7 +33,7 @@ Everything below except the "This session" row is **carried over from before thi
 ## Done so far
 
 ### This session (verified directly)
-- Searched the connected Gmail account (`alessiopag2005@gmail.com`) — confirmed it is **not** the user's Georgia Tech mailbox and contains no `@gatech.edu` mail; ruled out Gmail as the source.
+- Searched the connected Gmail account (the owner's notification email address) — confirmed it is **not** the owner's school inbox and contains no mail from that second inbox; ruled out Gmail as the source.
 - User clarified the actual complaint: GitHub notification emails from this repo's own agent workflows ("github loop dashboard agent messages") landing in their separate, GT-only mailbox.
 - Grepped `config/loop-template/workflows/*.yml` and confirmed `claude-builder.yml` (line ~206) and `claude-scout.yml` (line ~120) both explicitly run `gh issue create`/PR creation with `--assignee ${{ github.repository_owner }} --reviewer ${{ github.repository_owner }}` by design (so work reaches the owner's queue) — this is intentional product behavior, **not a bug**, and was not changed.
 - Checked `gh auth status`/`gh api user` — current token (`ApagPlayz`, scopes: gist, read:org, repo, workflow) lacks the `notifications`/`user` scopes needed to read/change GitHub notification settings via API, and account-level notification-email changes shouldn't be made programmatically on the user's behalf anyway.

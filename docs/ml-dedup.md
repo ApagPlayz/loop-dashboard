@@ -1,10 +1,11 @@
 # Semantic near-duplicate detection over CGP proposals
 
-Backlog §3, "Build first". Everything here is built. Two steps are still
-blocked on something only a human (or AWS) can provide: **labelling the gold
-set**, and **an AWS account** to actually run the Titan v2 backend (2026-09-02
-update below — the code is written, typechecked, and unit-tested with a mocked
-AWS SDK, but has never made a real InvokeModel call).
+Backlog §3, "Build first". Everything here is built and has now been run end to
+end against real labels and a real Titan v2 index. **See "Results (2026-09-02)"
+near the bottom for the measured numbers** — several passages further up were
+written before that run and describe the pipeline as still blocked; they are
+kept as a record of the methodology decided in advance of seeing any result,
+and are flagged inline where they have been overtaken.
 
 The goal is to tell, for two GitHub issues/PRs in
 `ApagPlayz/content-generation-platform`, whether they are the same request. The
@@ -108,8 +109,9 @@ method on this data, not a wiring bug.
 **Pairs** — 132 documents give 8,646 pairs; 150 were selected. 112 of 132
 documents appear in at least one pair.
 
-**Evaluation** — runs end to end. See "the smoke test" below for why its current
-numbers are meaningless on purpose.
+**Evaluation** — runs end to end. At the time this section was written it had
+only ever been run on synthetic smoke-test labels; the real numbers are in
+"Results (2026-09-02)" below.
 
 ---
 
@@ -140,8 +142,8 @@ list, so no method is handicapped by being wired up differently.
 - **`dense_local`** — cosine similarity of the MiniLM (`local` backend)
   embeddings.
 - **`dense_titan`** — cosine similarity of the Titan v2 (`bedrock` backend)
-  embeddings. Present only once `data/embeddings-titan.json` exists (backlog
-  §2 — needs an AWS account). **Not yet run** — see "Bedrock status" below.
+  embeddings. Present only once `data/embeddings-titan.json` exists. It exists
+  and has been scored — see "Results (2026-09-02)" below.
 
 Titles are weighted ×2 and code fences are stripped for every method equally.
 
@@ -159,9 +161,9 @@ Titles are weighted ×2 and code fences are stripped for every method equally.
 | overlap_norm vs dense | 0.410 | 0.37 |
 
 (This table predates the local/titan split — `dense` here is what
-`metrics/dedup-eval.json` now calls `dense_local`. The equivalent
-`dense_local` vs `dense_titan` row is added automatically once both indexes
-exist; see "Bedrock status" below.)
+`metrics/dedup-eval.json` now calls `dense_local`. Both indexes now exist, so
+the `dense_local` vs `dense_titan` row is populated too: Spearman 0.80,
+top-100 Jaccard 0.64. See "Results (2026-09-02)" below.)
 
 This is **not** a quality measurement — without labels there is no notion of
 correct. It answers a cheaper question worth answering before spending an hour
@@ -173,7 +175,12 @@ before claiming BM25 is a meaningfully stronger baseline.
 
 ---
 
-## What the owner has to do — the only blocking step
+## Hand-labelling — the path that was designed, but not the one taken
+
+> **Overtaken by events.** The numbers in "Results (2026-09-02)" come from an
+> LLM labeller (`data/gold-pairs-llm.jsonl`), not from this tool. Only 10 pairs
+> have ever been hand-labelled here, all one class. This section stands as the
+> spec for building a real human gold set, which remains the honest next step.
 
 ```bash
 node scripts/ml/label.mjs         # interactive, resumable, one keypress per pair
@@ -239,12 +246,12 @@ file that speaks about the corpus.** Everything else describes the sample.
 
 ---
 
-## The smoke test, and why the current numbers are meaningless
+## The smoke test
 
-With no `data/gold-pairs.jsonl`, `evaluate.mjs` fabricates labels from a seeded
+With no labelled gold file, `evaluate.mjs` fabricates labels from a seeded
 RNG, prints a banner, and stamps `"labels": "synthetic-smoke-test"` plus a
 `warning` field into the JSON. The point is to prove every code path runs before
-the owner spends an hour labelling.
+anyone spends an hour labelling.
 
 The labels are drawn independently of every score, so the correct outcome is
 **chance**: average precision ≈ the base rate, ROC AUC ≈ 0.5. That is what
@@ -252,9 +259,11 @@ happens — across five label seeds, AUC landed at 0.41 / 0.48 / 0.53 / 0.56 /
 0.63, and AP tracked the base rate. A method scoring *well* here would indicate
 a bug, not a result.
 
-**The current `metrics/dedup-eval.json` contains no real result. Do not quote
-any number from it.** No comparison between the baseline and the dense model has
-been made, because there are no labels to make it against.
+**This is no longer the state of `metrics/dedup-eval.json`.** It now carries
+`"labels": "gold"`, `"warning": null`, and
+`"gold_file": "data/gold-pairs-llm.jsonl"` — real labels over a real Titan
+index. See "Results (2026-09-02)" below. Check those two fields before quoting
+any number out of that file.
 
 ---
 
@@ -309,8 +318,10 @@ not in `package.json` itself, so a future lockfile change to
 `@anthropic-ai/bedrock-sdk` could remove it without warning. If Bedrock
 embeddings ever stop resolving, that dependency chain is where to look first.
 
-**It has never made a real InvokeModel call — there is still no AWS account
-(backlog §2).** What *has* been verified:
+**It has since made real InvokeModel calls** — 132 documents embedded in 9.8 s
+(~74 ms/doc), producing `data/embeddings-titan.json` (1024 dims, 1.2 MB), and
+that index is what the numbers in "Results" below are computed from. What was
+verified *before* that first live call, and still holds:
 
 - `npx tsc --noEmit` is clean with the real (not mocked) type definitions from
   `@aws-sdk/client-bedrock-runtime`.
@@ -334,9 +345,10 @@ embeddings ever stop resolving, that dependency chain is where to look first.
   between them) was verified by temporarily pointing a **copy** of the local
   index at `data/embeddings-titan.json`, running the full pipeline, confirming
   Spearman = 1.0 / Jaccard = 1.0 (correct, since it was a literal copy — a
-  sanity check, not a result), then **deleting that file** before finishing.
-  `data/embeddings-titan.json` does not exist in the repo; nothing here claims
-  a Titan result that wasn't produced by Titan.
+  sanity check, not a result), then **deleting that file** before finishing —
+  so that nothing here could claim a Titan result that wasn't produced by
+  Titan. The `data/embeddings-titan.json` that exists today is the real one,
+  written by a live Bedrock run.
 
 **1024 dims chosen for Titan v2** (the API default, and the model's full
 Matryoshka-trained width) rather than 512 or 256: at 132 documents the
@@ -346,8 +358,8 @@ local-vs-Titan comparison instead of adding "which truncation" as a second
 one. `EMBEDDING_BEDROCK_DIMENSIONS` overrides it if cost ever matters at a
 larger corpus.
 
-**What to run once an AWS account with Bedrock access to
-`amazon.titan-embed-text-v2:0` exists**, in order:
+**The sequence that was run**, in order, needing no code changes — the same
+harness that already scored MiniLM picked up the Titan index automatically:
 
 ```bash
 EMBEDDING_BACKEND=bedrock node scripts/ml/build-index.mjs   # → data/embeddings-titan.json
@@ -355,17 +367,84 @@ node scripts/ml/evaluate.mjs                                 # scores dense_loca
 node scripts/ml/compare-encoders.mjs                          # readable table + label-free comparison
 ```
 
-No code changes needed — the same harness that already scores MiniLM will
-pick up the Titan index automatically once it exists.
+---
+
+## Results (2026-09-02)
+
+`metrics/dedup-eval.json`, generated 2026-09-02T21:03:30Z.
+`gold_file: data/gold-pairs-llm.jsonl`, `labels: "gold"`, `warning: null`.
+
+**150 labelled pairs**: 25 `duplicate`, 47 `related`, 78 `unrelated`.
+
+### Where the labels came from — read this before quoting anything
+
+The 150 labels are **LLM-assigned** (Claude Opus, three independent batches,
+with every method's score withheld from the labeller so it could not anchor on
+them). The file header says so on line 1, and the file is deliberately separate
+from `data/gold-pairs.jsonl` so the two can never be confused.
+
+**Only 10 pairs have ever been hand-labelled by the owner** (an interrupted
+`label.mjs` session), and all 10 are the same class, so they validate nothing.
+The passage above titled "What the owner has to do — the only blocking step"
+describes the hand-labelling path; it was not the path actually taken, and
+`label.mjs` remains the right tool if a real human gold set is ever built.
+
+This has an uneven effect on the two comparisons in the table, and the
+distinction is the important part:
+
+- **Dense vs lexical is confounded.** The labeller judged semantic
+  equivalence; dense encoders model semantic equivalence. The dense methods are
+  being scored against a criterion produced by a system that shares their
+  inductive bias. Do not report the ~0.15 AP gap over BM25 as "embeddings beat
+  keyword search" without saying this.
+- **Titan vs MiniLM is not confounded.** Whatever bias the labeller has applies
+  identically to both encoders. That comparison survives, which is why it is
+  the one worth quoting.
+
+### Average precision, positive class = `duplicate`
+
+1,000-replicate bootstrap, 95% percentile intervals, seed 20260901.
+
+| Method | AP | 95% CI | ROC AUC |
+| --- | --- | --- | --- |
+| `overlap` | 0.622 | [0.410, 0.791] | 0.856 |
+| `bm25` | 0.760 | [0.592, 0.898] | 0.955 |
+| `overlap_norm` | 0.807 | [0.644, 0.922] | 0.954 |
+| `dense_local` (MiniLM, 384d) | **0.937** | [0.844, 0.991] | 0.985 |
+| `dense_titan` (Titan v2, 1024d) | **0.934** | [0.856, 0.987] | 0.982 |
+
+**The two encoders are statistically indistinguishable.** [0.844, 0.991] and
+[0.856, 0.987] overlap almost entirely; at n = 150 this dataset cannot separate
+them. The correct conclusion is *not* "MiniLM wins" — it is "no measurable
+difference, so keep the free local one." Under the `duplicate_or_related`
+positive class the point estimates reverse (Titan 0.981 [0.960, 0.994], MiniLM
+0.974 [0.946, 0.992]) with intervals overlapping just as heavily, which is what
+noise looks like and is the reason to distrust a point estimate quoted alone.
+
+### Operating points
+
+Ship the threshold from `precision_first_operating_point`, not from best-F1: a
+false "duplicate" that suppresses a good proposal costs more than a miss.
+
+| Method | Threshold | Precision | Recall |
+| --- | --- | --- | --- |
+| `bm25` | 380.65 | 1.000 | 0.16 |
+| `dense_local` | 0.828 | 0.950 | 0.76 |
+| `dense_titan` | 0.842 | 0.909 | 0.80 |
+
+BM25 reaching precision 1.0 at recall 0.16 is the whole argument in one row:
+the lexical baseline is only trustworthy on the handful of pairs that share
+enough rare words, and misses 21 of 25 duplicates to get there.
+
+### Label-free encoder agreement
+
+`dense_local` vs `dense_titan` over all 8,646 pairs: **Spearman 0.80**,
+top-100 Jaccard **0.64**. They rank similarly but not identically — so the
+indistinguishable AP scores above are two genuinely different rankings landing
+at the same quality, not one model quietly reproducing the other.
 
 ## Not done, on purpose
 
-- **The label-free MiniLM-vs-Titan comparison** (Spearman rank correlation and
-  top-100 Jaccard overlap, exactly like the existing overlap-vs-bm25-vs-dense
-  table above) is wired and tested but has no real numbers yet — it needs
-  `data/embeddings-titan.json`, i.e. it needs the AWS account. This is the one
-  piece of the model-comparison deliverable that is genuinely blocked on
-  something outside this repo, not on missing code.
 - **Tests for the pre-existing lexical baselines.** `tests/lib/dedup/` now
   exists (added alongside the Bedrock work) but only covers `embed.ts` and
   `scripts/ml/_shared.mjs`'s `buildMethods`/`loadAllEmbeddings`. Still worth
@@ -382,9 +461,26 @@ pick up the Titan index automatically once it exists.
      regression that would silently invalidate the baseline comparison.
   5. `extract-corpus.mjs` null handling — `body: null`, missing `user`,
      `merged_at` absent on issues.
-- **Shipping it** (backlog §3 step 6: Scout checks the index before filing, queue
-  UI shows "similar to #114 (0.87)"). That needs a threshold, and a threshold
-  needs the labels.
+- **Shipping it into the product** (backlog §3 step 6: Scout checks the index
+  before filing, queue UI shows "similar to #114 (0.87)"). The threshold now
+  exists (0.842, swept above) and the model is deployed — but nothing in the
+  dashboard UI calls it yet. That wiring is the remaining work.
+
+## Downstream of this pipeline
+
+Two things were built on top of what this document describes, and are
+documented separately:
+
+- **[`ml-artifacts-s3.md`](./ml-artifacts-s3.md)** — the built indexes, corpus,
+  metrics and labels now live in a versioned S3 bucket as SHA-256
+  content-addressed objects, loaded by `lib/dedup/artifact-store.ts` with a
+  local fallback. `scripts/ml/_shared.mjs`'s `loadAllEmbeddings()` calls into
+  that module rather than reimplementing the fallback.
+- **A live inference endpoint** — `infra/lambda-dedup-infer/`, an AWS Lambda
+  (Node 22, arm64, zero npm dependencies, IAM-authed Function URL) that embeds
+  query text through Bedrock, scores it against the S3-hosted Titan index
+  cached in module scope after cold start, and returns ranked matches with a
+  duplicate flag at the 0.842 threshold. Warm latency 146–275 ms.
 
 ## Known gotcha for the container
 
