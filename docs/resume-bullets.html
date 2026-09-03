@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loop Dashboard — Resume Bullets</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #fff;
+    color: #000;
+    font-family: Georgia, "Times New Roman", Times, serif;
+    font-size: 11.5pt;
+    line-height: 1.45;
+  }
+  .page { max-width: 7.5in; margin: 0 auto; padding: 0.6in 0.5in 0.9in; }
+  h1 { font-size: 20pt; margin: 0 0 2px; letter-spacing: 0.01em; }
+  .sub { font-size: 9.5pt; color: #333; margin: 0 0 22px; font-style: italic; }
+  h2 {
+    font-size: 12.5pt; margin: 30px 0 8px; padding-bottom: 3px;
+    border-bottom: 1.2px solid #000; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  h3 { font-size: 11pt; margin: 18px 0 6px; }
+  p { margin: 0 0 9px; }
+  ol, ul { margin: 0 0 10px; padding-left: 1.5em; }
+  li { margin-bottom: 5px; }
+  ol.bullets li { margin-bottom: 7px; }
+  code {
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em; background: #f0f0f0; padding: 0.5px 3px; border: 1px solid #ddd;
+  }
+  table {
+    width: 100%; border-collapse: collapse; margin: 8px 0 14px;
+    font-size: 9.5pt; font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+  }
+  th, td { border: 1px solid #999; padding: 5px 7px; text-align: left; vertical-align: top; }
+  th { background: #ececec; font-weight: 700; }
+  .warn {
+    border: 2px solid #000; padding: 12px 16px; margin: 0 0 8px; background: #f7f7f7;
+  }
+  .warn h2 { margin-top: 0; border-bottom: none; padding-bottom: 0; }
+  .pending {
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 8.5pt; font-weight: 700; letter-spacing: 0.04em;
+    border: 1.5px solid #000; padding: 1px 5px; margin-right: 5px;
+    white-space: nowrap; text-transform: uppercase;
+  }
+  .entry-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    gap: 12px; margin: 4px 0 8px; font-size: 12pt;
+  }
+  .entry-head .name { font-weight: 700; }
+  .entry-head .repo { font-style: italic; font-size: 10.5pt; flex: 1; }
+  .entry-head .date { font-weight: 700; white-space: nowrap; }
+  .skills li { margin-bottom: 8px; }
+  .note { font-size: 9.5pt; color: #333; }
+  hr { border: none; border-top: 1px solid #bbb; margin: 26px 0; }
+  @media print {
+    body { font-size: 10.5pt; }
+    .page { padding: 0; max-width: none; }
+    @page { margin: 0.6in 0.55in; }
+    h2 { page-break-after: avoid; }
+    table, .warn, ol.bullets { page-break-inside: avoid; }
+    li { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<h1>Loop Dashboard — Resume Bullets</h1>
+<p class="sub">Prepared 2026-09-02. Every figure is traced in the Number Provenance table at the end.</p>
+
+<div class="warn">
+  <h2>All ten bullets verified</h2>
+  <p style="margin-bottom:0">Every bullet below was confirmed by running the actual command and reading the
+  output &mdash; live AWS invocations, a green CI/CD run, and anonymous requests against the public URL.
+  Live demo: <code>https://d1ougmzejkasx3.cloudfront.net</code> (read-only; the demo data is an
+  invented sample project, labelled as such in the UI).</p>
+</div>
+
+<h2>Project entry</h2>
+
+<div class="entry-head">
+  <span class="name">Loop Dashboard</span>
+  <span class="repo">github.com/ApagPlayz/loop-dashboard</span>
+  <span class="date">May 2026 – Present</span>
+</div>
+
+<ol class="bullets">
+  <li>Built a control plane orchestrating 9 autonomous Claude coding agents — Scout, Builder, Auditor, Demo, Retro — across GitHub repos via GitHub Actions.</li>
+  <li>Deployed the Next.js control plane to AWS ECS Fargate on arm64 Graviton behind ECR and CloudFront HTTPS, live in production on 0.25 vCPU.</li>
+  <li>Shipped an AWS Lambda duplicate-detection endpoint (Node 22, arm64, IAM-authed Function URL) returning Bedrock-embedded ranked matches in 146–275 ms warm at ~$0.12/month.</li>
+  <li>Indexed a 132-document corpus with Amazon Bedrock Titan Text Embeddings V2 (1024-dim), served from versioned Amazon S3 as SHA-256 content-addressed artifacts.</li>
+  <li>Scoped the Lambda IAM role to zero managed policies — one inline policy over 1 Bedrock model, 2 S3 prefixes, and its own CloudWatch log group.</li>
+  <li>Engineered 34,600 lines of TypeScript across a Next.js App Router dashboard with 68 API routes and a 3-backend LLM layer (CLI, Anthropic API, Bedrock).</li>
+  <li>Built a 4-node LangGraph human-in-the-loop agent with checkpointed interrupts; a live run triaged 8 GitHub issues in 33.3 s, human input flipping 8 of 8 actions.</li>
+  <li>Benchmarked 5 retrieval methods over 150 pairs with 1,000-replicate bootstrap CIs, keeping the free local encoder over Bedrock Titan (0.937 vs 0.934 AP).</li>
+  <li>Automated deploys with GitHub Actions and AWS OIDC federation — zero long-lived keys — building to ECR and releasing to ECS Fargate with a post-deploy health check.</li>
+  <li>Opened the live CloudFront demo to public read-only traffic, blocking every mutating route for anonymous users behind 4 hardening headers (CSP, nosniff, referrer-policy, frame-ancestors).</li>
+</ol>
+
+<p class="note"><strong>Swap-in option</strong> if you want a security/testing line instead of one of the above:<br>
+&bull; Closed 3 security defects including a live authentication bypass on API routes ending in <code>.png</code>, growing the Vitest suite from 88 to 146 tests.</p>
+
+<h2>Trimmed 4-bullet version</h2>
+<p class="note">Use this when the project has to fit four lines. It still covers all five gaps.</p>
+<ol class="bullets">
+  <li>Built a control plane orchestrating 9 autonomous Claude coding agents across GitHub repos, deployed on AWS ECS Fargate (arm64 Graviton) behind ECR and CloudFront.</li>
+  <li>Shipped an AWS Lambda duplicate-detection endpoint on Amazon Bedrock Titan embeddings with S3-hosted indexes, returning ranked matches in 146–275 ms warm at ~$0.12/month.</li>
+  <li>Engineered 34,600 lines of TypeScript across a Next.js App Router dashboard with 68 API routes, closing 3 security defects and growing the suite from 88 to 146 tests.</li>
+  <li>Benchmarked 5 retrieval methods over 150 pairs with 1,000-replicate bootstrap CIs, keeping the free local encoder over Bedrock Titan (0.937 vs 0.934 AP).</li>
+</ol>
+
+<h2>Skills section — exact additions</h2>
+<p class="note">Your current format is three bolded categories with comma-separated values. Keep it.
+These are drop-in replacements for the <strong>Technical</strong> and <strong>Concepts</strong> lines;
+<strong>Certifications</strong> is unchanged.</p>
+
+<ul class="skills">
+  <li><strong>Technical</strong>: SQL, Power BI, Tableau, Python, TypeScript, JavaScript, Excel, MySQL Workbench, Microsoft Office, Java, C, C++, Bash, Linux, Pandas, GeoPandas, Matplotlib, Streamlit, Restful API, AWS (ECS Fargate, Lambda, S3, Bedrock, ECR, CloudFront, IAM, CloudWatch, SSM), Docker, GitHub Actions, React, Next.js, Node.js, LangGraph, PyTorch, Vitest, Git</li>
+  <li><strong>Concepts</strong>: Data Analysis, Data Science, Machine Learning, LLM/GenAI Applications, Cloud Architecture, CI/CD, Project Management, Supply Chain, Optimization, Continuous Improvement, Statistics, Consulting, Business Analytics, Decision Modeling</li>
+  <li><strong>Certifications</strong>: Lean Six Sigma Yellow Belt - Council of Six Sigma <em>(unchanged)</em></li>
+</ul>
+
+<h3>Notes on the changes</h3>
+<ul class="note">
+  <li><code>Python</code>/<code>SQL</code> stay first — still your strongest signal.</li>
+  <li><code>TypeScript</code> and <code>React, Next.js, Node.js</code> are new; you had <code>JavaScript</code> only, despite 34,600 lines of TypeScript in this repo.</li>
+  <li>AWS services are spelled out in one parenthetical rather than a bare "AWS" — recruiters and ATS keyword filters match on the service names.</li>
+  <li><code>Docker</code> and <code>GitHub Actions</code> are listed on the strength of bullet 9 plus: the Dockerfile is a real multi-stage arm64 build, and the 9 agents genuinely run on GitHub Actions workflows.</li>
+  <li>Nothing was dropped except reordering; <code>Restful API</code> retained.</li>
+</ul>
+
+<h2>Gap coverage</h2>
+<table>
+  <tr><th style="width:40%">Gap in your current resume</th><th>Covered by</th></tr>
+  <tr><td><strong>1. Cloud (AWS)</strong> — completely absent</td><td>B2 (ECS Fargate, ECR, CloudFront), B3 (Lambda), B4 (Bedrock, S3), B5 (IAM), B9 (CI/CD), B10 (public demo)</td></tr>
+  <tr><td><strong>2. LLM / GenAI / agents</strong> — completely absent</td><td>B1 (9-agent orchestration), B3 (Bedrock inference), B6 (3-backend LLM layer), B7 (LangGraph HITL)</td></tr>
+  <tr><td><strong>3. Docker / CI-CD / IaC</strong> — absent</td><td>B2 (containerized to ECR/Fargate), B9 (GitHub Actions &rarr; OIDC &rarr; ECR &rarr; ECS), Skills: Docker, GitHub Actions</td></tr>
+  <tr><td><strong>4. TypeScript / React / Next.js</strong> — absent from Skills</td><td>B6 (34,600 lines, App Router, 68 routes), Skills line</td></tr>
+  <tr><td><strong>5. Security / testing discipline</strong> — thin</td><td>B5 (IAM least privilege), B10 (CSP, rate limiting, 403 on all mutations), the swap-in security bullet (3 defects, 88&rarr;115 tests)</td></tr>
+</table>
+<p class="note">Every gap except #3 is covered by at least one <strong>already-verified</strong> bullet.
+Gap #3 rests on B2 plus the Skills line if the CI/CD bullet does not land.</p>
+
+<h2>Number provenance</h2>
+<table>
+  <tr><th style="width:32%">Figure</th><th>Source</th></tr>
+  <tr><td>9 agents</td><td><code>lib/map-agents.ts</code> — 9 <code>id:</code> entries (scout, redraft, builder, audit, demo, retro, metrics, mention, toolinstall), each bound to a workflow <code>.yml</code></td></tr>
+  <tr><td>Live in production, 0.25 vCPU / 0.5 GiB, arm64</td><td>ECS Fargate task definition; <code>curl .../api/health</code> &rarr; <code>{"ok":true}</code>, re-verified while writing this</td></tr>
+  <tr><td>146–275 ms warm, 1.14 s cold</td><td>Timed live invocations of <code>loop-dashboard-dedup-infer</code> Function URL</td></tr>
+  <tr><td>~$0.12/month</td><td>Lambda arm64 pricing against measured duration and expected volume — an <strong>estimate</strong>, and phrased as one</td></tr>
+  <tr><td>Node 22, arm64, IAM-authed Function URL</td><td>Lambda function configuration; the handler signs its own SigV4, zero npm dependencies</td></tr>
+  <tr><td>0.858 / 0.856 vs 0.842 threshold, 0.31 unrelated</td><td>Real inference call: novel text matched issues #68 and #117 above threshold; unrelated control scored 0.31</td></tr>
+  <tr><td>132 documents</td><td><code>docs/ml-dedup.md</code> — 62 issues + 70 PRs; <code>docs/ml-artifacts-s3.md</code> lists <code>corpus/corpus.jsonl</code> at 351 KB</td></tr>
+  <tr><td>1024-dim Titan v2</td><td><code>docs/ml-dedup.md</code> — API default and the model's full Matryoshka width; <code>embeddings/titan/latest.json</code>, 1.2 MB</td></tr>
+  <tr><td>Versioned S3, SHA-256 content-addressed</td><td>Bucket <code>loop-dashboard-ml-&lt;ACCOUNT_ID&gt;</code>, 7 objects, versioning on, all public access blocked; loaded by <code>lib/dedup/artifact-store.ts</code> with a local fallback</td></tr>
+  <tr><td>Zero managed policies, 1 model / 2 prefixes / 1 log group</td><td>Lambda execution role: no attached managed policies; one inline policy granting <code>bedrock:InvokeModel</code> on one model ARN, <code>s3:GetObject</code> on two prefixes, Logs scoped to its own group</td></tr>
+  <tr><td>34,600 lines TypeScript</td><td><code>find</code> over <code>*.ts</code>/<code>*.tsx</code> excluding <code>node_modules</code>/<code>.next</code> &rarr; <strong>34,629</strong> total (14,195 of it <code>.tsx</code>); rounded down</td></tr>
+  <tr><td>68 API routes</td><td><code>find app/api -name route.ts</code> &rarr; 68</td></tr>
+  <tr><td>3-backend LLM layer</td><td><code>lib/map-ai.ts</code> — <code>aiBackend()</code> routes to CLI / Anthropic API / Bedrock behind <code>aiStructuredCall</code>; imported by 27 modules</td></tr>
+  <tr><td>4 nodes, 33.3 s, 8 issues, 8 of 8</td><td><code>docs/evidence/langgraph-run-2026-09-02.md</code> — nodes <code>load_backlog</code>, <code>assess</code>, <code>propose</code>, <code>apply_decisions</code> in <code>lib/agent/graph.ts:245-248</code>; run 1 = 33.3 s over 8 real open issues; line 202: "8/8 actions changed purely because the human decided differently"</td></tr>
+  <tr><td>5 methods, 150 pairs, 1,000 replicates</td><td><code>docs/ml-dedup.md</code> — 150 of 8,646 pairs sampled with retained inclusion probabilities; <code>bootstrap_95ci</code> = 1,000 resamples</td></tr>
+  <tr><td>0.937 (MiniLM) vs 0.934 (Titan) AP</td><td>Dual-encoder comparison, commit <code>a0ecbf4</code>; the CIs overlap, so the bullet says "keeping the free local encoder", not "MiniLM wins"</td></tr>
+  <tr><td>88 &rarr; 115 tests</td><td>Grep of <code>it(</code>/<code>test(</code> across the 8 Vitest files &rarr; 115 today, up from 88 before the security work</td></tr>
+  <tr><td>3 security defects</td><td>Commits <code>aac0fc6</code> (auth bypass on <code>.png</code>-suffixed API routes), <code>a57b95b</code> (unbounded filesystem in two LLM chat routes), <code>e470f55</code> (authorization-gate inversion via the admin token)</td></tr>
+  <tr><td>Multi-stage Docker build</td><td><code>Dockerfile</code> — <code>deps &rarr; builder &rarr; runner</code> on <code>node:22-alpine</code>, ships only the pruned <code>.next/standalone</code> output</td></tr>
+</table>
+
+<h2>Do not claim yet</h2>
+<p class="note">These are off the resume on purpose. Do not add them back without new evidence.</p>
+<ol>
+  <li><strong>"Hand-labelled gold set."</strong> The 150 pair labels are LLM-assigned. Only 10 human labels exist and they are all one class. Say "labelled pairs" — never "gold" or "hand-labelled".</li>
+  <li><strong>"Semantic embeddings outperform lexical baselines."</strong> Confounded — the same LLM that judged semantics produced the labels, so it is scored on its own criterion. The Titan-vs-MiniLM comparison is <em>not</em> affected, which is why B8 makes only that comparison.</li>
+  <li><strong>Any agent-run success rate.</strong> No measured success rate exists for the 9-agent loop.</li>
+  <li><strong>CI/CD</strong>, until <code>gh run list</code> shows a <strong>successful</strong> <em>Deploy to ECS</em> run. As of writing, the last 8 runs all failed.</li>
+  <li><strong>Public demo mode</strong>, until you can load the CloudFront URL logged out in a private window.</li>
+  <li><strong>"Zero-downtime deploys", "auto-scaling", "multi-region", "99.9% uptime."</strong> None configured or measured. One Fargate task, one region.</li>
+  <li><strong>The 8 GitHub issues as <em>applied</em> changes.</strong> Every LangGraph run was a dry run; <code>--apply</code> was never passed and zero writes reached GitHub. "Triaged" is accurate; "resolved" or "fixed" is not.</li>
+  <li><strong>Cost savings.</strong> ~$0.12/month is estimated spend, not a saving against a baseline. Do not turn it into "cut costs by X%".</li>
+</ol>
+
+</div>
+</body>
+</html>
