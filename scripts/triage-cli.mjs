@@ -47,20 +47,41 @@ const has = (name) => process.argv.includes(`--${name}`);
 
 const DEFAULT_REPO_SLUG = "ApagPlayz/content-generation-platform";
 
+/**
+ * Load .env.local into process.env (real env always wins).
+ *
+ * Next.js does this automatically for the dashboard, but this script runs as a
+ * plain Node process, so without it settings like DASHBOARD_AI_BEDROCK_REGION
+ * are silently ignored here while working fine in the app.
+ */
+async function loadDotEnvLocal() {
+  let text;
+  try {
+    text = await fs.readFile(path.join(ROOT, ".env.local"), "utf-8");
+  } catch {
+    return; /* no .env.local — nothing to load */
+  }
+  for (const line of text.split("\n")) {
+    const m = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!m) continue; /* blank line or # comment */
+    const key = m[1];
+    if (process.env[key] !== undefined) continue; /* real env wins */
+    let value = m[2].trim();
+    if (
+      value.length >= 2 &&
+      ((value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'")))
+    ) {
+      value = value.slice(1, -1);
+    }
+    process.env[key] = value;
+  }
+}
+
 /** Read GITHUB_TOKEN from the environment, falling back to .env.local. */
 async function loadToken() {
-  if (process.env.GITHUB_TOKEN) return true;
-  try {
-    const env = await fs.readFile(path.join(ROOT, ".env.local"), "utf-8");
-    const m = env.match(/^GITHUB_TOKEN=(.+)$/m);
-    if (m && m[1].trim()) {
-      process.env.GITHUB_TOKEN = m[1].trim();
-      return true;
-    }
-  } catch {
-    /* no .env.local — fall through */
-  }
-  return false;
+  await loadDotEnvLocal();
+  return Boolean(process.env.GITHUB_TOKEN);
 }
 
 /* ------------------------------------------------------------------ */
