@@ -55,7 +55,7 @@ function DiffView({ patch }: { patch: string | null }) {
   }
   const lines = patch.split("\n");
   return (
-    <pre className="max-h-96 overflow-auto rounded-md border border-zinc-800 bg-black p-3 text-[11px] leading-relaxed">
+    <pre className="max-h-72 overflow-auto rounded-md border border-zinc-800 bg-black p-3 text-[11px] leading-relaxed">
       {lines.map((ln, i) => {
         let cls = "text-zinc-400";
         if (ln.startsWith("+") && !ln.startsWith("+++"))
@@ -70,6 +70,91 @@ function DiffView({ patch }: { patch: string | null }) {
         );
       })}
     </pre>
+  );
+}
+
+/**
+ * The file list for one commit.
+ *
+ * A "roll out audited workflow updates from the dashboard template" commit
+ * touches a hundred files. Rendering every one of their diffs inline stacked a
+ * hundred 384px-tall panels into the page and took `document.body.scrollHeight`
+ * past 44,000px — the rest of the page effectively disappeared below it, and
+ * there was no way to find a specific file.
+ *
+ * So: the file list scrolls inside its own bounded container, and each file is
+ * a collapsible row showing its path and +/- counts. Small commits (the common
+ * case — a single instruction edit) still open fully expanded, so nothing about
+ * the everyday path changes.
+ */
+const EXPAND_ALL_UP_TO = 3;
+
+function CommitDiff({ files }: { files: FilePatch[] }) {
+  const expandedByDefault = files.length <= EXPAND_ALL_UP_TO;
+  const [overrides, setOverrides] = useState<Record<string, boolean>>({});
+  const isOpen = (name: string) => overrides[name] ?? expandedByDefault;
+
+  return (
+    <div className="rounded-md border border-zinc-800 bg-zinc-950/40">
+      <div className="flex items-center justify-between gap-2 border-b border-zinc-800 px-3 py-2">
+        <p className="text-[11px] text-zinc-500">
+          {files.length} file{files.length === 1 ? "" : "s"} changed
+          {!expandedByDefault && " · click a file to see its lines"}
+        </p>
+        {!expandedByDefault && (
+          <button
+            onClick={() =>
+              setOverrides(
+                Object.fromEntries(
+                  files.map((f) => [
+                    f.filename,
+                    !files.every((x) => isOpen(x.filename)),
+                  ]),
+                ),
+              )
+            }
+            className="shrink-0 text-[11px] text-zinc-500 hover:text-zinc-300"
+          >
+            {files.every((f) => isOpen(f.filename))
+              ? "Collapse all"
+              : "Expand all"}
+          </button>
+        )}
+      </div>
+      <div className="max-h-[28rem] space-y-1 overflow-auto p-2">
+        {files.map((f) => {
+          const open = isOpen(f.filename);
+          return (
+            <div key={f.filename}>
+              <button
+                onClick={() =>
+                  setOverrides((p) => ({ ...p, [f.filename]: !open }))
+                }
+                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-zinc-900"
+              >
+                {open ? (
+                  <ChevronDown className="h-3 w-3 shrink-0 text-zinc-500" />
+                ) : (
+                  <ChevronRight className="h-3 w-3 shrink-0 text-zinc-500" />
+                )}
+                <span className="truncate font-mono text-[11px] text-zinc-400">
+                  {f.filename}
+                </span>
+                <span className="ml-auto shrink-0 font-mono text-[11px]">
+                  <span className="text-emerald-400">+{f.additions}</span>{" "}
+                  <span className="text-red-400">-{f.deletions}</span>
+                </span>
+              </button>
+              {open && (
+                <div className="mb-2 mt-1 px-1.5">
+                  <DiffView patch={f.patch} />
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -364,21 +449,9 @@ export default function InstructionChanges({ project }: { project: string }) {
                             directly.
                           </p>
                         )}
-                      {Array.isArray(diff) &&
-                        diff.map((f) => (
-                          <div key={f.filename} className="mb-3">
-                            <p className="mb-1 font-mono text-[11px] text-zinc-500">
-                              {f.filename}{" "}
-                              <span className="text-emerald-400">
-                                +{f.additions}
-                              </span>{" "}
-                              <span className="text-red-400">
-                                -{f.deletions}
-                              </span>
-                            </p>
-                            <DiffView patch={f.patch} />
-                          </div>
-                        ))}
+                      {Array.isArray(diff) && diff.length > 0 && (
+                        <CommitDiff files={diff} />
+                      )}
                     </div>
                   )}
 

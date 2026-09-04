@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExternalLink, ChevronDown, ChevronRight, ScrollText } from "lucide-react";
 import StatusBadge from "./status-badge";
 import { duration } from "./format";
+import { parseAnsi } from "./ansi";
 
 type JobStep = {
   name: string;
@@ -26,6 +27,28 @@ type LogState =
   | { loading: true }
   | { available: true; tail: string; totalLines: number }
   | { available: false; reason: string };
+
+/**
+ * The log tail as GitHub serves it: ANSI-coloured, which used to render as
+ * literal `[36;1m` noise through the whole viewer. `parseAnsi` turns the escape
+ * sequences into (text, class) pairs — the text is rendered as a React child so
+ * it is still escaped, and the class can only ever come from that module's
+ * fixed table, never from the log itself.
+ */
+function LogView({ text }: { text: string }) {
+  const spans = useMemo(() => parseAnsi(text), [text]);
+  return (
+    <pre className="mt-2 max-h-80 overflow-auto rounded-md border border-zinc-800 bg-black p-3 text-[11px] leading-relaxed text-zinc-300">
+      {spans.length === 0
+        ? "(empty)"
+        : spans.map((s, i) => (
+            <span key={i} className={s.className || undefined}>
+              {s.text}
+            </span>
+          ))}
+    </pre>
+  );
+}
 
 /**
  * Live view of a single run: polls its jobs every 5s while anything is still
@@ -219,9 +242,7 @@ export default function RunDetail({
                   <p className="mt-2 text-xs text-zinc-500">{log.reason}</p>
                 )}
                 {log && "available" in log && log.available && (
-                  <pre className="mt-2 max-h-80 overflow-auto rounded-md border border-zinc-800 bg-black p-3 text-[11px] leading-relaxed text-zinc-300">
-                    {log.tail || "(empty)"}
-                  </pre>
+                  <LogView text={log.tail} />
                 )}
               </div>
             )}

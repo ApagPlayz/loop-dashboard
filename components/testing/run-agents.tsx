@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Play, ExternalLink, RefreshCw } from "lucide-react";
 import StatusBadge from "./status-badge";
 import RunDetail from "./run-detail";
@@ -90,6 +90,13 @@ export default function RunAgents({ project }: { project: string }) {
   const [flash, setFlash] = useState<Record<string, { ok: boolean; msg: string }>>(
     {},
   );
+  // The run detail panel sits above the Recent runs table, so opening a run
+  // from a table row would otherwise push the page around with the new panel
+  // off-screen above — it would look like the click did nothing.
+  const detailRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    if (selected) detailRef.current?.scrollIntoView({ block: "start" });
+  }, [selected]);
 
   const loadRuns = useCallback(async () => {
     if (!project) return;
@@ -302,7 +309,10 @@ export default function RunAgents({ project }: { project: string }) {
 
       {/* Selected run detail */}
       {selected && (
-        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+        <section
+          ref={detailRef}
+          className="rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+        >
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-zinc-100">
               Live run progress
@@ -355,7 +365,15 @@ export default function RunAgents({ project }: { project: string }) {
                 </tr>
               )}
               {runs.map((r) => (
-                <tr key={r.id} className="hover:bg-zinc-900/50">
+                // The whole row opens the run detail — it always carried a
+                // hover highlight that promised as much, but only the workflow
+                // name was actually clickable. The name stays a real <button>
+                // so the row is still reachable and operable from the keyboard.
+                <tr
+                  key={r.id}
+                  onClick={() => setSelected({ id: r.id, htmlUrl: r.htmlUrl })}
+                  className="cursor-pointer hover:bg-zinc-900/50"
+                >
                   <td className="px-4 py-3 font-medium text-zinc-200">
                     <button
                       onClick={() =>
@@ -381,6 +399,7 @@ export default function RunAgents({ project }: { project: string }) {
                       href={r.htmlUrl}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:underline"
                     >
                       GitHub <ExternalLink className="h-3 w-3" />
