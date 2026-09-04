@@ -41,6 +41,20 @@ function patchBody(c: OwnedFields) {
 }
 
 /**
+ * What the cap becomes the moment "Unlimited" is unticked. A fixed 3 was a
+ * trap: with 13 PRs already open it landed the panel straight on "13 / 3 — the
+ * Builder is standing down", i.e. unticking a checkbox silently halted the
+ * loop. Start one clear of whatever is already open (floor 3, and the same
+ * 1–99 rail the number input uses) so the default never stands the Builder
+ * down; the owner can still type it lower, and the line under the control
+ * spells out the consequence before anything is saved.
+ */
+function defaultPrCap(capCount: number | null): number {
+  const open = capCount !== null && Number.isFinite(capCount) ? capCount : 0;
+  return Math.max(1, Math.min(99, Math.max(3, open + 1)));
+}
+
+/**
  * "Automation for <project>" — the per-project controls for how much the
  * loop is allowed to do without a human approving first. Reads/writes
  * .github/loop-config.json (in that project's own repo) via /api/loop-config,
@@ -235,6 +249,10 @@ export default function AutomationPanel({
   const overCap = waitingCount >= cap && cap !== Infinity;
   const prCapNumber = draft.prCap === "unlimited" ? Infinity : draft.prCap;
   const slotsFull = capCount !== null && capCount >= prCapNumber;
+  // The slots line is drawn from the DRAFT, so it already previews an unsaved
+  // cap — but it read like a statement of fact. Say which it is, so "would
+  // stand the Builder down" can't be mistaken for "has".
+  const prCapPending = draft.prCap !== saved.prCap;
 
   return (
     <div className="mb-4 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
@@ -250,7 +268,9 @@ export default function AutomationPanel({
             className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
           >
             {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-            Save changes
+            {/* Not "Save changes": the Scout brief card on this same screen has
+                its own save button, writing a different part of the config. */}
+            Save automation
           </button>
         </div>
       </div>
@@ -318,7 +338,10 @@ export default function AutomationPanel({
                   type="checkbox"
                   checked={draft.prCap === "unlimited"}
                   onChange={(e) =>
-                    setDraft({ ...draft, prCap: e.target.checked ? "unlimited" : 3 })
+                    setDraft({
+                      ...draft,
+                      prCap: e.target.checked ? "unlimited" : defaultPrCap(capCount),
+                    })
                   }
                   className="h-3.5 w-3.5 rounded border-zinc-700 bg-zinc-950 accent-emerald-500"
                 />
@@ -330,7 +353,11 @@ export default function AutomationPanel({
             <p className={`mt-1 text-xs ${slotsFull ? "text-amber-400" : "text-zinc-500"}`}>
               Builder slots used: {capCount} /{" "}
               {draft.prCap === "unlimited" ? "∞" : draft.prCap}
-              {slotsFull && " — the Builder is standing down until you clear one"}
+              {prCapPending && " (not saved yet)"}
+              {slotsFull &&
+                (prCapPending
+                  ? " — saving this would stand the Builder down until you clear one"
+                  : " — the Builder is standing down until you clear one")}
             </p>
           )}
         </div>

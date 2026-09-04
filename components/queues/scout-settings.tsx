@@ -250,7 +250,9 @@ export default function ScoutSettings({
               className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white transition disabled:cursor-not-allowed disabled:bg-zinc-800 disabled:text-zinc-500"
             >
               {saving && <Loader2 className="h-3 w-3 animate-spin" />}
-              Save changes
+              {/* Not "Save changes": the Automation panel on this same screen
+                  has its own save button, writing different fields. */}
+              Save Scout brief
             </button>
           )}
         </div>

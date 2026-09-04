@@ -22,9 +22,29 @@ import { useToast } from "./toast";
 
 type ActionKind = "approve" | "unapprove" | "redraft" | "decline";
 
-function labelBadge(labels: string[]) {
+/**
+ * The chip reads as the idea's CURRENT state, so a closed issue may never wear
+ * a live-state colour. "Approved"/"Waiting for you" on something closed a month
+ * ago flatly contradicts the "closed …" line right below it. A closed idea
+ * therefore always says Closed, in neutral zinc, and carries what it was
+ * labelled as a past-tense suffix instead of a second, competing chip.
+ */
+function labelBadge(labels: string[], state: "open" | "closed") {
   if (labels.includes("declined"))
     return { text: "Declined", cls: "bg-red-500/15 text-red-300" };
+  if (state === "closed") {
+    const was = labels.includes("proposal")
+      ? "was waiting on you"
+      : labels.includes("approved")
+        ? "was approved"
+        : labels.includes("redraft")
+          ? "was being redrafted"
+          : null;
+    return {
+      text: was ? `Closed · ${was}` : "Closed",
+      cls: "bg-zinc-700/40 text-zinc-400",
+    };
+  }
   if (labels.includes("proposal"))
     return { text: "Waiting for you", cls: "bg-amber-500/15 text-amber-300" };
   if (labels.includes("approved"))
@@ -78,7 +98,7 @@ export default function IdeaCard({
     setOpen(false);
   }, [identity]);
 
-  const badge = labelBadge(idea.labels);
+  const badge = labelBadge(idea.labels, idea.state);
   const isProposal = idea.labels.includes("proposal") && idea.state === "open";
   const isApproved =
     idea.labels.includes("approved") &&
