@@ -203,8 +203,9 @@ export default async function CapabilityInventory({
 
   if (await isPublicViewer()) {
     // Demo: loadCapabilityInventory() reads .github/workflows/*.yml straight
-    // off GitHub, which 404s for the fictional demo repo (and isn't proxied —
-    // only /api/* requests are). Show the frozen inventory instead.
+    // off GitHub, which the public deployment cannot do (no GITHUB_TOKEN, and
+    // this path isn't proxied). Show the inventory parsed from the frozen copy
+    // of those same workflow files instead.
     ({ agents, shared } = DEMO_CAPABILITY_INVENTORY);
   } else {
     try {

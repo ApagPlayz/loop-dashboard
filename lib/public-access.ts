@@ -26,10 +26,14 @@
  *
  * 1. `proxy.ts` — deny by default. Anonymous `/api/*` requests are answered from
  *    `lib/demo/api-fixtures.ts` or refused with 403. No handler runs.
- * 2. `lib/projects.ts` — `listProjects()` returns the SYNTHETIC registry for an
+ * 2. `lib/projects.ts` — `listProjects()` returns the DEMO registry for an
  *    anonymous viewer, so every repo-scoped call a server component makes points
- *    at a repo that does not exist. Even if a `GITHUB_TOKEN` is added later and
- *    some page path is missed, there is no private repo for it to read.
+ *    at one of the two PUBLIC repos the snapshot was taken from, never at the
+ *    owner's private ones. (This layer used to point at repos nobody owned,
+ *    which was stronger. It is now "public repos only" — still safe, because
+ *    the deployment carries no `GITHUB_TOKEN` at all and every anonymous
+ *    `/api/*` read is answered from a fixture without the handler running, but
+ *    layer 1 is the one doing the real work. See lib/demo/world.ts.)
  * 3. The server components that render public pages branch to demo fixtures
  *    directly, so the pages have content rather than error states.
  *

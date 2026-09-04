@@ -39,9 +39,9 @@ export default async function OverviewPage() {
     PILOT_PROJECT.key;
 
   // Demo: loadOverview() calls listIssues()/listPRs() straight against GitHub,
-  // which 404s for the fictional loop-demo/* repos (and isn't proxied — only
-  // /api/* requests are). Show the frozen snapshot instead so the landing page
-  // looks like a live project rather than two "unreachable" cards.
+  // which the public deployment cannot do — it holds no GITHUB_TOKEN, and this
+  // path isn't proxied (only /api/* requests are). Serve the frozen snapshot of
+  // the same two repos instead of two "unreachable" cards.
   const snapshots = (await isPublicViewer())
     ? DEMO_OVERVIEW
     : await loadOverview(projects);

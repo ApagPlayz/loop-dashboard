@@ -192,8 +192,9 @@ function SignInLink({ compact = false }: { compact?: boolean }) {
  * context the visitor should have before trusting anything below it.
  *
  * Amber rather than red on purpose: nothing is wrong. The data really is a
- * frozen, invented snapshot standing in for the owner's live private repos
- * (see lib/demo/world.ts for why it's fictional data, not real backlog text).
+ * frozen snapshot — real issues, pull requests, audits and metrics from the
+ * owner's two public repos, captured on a fixed date and baked in, because the
+ * public deployment deliberately holds no GitHub token (see lib/demo/world.ts).
  */
 function DemoBanner() {
   return (
@@ -203,8 +204,11 @@ function DemoBanner() {
     >
       <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-400 sm:mt-0" />
       <p>
-        You&apos;re viewing a read-only demo of a real system. The data below is an
-        invented snapshot, not the owner&apos;s live private repositories. {DEMO_SNAPSHOT_LABEL}.{" "}
+        You&apos;re viewing a read-only demo of a real system. Everything below is a
+        frozen snapshot of the owner&apos;s actual loop, taken from the public repos{" "}
+        <code className="rounded bg-amber-500/15 px-1">ApagPlayz/content-generation-platform</code>{" "}
+        and <code className="rounded bg-amber-500/15 px-1">ApagPlayz/supply-chain-optimizer</code> —
+        real issues, pull requests and agent audits, not live data. {DEMO_SNAPSHOT_LABEL}.{" "}
         <Link href="/login" className="font-medium text-amber-100 underline underline-offset-2 hover:text-white">
           Sign in
         </Link>{" "}

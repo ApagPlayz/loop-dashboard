@@ -82,9 +82,10 @@ export default async function MetricsPage() {
   }
 
   // Demo: both reads below hit getFileContent() straight against GitHub,
-  // which 404s for the fictional loop-demo/* repo (and isn't proxied — only
-  // /api/* requests are). Supply the frozen fixtures instead so the stat
-  // cards, history table and rendered write-up all have real content.
+  // which the public deployment cannot do — no GITHUB_TOKEN, and this path
+  // isn't proxied (only /api/* requests are). Supply the frozen copies of the
+  // same two files so the stat cards, history table and rendered write-up all
+  // show what the repo actually holds.
   let snapshots: Snapshot[] | null;
   let parseError: boolean;
   let dashboardMd: string | null;

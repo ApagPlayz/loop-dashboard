@@ -7,18 +7,21 @@
  * to `app/api/**` in the future, which is the point. Exposing something new is
  * an explicit act: you write a fixture for it.
  *
- * Everything here is invented. See lib/demo/world.ts for why real data was
- * rejected even though a curated corpus was sitting in the repo.
+ * Everything here is a frozen snapshot of the owner's two public repos, taken
+ * on the date in lib/demo/world.ts — real content, read at build time, never
+ * fetched at request time (the deployment holds no GITHUB_TOKEN).
  */
 
 import { fixtureMatches, type DemoFixture } from "@/lib/demo/types";
 import { MAP_FIXTURES } from "@/lib/demo/fixtures-map";
 import { QUEUE_FIXTURES } from "@/lib/demo/fixtures-queues";
+import { BUILD_FIXTURES } from "@/lib/demo/fixtures-builds";
 import { TOOLS_FIXTURES } from "@/lib/demo/fixtures-tools";
 
 export const DEMO_FIXTURES: DemoFixture[] = [
   ...MAP_FIXTURES,
   ...QUEUE_FIXTURES,
+  ...BUILD_FIXTURES,
   ...TOOLS_FIXTURES,
 ];
 
