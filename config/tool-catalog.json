@@ -26,7 +26,7 @@
       "rankScore": 0.85,
       "stale": false,
       "categories": [
-        "Web search & scraping"
+        "Dev tools"
       ],
       "safetyFlags": [
         "Can change, delete, or run things on your systems."
@@ -118,7 +118,7 @@
       "rankScore": 0.85,
       "stale": false,
       "categories": [
-        "Cloud & infra"
+        "Dev tools"
       ],
       "safetyFlags": [],
       "source": "seed",
@@ -412,7 +412,7 @@
       "rankScore": 0.85,
       "stale": false,
       "categories": [
-        "Web search & scraping"
+        "Dev tools"
       ],
       "safetyFlags": [],
       "source": "seed",
@@ -502,7 +502,7 @@
       "rankScore": 0.85,
       "stale": false,
       "categories": [
-        "Web search & scraping"
+        "Dev tools"
       ],
       "safetyFlags": [
         "Needs an API key or account login — you'll be asked for it."

@@ -78,6 +78,20 @@ export default function HelpChat() {
     if (open) inputRef.current?.focus();
   }, [open]);
 
+  // Close on Escape, matching every other overlay in this app. Guarded so an
+  // Escape that's part of an IME composition (e.g. dismissing a candidate
+  // window while composing Japanese/Chinese/Korean text) doesn't also close
+  // the panel out from under the user mid-composition.
+  useEffect(() => {
+    if (!open) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Escape" || e.isComposing) return;
+      setOpen(false);
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open]);
+
   // The login screen has no chrome — don't show the assistant there.
   if (pathname === "/login") return null;
 
