@@ -52,7 +52,11 @@ export function buildCsp({ nonce, isDev }: CspOptions): string {
     "style-src 'self' 'unsafe-inline'",
     // blob: is for object URLs the client builds from fetched media; data: for
     // small inlined icons. No remote image hosts — everything is same-origin.
-    "img-src 'self' blob: data:",
+    // avatars.githubusercontent.com: PR and issue conversations render the
+    // commenter's GitHub avatar. Without this every avatar in a PR thread is a
+    // broken image and the console fills with CSP violations. Images only —
+    // this widens no script or connect surface.
+    "img-src 'self' blob: data: https://avatars.githubusercontent.com",
     "media-src 'self' blob: data:",
     "font-src 'self' data:",
     // The app only ever talks to itself. In dev, the HMR websocket also needs

@@ -81,6 +81,38 @@ function delta(before: number | null, after: number | null, suffix = ""): string
   return `${before}${suffix} → ${after}${suffix} (${dir})`;
 }
 
+/**
+ * One in-flight request per (date, project), shared by every panel asking for
+ * it. A template rollout touches eight-plus workflow files, so that single
+ * commit appears as a row under every agent group — and one click on
+ * "Before / after" mounted twenty panels that each fired the same request.
+ * Twenty identical GitHub-backed calls for one answer. The sibling diff path
+ * never had this problem because it reads from a keyed cache; this is that,
+ * for the compare path.
+ *
+ * Keyed by date and project because both are in the URL. The entry is dropped
+ * on failure so a transient error stays retryable rather than being cached as
+ * a permanent one.
+ */
+const compareCache = new Map<string, Promise<unknown>>();
+
+function fetchCompare(date: string, project: string): Promise<unknown> {
+  const key = `${date}|${project}`;
+  const hit = compareCache.get(key);
+  if (hit) return hit;
+  const p = fetch(
+    `/api/testing/metrics-compare?date=${encodeURIComponent(date)}&project=${encodeURIComponent(project)}`,
+    { cache: "no-store" },
+  )
+    .then((r) => r.json())
+    .catch((e) => {
+      compareCache.delete(key);
+      throw e;
+    });
+  compareCache.set(key, p);
+  return p;
+}
+
 function BeforeAfterPanel({ date, project }: { date: string; project: string }) {
   const [data, setData] = useState<BeforeAfter | { noMetrics: true } | null>(
     null,
@@ -90,12 +122,9 @@ function BeforeAfterPanel({ date, project }: { date: string; project: string }) 
   useEffect(() => {
     if (!project) return;
     let live = true;
-    fetch(
-      `/api/testing/metrics-compare?date=${encodeURIComponent(date)}&project=${encodeURIComponent(project)}`,
-      { cache: "no-store" },
-    )
-      .then((r) => r.json())
-      .then((d) => {
+    fetchCompare(date, project)
+      .then((raw) => {
+        const d = raw as { error?: string } & BeforeAfter;
         if (!live) return;
         if (d.error) setError(d.error);
         else setData(d);

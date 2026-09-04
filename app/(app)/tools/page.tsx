@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { cookies } from "next/headers";
 import { KeyRound, Activity, LayoutGrid, Compass } from "lucide-react";
 import PageHeader from "@/components/page-header";
-import { PROJECT_COOKIE } from "@/components/project-context";
+import { PROJECT_COOKIE } from "@/lib/project-cookie";
 import { defaultProjectKey } from "@/lib/projects";
 import AddToolForm from "@/components/tools/add-tool-form";
 import FitScan from "@/components/tools/fit-scan";

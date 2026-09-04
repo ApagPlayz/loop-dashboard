@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ArrowUpRight } from "lucide-react";
-import { PROJECT_COOKIE } from "@/components/project-context";
+import { PROJECT_COOKIE } from "@/lib/project-cookie";
 import ProjectCards, { StatusPill } from "@/components/overview/project-cards";
 import { GLOBAL_NAV } from "@/lib/nav";
 import { listProjects, PILOT_PROJECT, type Project } from "@/lib/projects";

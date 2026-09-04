@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import AppShell from "@/components/app-shell";
-import { ProjectProvider, PROJECT_COOKIE } from "@/components/project-context";
+import { ProjectProvider } from "@/components/project-context";
+import { PROJECT_COOKIE } from "@/lib/project-cookie";
 import { listProjects, PILOT_PROJECT, type Project } from "@/lib/projects";
 import { isPublicViewer } from "@/lib/demo/viewer";
 

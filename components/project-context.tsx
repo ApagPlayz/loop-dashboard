@@ -22,7 +22,8 @@ import {
 import { useRouter } from "next/navigation";
 import type { Project } from "@/lib/projects";
 
-export const PROJECT_COOKIE = "loop_project";
+export { PROJECT_COOKIE } from "@/lib/project-cookie";
+import { PROJECT_COOKIE } from "@/lib/project-cookie";
 
 type ProjectCtx = {
   /** Selected project key. */

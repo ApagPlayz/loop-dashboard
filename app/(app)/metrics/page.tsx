@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import PageHeader from "@/components/page-header";
 import StatCard from "@/components/stat-card";
-import { PROJECT_COOKIE } from "@/components/project-context";
+import { PROJECT_COOKIE } from "@/lib/project-cookie";
 import { getFileContent, type RepoConfig } from "@/lib/github";
 import {
   resolveProject,
