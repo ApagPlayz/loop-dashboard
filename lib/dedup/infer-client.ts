@@ -41,6 +41,41 @@
  *      proposed before?", a match against a closed issue from three months ago
  *      is a hit, not noise. That is a capability the local path does not have.
  *
+ * ## OUT-OF-DOMAIN DRAFTS — why a near-miss here is not evidence of anything
+ *
+ * This path and the queue-scan path share one threshold, and they should: it is
+ * the same encoder and the same index. But they do NOT share a text regime, and
+ * that distinction is load-bearing.
+ *
+ * The 0.842 operating point was swept over 150 gold pairs in which BOTH sides
+ * are prebuilt index vectors — each built from `docText()`, a doubled title plus
+ * the stripped body, and the shortest text on either side of a positive pair is
+ * 950 characters. The sweep therefore measures long-document vs long-document
+ * similarity and says nothing about anything else.
+ *
+ * A composer draft is frequently one sentence with an empty body. Cosine
+ * similarity between a short embedding and a long one is depressed independently
+ * of meaning, so applying the swept threshold there is not merely strict — it
+ * can be arithmetically unreachable. Measured on the MiniLM index: a corpus
+ * document's OWN TITLE, scored against that same document's full-text vector,
+ * reaches a median of 0.63 and a maximum of 0.768 against that encoder's swept
+ * threshold of 0.828. Zero of 40 documents matched THEMSELVES above the
+ * threshold once represented by their title alone. Zero paraphrase distance,
+ * still a miss.
+ *
+ * The tempting response is to lower the threshold until short drafts trip it.
+ * That is measurably the wrong trade: on the same gold set, moving the Titan
+ * threshold from 0.842 to 0.714 takes precision from 0.909 to 0.639 — false
+ * positives from 2 to 13 — to buy recall from 0.800 to 0.920. It degrades every
+ * in-domain comparison on the Ideas screen in order to patch a regime the sweep
+ * never measured.
+ *
+ * So this module changes no threshold. It reports `outOfDomain` instead, using
+ * the floor published by the eval artifact, so that a false verdict is labelled
+ * rather than believed. Closing the gap properly needs a short-query gold set
+ * and its own swept operating point; until that exists, the ranking is the
+ * honest product of this path and the yes/no is not.
+ *
  * ## How it degrades
  *
  * Every failure returns `{ available: false, reason }` and logs. Nothing here
@@ -128,6 +163,18 @@ export type InferSuccess = {
   threshold: number;
   /** Whether the threshold came from the eval artifact or the built-in constant. */
   thresholdSource: "metrics" | "builtin";
+  /**
+   * True when the draft is shorter than the shortest text the threshold was
+   * calibrated on, so `duplicate: false` means "not comparable", NOT "checked
+   * and clean". See the block comment on `OUT-OF-DOMAIN DRAFTS` below. The
+   * matches and their scores are still meaningful as a RANKING — it is only
+   * the yes/no verdict that has no evidence behind it.
+   */
+  outOfDomain: boolean;
+  /** Characters of draft text actually embedded. */
+  queryChars: number;
+  /** Shortest text the threshold was fitted on, from the metrics artifact. */
+  minCalibratedChars: number;
   model: string;
   indexedDocuments: number;
   indexBuiltAt: string;
@@ -216,7 +263,13 @@ export async function inferDraftDuplicates(input: {
 
   // Read the operating point first: if the metrics artifact is unreadable this
   // still resolves, to the documented built-in constant.
-  const { threshold, thresholdSource } = await dedupThreshold("titan");
+  const { threshold, thresholdSource, minCalibratedChars } = await dedupThreshold("titan");
+
+  // `text` is what the Lambda embeds (it joins title and body exactly the same
+  // way), so it is the right thing to measure — not the title alone and not the
+  // two fields added up before trimming.
+  const queryChars = text.length;
+  const outOfDomain = queryChars < minCalibratedChars;
 
   let credentials;
   try {
@@ -328,7 +381,15 @@ export async function inferDraftDuplicates(input: {
     matches,
     // Recomputed rather than trusted: the response's own `duplicate` flag and
     // its `matches` must agree, and the flag is the derived one of the two.
+    //
+    // Deliberately NOT relaxed when `outOfDomain`. A short draft that clears
+    // 0.842 anyway is a very strong signal and should still be flagged; the
+    // problem being reported is the false NEGATIVE, and suppressing true
+    // positives would not fix it.
     duplicate: matches.length > 0 && matches[0]!.score >= usedThreshold,
+    outOfDomain,
+    queryChars,
+    minCalibratedChars,
     threshold: usedThreshold,
     // If the Lambda ignored our threshold, the number on screen is no longer
     // the one the metrics artifact supplied, and saying so keeps the label

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-02T21:03:30.460Z",
+  "generated_at": "2026-09-04T13:10:59.203Z",
   "labels": "gold",
   "warning": null,
   "gold_file": "data/gold-pairs-llm.jsonl",
@@ -40,6 +40,15 @@
       "dense_only": 30
     },
     "sampling": "Stratified by lexical overlap plus a dense-only stratum; see scripts/ml/generate-pairs.mjs. Unweighted metrics describe this sample, not the corpus."
+  },
+  "calibration_domain": {
+    "basis": "docText() character lengths of the gold-pair members these metrics were computed from. Both sides of every pair are prebuilt index vectors, so every operating point in this file describes long-document vs long-document similarity only.",
+    "min_member_chars": 308,
+    "min_positive_member_chars": 950,
+    "positive_member_p10_chars": 1460,
+    "positive_member_median_chars": 2768,
+    "corpus_min_doc_chars": 308,
+    "caveat": "Scoring text materially shorter than min_positive_member_chars against this index is OUT OF DOMAIN: short-vs-long cosine is depressed independently of meaning, so these thresholds are not merely strict there, they may be unreachable. Do not lower a threshold to compensate — that trades precision across the whole in-domain range to patch a regime this sweep never measured."
   },
   "methods": [
     "overlap",

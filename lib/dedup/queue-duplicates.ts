@@ -126,8 +126,18 @@ const BUILTIN_THRESHOLD: Record<IndexBackend, number> = {
   local: 0.828,
 };
 
+/**
+ * Shortest text the sweep ever saw on either side of a POSITIVE pair.
+ *
+ * Documented fallback for `calibration_domain.min_positive_member_chars`, the
+ * same way `BUILTIN_THRESHOLD` is the fallback for the operating point. 950 is
+ * the measured value for the committed 150-pair gold set.
+ */
+const BUILTIN_MIN_CALIBRATED_CHARS = 950;
+
 /** Shape of the slice of metrics/dedup-eval.json this module reads. */
 type DedupEvalMetrics = {
+  calibration_domain?: { min_positive_member_chars?: number };
   results?: {
     duplicate?: Record<
       string,
@@ -277,20 +287,43 @@ async function loadIndexPreferringTitan(): Promise<{
  * has to send the SAME number to the Lambda that this screen scores with.
  * Two independently-chosen thresholds over the same encoder would make "0.86
  * is a duplicate" mean two different things in two places in one product.
+ *
+ * `minCalibratedChars` travels with the threshold because the number alone is
+ * not enough to use it responsibly. Every pair in the sweep is a comparison of
+ * two PREBUILT INDEX VECTORS, each built from `docText()` — a doubled title
+ * plus the stripped body. The shortest text on either side of a positive pair
+ * is 950 characters. Nothing in the sweep speaks about scoring a one-line draft
+ * against those vectors, and short-vs-long cosine is depressed independently of
+ * meaning: measured on the MiniLM index, a document's own title scored against
+ * that same document's full-text vector reaches a median of 0.63 and a maximum
+ * of 0.768 against a swept threshold of 0.828 — zero of 40 documents cleared
+ * the bar against THEMSELVES. A caller scoring text far below this floor is
+ * outside the evidence and must say so rather than report "no duplicates".
  */
-export async function dedupThreshold(
-  backend: IndexBackend,
-): Promise<{ threshold: number; thresholdSource: "metrics" | "builtin" }> {
+export async function dedupThreshold(backend: IndexBackend): Promise<{
+  threshold: number;
+  thresholdSource: "metrics" | "builtin";
+  /** Shortest text the operating point was fitted on, in characters. */
+  minCalibratedChars: number;
+}> {
   try {
     const { value } = await loadJsonArtifact<DedupEvalMetrics>("metrics");
     const swept =
       value?.results?.duplicate?.[METHOD_FOR[backend]]?.precision_first_operating_point
         ?.threshold;
+    const floor = value?.calibration_domain?.min_positive_member_chars;
+    // The domain is advisory, so an artifact predating it (or carrying a
+    // nonsense value) degrades to the documented constant rather than
+    // invalidating a perfectly good threshold.
+    const minCalibratedChars =
+      typeof floor === "number" && Number.isFinite(floor) && floor > 0
+        ? floor
+        : BUILTIN_MIN_CALIBRATED_CHARS;
     // A cosine threshold outside (0,1) is a corrupt or mis-keyed artifact, not
     // a new operating point — fall through to the constant rather than
     // silently reporting every pair or none of them.
     if (typeof swept === "number" && Number.isFinite(swept) && swept > 0 && swept < 1) {
-      return { threshold: swept, thresholdSource: "metrics" };
+      return { threshold: swept, thresholdSource: "metrics", minCalibratedChars };
     }
     console.warn(
       `[dedup] metrics artifact has no usable ${METHOD_FOR[backend]} operating point; ` +
@@ -302,7 +335,11 @@ export async function dedupThreshold(
         `using the built-in ${BUILTIN_THRESHOLD[backend]}`,
     );
   }
-  return { threshold: BUILTIN_THRESHOLD[backend], thresholdSource: "builtin" };
+  return {
+    threshold: BUILTIN_THRESHOLD[backend],
+    thresholdSource: "builtin",
+    minCalibratedChars: BUILTIN_MIN_CALIBRATED_CHARS,
+  };
 }
 
 async function buildScoringContext(): Promise<ScoringContext | null> {

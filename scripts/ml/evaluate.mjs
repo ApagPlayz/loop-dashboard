@@ -14,6 +14,8 @@
  *     stratified sampling and is the only figure that speaks about the corpus
  *     rather than about the sample
  *   - 95% bootstrap confidence intervals on all of the above headline numbers
+ *   - the CALIBRATION DOMAIN: the `docText()` length distribution of the pairs
+ *     the sweep was actually fit on (see `calibrationDomain` below)
  *
  * ORDER OF OPERATIONS: the lexical baselines are scored from exactly the same
  * pair list, with exactly the same code path, as the dense model. Nothing is
@@ -37,6 +39,7 @@
 import { existsSync, promises as fs } from "node:fs";
 import path from "node:path";
 
+import { docText } from "../../lib/dedup/baseline.ts";
 import {
   ROOT,
   LABELED_PATH,
@@ -445,6 +448,76 @@ const POSITIVE_DEFS = {
   duplicate_or_related: (label) => label === "duplicate" || label === "related",
 };
 
+/**
+ * The text-length regime the threshold sweep was actually fitted in.
+ *
+ * Every number in `results` comes from comparing two vectors that
+ * `build-index.mjs` produced from `docText(doc)` — a doubled title plus the
+ * markdown-stripped body, truncated at MAX_CHARS. Both sides of every gold pair
+ * are index lookups (`_shared.mjs` `buildDenseMethod`); nothing here is ever
+ * re-embedded from shorter text. So an operating point derived from this file
+ * is a statement about LONG-document vs LONG-document similarity, and it is
+ * silent about any other regime.
+ *
+ * That silence turned out to matter. Cosine similarity between an embedding of
+ * a short text and an embedding of a long one is systematically depressed even
+ * when the two say the same thing, so a threshold swept here is not merely
+ * "strict" when applied to a one-line draft — it can be unreachable. Measured
+ * on the MiniLM index, a corpus document's own title scored against that same
+ * document's full-text vector reaches a median of 0.63 and a maximum of 0.768,
+ * against a swept duplicate threshold of 0.828: none of 40 documents tested
+ * matched THEMSELVES above the threshold once represented by their title alone.
+ *
+ * `lib/dedup/infer-client.ts` scores exactly that kind of text — a composer
+ * draft that is not in the index — so it needs to know where this file stops
+ * speaking. Publishing the domain alongside the operating point is what lets it
+ * find out by reading the artifact, rather than by hard-coding a second guess.
+ *
+ * `min_positive_member_chars` is the conservative floor: the shortest text that
+ * appears on either side of any pair the POSITIVE class was fitted on. Below
+ * it, this file has no evidence.
+ */
+function calibrationDomain(rows, docs, positiveLabels) {
+  const lengths = new Map(docs.map((d) => [d.number, docText(d).length]));
+  const quantile = (sorted, q) =>
+    sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))] : null;
+
+  const collect = (filter) => {
+    const out = [];
+    for (const r of rows) {
+      if (!filter(r)) continue;
+      const la = lengths.get(r.a);
+      const lb = lengths.get(r.b);
+      // A pair whose documents are not in the corpus contributed a score of 0
+      // to the sweep; it says nothing about the domain either.
+      if (la == null || lb == null) continue;
+      out.push(la, lb);
+    }
+    return out.sort((x, y) => x - y);
+  };
+
+  const all = collect(() => true);
+  const positive = collect((r) => positiveLabels.has(r.label));
+
+  return {
+    basis:
+      "docText() character lengths of the gold-pair members these metrics were computed from. " +
+      "Both sides of every pair are prebuilt index vectors, so every operating point in this " +
+      "file describes long-document vs long-document similarity only.",
+    min_member_chars: all.length ? all[0] : null,
+    min_positive_member_chars: positive.length ? positive[0] : null,
+    positive_member_p10_chars: quantile(positive, 0.1),
+    positive_member_median_chars: quantile(positive, 0.5),
+    corpus_min_doc_chars: docs.length ? Math.min(...docs.map((d) => docText(d).length)) : null,
+    caveat:
+      "Scoring text materially shorter than min_positive_member_chars against this index is " +
+      "OUT OF DOMAIN: short-vs-long cosine is depressed independently of meaning, so these " +
+      "thresholds are not merely strict there, they may be unreachable. Do not lower a " +
+      "threshold to compensate — that trades precision across the whole in-domain range to " +
+      "patch a regime this sweep never measured.",
+  };
+}
+
 async function main() {
   const bootstrapN = Number(arg("bootstrap", "1000"));
   const seed = Number(arg("seed", "20260901"));
@@ -561,6 +634,13 @@ async function main() {
         "Stratified by lexical overlap plus a dense-only stratum; see scripts/ml/generate-pairs.mjs. " +
         "Unweighted metrics describe this sample, not the corpus.",
     },
+    // Where these metrics stop speaking. Read at runtime by
+    // lib/dedup/queue-duplicates.ts alongside the operating point itself.
+    calibration_domain: calibrationDomain(
+      rows,
+      docs,
+      new Set(["duplicate"]),
+    ),
     methods: methods.map((m) => m.name),
     bootstrap: { replicates: bootstrapN, seed, interval: "95% percentile" },
     positive_definitions: {

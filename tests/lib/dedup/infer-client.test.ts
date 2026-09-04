@@ -212,6 +212,72 @@ describe("inferDraftDuplicates — the response", () => {
     expect(result.lambdaMs).toBe(214);
   });
 
+  /**
+   * The regression this guards: a one-line draft scored 0.714 against the issue
+   * it paraphrased, did not clear 0.842, and was reported as "nothing scores at
+   * or above the threshold" — which reads as a clean bill of health but is
+   * actually an out-of-domain comparison. The 0.842 sweep is fitted entirely on
+   * index-vector pairs whose shortest member is 950 characters
+   * (`calibration_domain.min_positive_member_chars` in metrics/dedup-eval.json),
+   * and short-vs-long cosine is depressed independently of meaning.
+   */
+  test("flags a short draft as out of the threshold's calibrated domain", async () => {
+    mockFetch.mockResolvedValue(
+      okResponse(
+        lambdaBody({
+          matches: [{ number: 115, type: "issue", title: "Cache & reuse AI stills", score: 0.714 }],
+          duplicate: false,
+        }),
+      ),
+    );
+    const { inferDraftDuplicates } = await load();
+    const result = await inferDraftDuplicates({
+      title: "Cache AI images between videos to cut the image bill",
+      body: "",
+    });
+
+    expect(result.available).toBe(true);
+    if (!result.available) return;
+    expect(result.outOfDomain).toBe(true);
+    expect(result.queryChars).toBe(52);
+    // Read from the artifact, not owned by this module — same discipline as the
+    // threshold itself. If the eval is re-run, this is what should move.
+    expect(result.minCalibratedChars).toBe(950);
+    // The ranking is still the useful output; only the verdict lacks evidence.
+    expect(result.duplicate).toBe(false);
+    expect(result.matches[0]!.number).toBe(115);
+  });
+
+  test("a full-length draft is in domain", async () => {
+    mockFetch.mockResolvedValue(okResponse(lambdaBody()));
+    const { inferDraftDuplicates } = await load();
+    const result = await inferDraftDuplicates({ title: DRAFT.title, body: "x".repeat(1000) });
+
+    expect(result.available).toBe(true);
+    if (!result.available) return;
+    expect(result.outOfDomain).toBe(false);
+    expect(result.queryChars).toBeGreaterThanOrEqual(950);
+  });
+
+  test("out-of-domain does NOT suppress a genuine high-scoring match", async () => {
+    // The reported problem is a false negative. A short draft that clears the
+    // threshold anyway is a strong signal and must still be flagged.
+    mockFetch.mockResolvedValue(
+      okResponse(
+        lambdaBody({
+          matches: [{ number: 115, type: "issue", title: "Cache & reuse AI stills", score: 0.97 }],
+        }),
+      ),
+    );
+    const { inferDraftDuplicates } = await load();
+    const result = await inferDraftDuplicates({ title: "Cache AI stills between videos", body: "" });
+
+    expect(result.available).toBe(true);
+    if (!result.available) return;
+    expect(result.outOfDomain).toBe(true);
+    expect(result.duplicate).toBe(true);
+  });
+
   test("recomputes `duplicate` rather than trusting the flag", async () => {
     // A response whose flag and scores disagree: the top score is below the
     // threshold but the handler said `duplicate: true`. The score wins.
