@@ -57,6 +57,12 @@ type DuplicateDraftResult =
       duplicate: boolean;
       threshold: number;
       thresholdSource: "metrics" | "builtin";
+      /** True when the draft is shorter than the check was calibrated on — see below. */
+      outOfDomain: boolean;
+      /** Characters of draft text actually embedded. */
+      queryChars: number;
+      /** Shortest text the threshold was fitted on, in characters. */
+      minCalibratedChars: number;
       model: string;
       indexedDocuments: number;
       indexBuiltAt: string;
@@ -522,7 +528,45 @@ function DuplicateCheck({
             </p>
           )}
 
-          {flagged.length === 0 ? (
+          {flagged.length === 0 && result.outOfDomain ? (
+            <div>
+              <p className="text-xs text-amber-300">
+                This draft is too short for the check to tell you anything — it's{" "}
+                {result.queryChars} characters, and the check needs at least{" "}
+                {result.minCalibratedChars} to compare it fairly. No match showing up here isn't a
+                clean bill of health, it just means there wasn't enough to go on. Write more of the
+                idea and check again.
+              </p>
+              {hits.length > 0 && (
+                <div className="mt-2">
+                  <p className="text-[11px] text-zinc-500">Closest matches so far, for reference:</p>
+                  <ul className="mt-1.5 space-y-1.5">
+                    {hits.map((m) => (
+                      <li key={m.number}>
+                        <a
+                          href={m.htmlUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="group flex items-start gap-2 rounded-lg -mx-1.5 px-1.5 py-1 transition hover:bg-zinc-800"
+                        >
+                          <span className="shrink-0 pt-px text-xs tabular-nums text-zinc-500 group-hover:text-zinc-300">
+                            #{m.number}
+                          </span>
+                          <span className="min-w-0 flex-1 text-sm leading-snug text-zinc-300 group-hover:text-zinc-100">
+                            {m.title ?? "(no title in the corpus)"}
+                          </span>
+                          <span className="shrink-0 rounded-full bg-zinc-800 px-2 py-0.5 text-xs font-medium tabular-nums text-zinc-400">
+                            {m.score.toFixed(3)}
+                          </span>
+                          <ExternalLink className="mt-1 h-3 w-3 shrink-0 text-zinc-600 group-hover:text-zinc-300" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : flagged.length === 0 ? (
             <p className="text-xs text-zinc-400">
               Nothing in the backlog scores at or above {result.threshold}. Closest was{" "}
               {hits[0] ? `#${hits[0].number} at ${hits[0].score.toFixed(3)}` : "nothing"}.
