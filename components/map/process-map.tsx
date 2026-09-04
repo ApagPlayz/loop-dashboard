@@ -272,7 +272,17 @@ export default function ProcessMap() {
           {statusError}
         </div>
       )}
-      <div className="h-[74vh] min-h-[480px] w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
+      {/*
+       * The loop is a ~2070-unit-wide horizontal pipeline, so `fitView` scales
+       * to the container's WIDTH and the drawing only ever needs about a fifth
+       * of a 74vh box — the rest was dead space with the nodes stranded in a
+       * thin band in the middle. Size the box closer to the drawing's own
+       * proportions instead. The real constraint on legibility is width, not
+       * height: this page inherits the shell's max-w-5xl column, which caps the
+       * scale at roughly 0.4. Widening the map page is a layout decision, not a
+       * bug fix, so it is left alone here.
+       */}
+      <div className="h-[46vh] min-h-[320px] w-full overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900/40">
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -332,7 +342,7 @@ export default function ProcessMap() {
           onClose={() => setChecklistOpen(false)}
           className="h-[95vh] w-[95vw] sm:h-auto sm:max-h-[85vh] sm:w-[90vw] sm:max-w-[560px]"
         >
-          <div className="flex-1 overflow-y-auto p-5">
+          <div className="min-h-0 flex-1 overflow-y-auto p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold text-zinc-100">Finish the setup</h2>
               <button

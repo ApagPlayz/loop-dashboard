@@ -164,7 +164,7 @@ function DriftModal({ drift, onClose }: { drift: Drift; onClose: () => void }) {
         </button>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto p-5">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-5">
         <div
           className={`flex items-start gap-2 rounded-lg border px-3 py-2 text-xs ${
             drift.inSync

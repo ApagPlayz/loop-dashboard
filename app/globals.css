@@ -180,3 +180,32 @@ body {
   border-top: 1px solid #27272a;
   margin: 1.25em 0;
 }
+
+/*
+ * React Flow's own stylesheet (imported by components/map/process-map.tsx)
+ * ships light-mode controls — white buttons with dark glyphs. It is injected
+ * by the bundler at a load order this file cannot rely on beating, and the
+ * `[&_.react-flow__controls-button]:*` arbitrary variants on the <ReactFlow>
+ * element lose the same fight, which left the zoom controls rendering as a
+ * white block on the dark map. Overriding a third-party stylesheet whose
+ * order is not ours to control is the case !important exists for.
+ */
+.react-flow__controls {
+  box-shadow: none !important;
+}
+
+.react-flow__controls-button {
+  background-color: #27272a !important;
+  border-bottom: 1px solid #3f3f46 !important;
+  fill: #d4d4d8 !important;
+  color: #d4d4d8 !important;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #3f3f46 !important;
+}
+
+.react-flow__controls-button svg,
+.react-flow__controls-button path {
+  fill: #d4d4d8 !important;
+}

@@ -140,7 +140,7 @@ export default function AgentDrawer({
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto px-5 py-4">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
         {loading && !detail ? (
           <div className="flex items-center gap-2 py-10 text-sm text-zinc-500">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading…
