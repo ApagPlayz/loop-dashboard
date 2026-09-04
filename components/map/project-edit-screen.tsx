@@ -1,40 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, FolderGit2, Loader2 } from "lucide-react";
-import type { Project } from "@/lib/projects";
+import { AlertTriangle, ArrowLeft, FolderGit2 } from "lucide-react";
 import EditMenu from "./edit-menu";
 import ProcessChatEditor from "./process-chat-editor";
+import { useProject } from "@/components/project-context";
 
-/** The /map/edit/[project] screen: chat editor for one project's live loop. */
+/**
+ * The /map/edit/[project] screen: chat editor for one project's live loop.
+ *
+ * The registry comes from the shared project context (server-rendered into the
+ * page) rather than a fetch of this screen's own, so the project named in the
+ * URL resolves on the first paint with no loading state at all.
+ */
 export default function ProjectEditScreen({ projectKey }: { projectKey: string }) {
-  const [project, setProject] = useState<Project | null>(null);
-  const [loaded, setLoaded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/map/projects");
-        const j = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(j.error ?? "Couldn't load the project list.");
-        if (cancelled) return;
-        const found = (j.projects as Project[]).find((p) => p.key === projectKey) ?? null;
-        setProject(found);
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Couldn't load the project list.");
-        }
-      } finally {
-        if (!cancelled) setLoaded(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [projectKey]);
+  const { projects } = useProject();
+  const project = projects.find((p) => p.key === projectKey) ?? null;
 
   return (
     <div className="space-y-4">
@@ -54,19 +35,7 @@ export default function ProjectEditScreen({ projectKey }: { projectKey: string }
         )}
       </div>
 
-      {!loaded && (
-        <p className="flex items-center gap-2 py-4 text-sm text-zinc-500">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading the project…
-        </p>
-      )}
-
-      {error && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
-        </div>
-      )}
-
-      {loaded && !error && project === null && (
+      {project === null && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>

@@ -804,11 +804,23 @@ const TEMPLATE_FILE_ROWS = [
   { file: "loop-metrics.mjs", target: "scripts/loop-metrics.mjs", content: TEMPLATE_METRICS_SCRIPT },
 ].map((f) => ({ ...f, hash: demoContentHash(f.content) }));
 
+/**
+ * The template's agents, with the same YAML the agent drawer shows — the
+ * template screen opens them in a read/edit modal, so a name alone would give
+ * a public visitor an empty editor.
+ */
+const TEMPLATE_WORKFLOW_ROWS = AGENTS.map((a) => a.file)
+  .sort()
+  .map((file) => {
+    const content = RAW_YAML[file] ?? `# ${file}\n`;
+    return { file, content, hash: demoContentHash(content) };
+  });
+
 const TEMPLATE_FIXTURE: DemoFixture = {
   match: "/api/map/template",
   body: () => ({
     exists: true,
-    workflows: AGENTS.map((a) => a.file).sort(),
+    workflows: TEMPLATE_WORKFLOW_ROWS,
     files: TEMPLATE_FILE_ROWS,
   }),
 };

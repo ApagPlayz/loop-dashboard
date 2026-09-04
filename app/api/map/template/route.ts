@@ -17,14 +17,14 @@ export const runtime = "nodejs";
  *
  * Returns: {
  *   exists: boolean,            // the workflows half has been seeded
- *   workflows: string[],        // .github/workflows/*.yml agent filenames
+ *   workflows: [{ file, content, hash }],      // the agent workflow YAML
  *   files: [{ file, target, content, hash }],  // the other baseline files
  * }
  *
- * The workflows half is listed by name only — it's edited through the AI chat
- * editor, which fetches its own copies. The (small) files half ships its
- * content inline so the editor can show and edit it without a second round
- * trip; the server has already read it to list it.
+ * Both halves ship their content inline. The server has already read every
+ * byte in order to list them, so withholding it would only force the editor
+ * into a second round trip per file — and the agents are the half of this
+ * screen the owner most often wants to open and read.
  *
  * `hash` is the base version the editor opened. Send it back on POST as
  * `expectedHash` and a save that would overwrite someone else's change is
@@ -33,18 +33,15 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const [workflows, files] = await Promise.all([listTemplateWorkflows(), listTemplateFiles()]);
-    const workflowNames = [...workflows.keys()].sort();
-    return NextResponse.json({
-      exists: workflowNames.length > 0,
-      workflows: workflowNames,
-      files: [...files.entries()]
+    const rows = (entries: Map<string, string>) =>
+      [...entries.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([file, content]) => ({
-          file,
-          target: TEMPLATE_FILE_TARGETS[file] ?? null,
-          content,
-          hash: templateContentHash(content),
-        })),
+        .map(([file, content]) => ({ file, content, hash: templateContentHash(content) }));
+    const workflowRows = rows(workflows);
+    return NextResponse.json({
+      exists: workflowRows.length > 0,
+      workflows: workflowRows,
+      files: rows(files).map((f) => ({ ...f, target: TEMPLATE_FILE_TARGETS[f.file] ?? null })),
     });
   } catch (err) {
     console.error("template: read failed", err);

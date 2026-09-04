@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Check,
@@ -10,7 +10,8 @@ import {
   PenLine,
   Workflow,
 } from "lucide-react";
-import type { Project } from "@/lib/projects";
+import { useProject } from "@/components/project-context";
+import { useEscapeKey } from "./use-escape";
 
 /**
  * The "Edit" dropdown — one menu for every way to change how processes work:
@@ -21,26 +22,16 @@ import type { Project } from "@/lib/projects";
  * Mounted in the map toolbar and on both editor pages so navigation between
  * the three is symmetric. `active` marks where the owner currently is:
  * "map", "template", or a project key.
+ *
+ * The project list comes from the shared project context — the server already
+ * rendered it into the page, so this menu costs no request of its own.
  */
 export default function EditMenu({ active }: { active: "map" | "template" | string }) {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { projects } = useProject();
   const [open, setOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/map/projects");
-      const j = await res.json().catch(() => ({}));
-      if (res.ok && Array.isArray(j.projects)) setProjects(j.projects);
-    } catch {
-      /* keep whatever we have */
-    }
-  }, []);
-
-  useEffect(() => {
-    // Load the registry (an external system) once on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
+  // Escape closes the menu, matching the outside-click that already does.
+  useEscapeKey(() => setOpen(false), open);
 
   const itemClass = (isActive: boolean) =>
     `flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
@@ -93,7 +84,7 @@ export default function EditMenu({ active }: { active: "map" | "template" | stri
               Edit a project with AI
             </p>
             {projects.length === 0 ? (
-              <p className="px-2.5 pb-2 text-xs text-zinc-500">Loading projects…</p>
+              <p className="px-2.5 pb-2 text-xs text-zinc-500">No projects yet.</p>
             ) : (
               projects.map((p) => (
                 <Link

@@ -308,6 +308,15 @@ function InstructionsTab({
   const [rawMode, setRawMode] = useState(!canFriendly);
   const [promptText, setPromptText] = useState(detail.prompt ?? "");
   const [rawText, setRawText] = useState(detail.rawYaml ?? "");
+  /**
+   * What each editor was loaded with — the two "committed" versions Save is
+   * compared against. Kept per mode, because the two editors write different
+   * things (a prompt block vs the whole file) and switching between them is
+   * not itself an edit. They move forward on a successful save so a second
+   * click can't re-commit what was just written.
+   */
+  const [promptBaseline, setPromptBaseline] = useState(detail.prompt ?? "");
+  const [rawBaseline, setRawBaseline] = useState(detail.rawYaml ?? "");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saved, setSaved] = useState<{ commitUrl: string; historyUrl: string } | null>(null);
@@ -341,6 +350,12 @@ function InstructionsTab({
 
   const readOnly = !detail.editable;
   const currentText = rawMode ? rawText : promptText;
+  /**
+   * Nothing typed yet = nothing to save. Without this the Save button is live
+   * the moment the tab opens, so one stray click commits an unchanged file to
+   * GitHub — the same rule the template file editor already follows.
+   */
+  const dirty = currentText !== (rawMode ? rawBaseline : promptBaseline);
 
   function draftWithAi() {
     startDraftJob(`/api/map/agent/${detail.meta.id}/draft?project=${encodeURIComponent(project)}`, {
@@ -377,6 +392,10 @@ function InstructionsTab({
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Couldn't save.");
       setSaved({ commitUrl: j.commitUrl, historyUrl: j.historyUrl });
+      // What was just written is the new "unchanged" state, so Save goes back
+      // to disabled until something else is typed.
+      if (rawMode) setRawBaseline(rawText);
+      else setPromptBaseline(promptText);
       onSaved();
     } catch (e) {
       setSaveError(e instanceof Error ? e.message : "Couldn't save.");
@@ -549,8 +568,9 @@ function InstructionsTab({
 
       <div className="flex items-center gap-3 pt-1">
         <button
-          disabled={readOnly || saving}
+          disabled={readOnly || saving || !dirty}
           onClick={save}
+          title={!readOnly && !dirty ? "Nothing to save — these instructions haven't changed." : undefined}
           className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-3.5 py-2 text-sm font-semibold text-zinc-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

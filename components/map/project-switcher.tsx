@@ -15,11 +15,23 @@ import {
   RefreshCw,
 } from "lucide-react";
 import type { Project } from "@/lib/projects";
+import { useProject } from "@/components/project-context";
+import { useEscapeKey } from "./use-escape";
 
 /* ------------------------------------------------------------------ */
 /* Switcher                                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The project dropdown in the app shell.
+ *
+ * The registry comes from the shared project context (server-rendered into the
+ * page), not a fetch of its own — the shell mounts this component twice, once
+ * for the desktop sidebar and once for the mobile bar, so a per-instance fetch
+ * was two duplicate requests on every page load before the menu was even
+ * opened. `refreshProjects` is the one place that re-pulls it, after a project
+ * is actually added.
+ */
 export default function ProjectSwitcher({
   selected,
   onSelect,
@@ -27,25 +39,13 @@ export default function ProjectSwitcher({
   selected: string;
   onSelect: (key: string) => void;
 }) {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const { projects, refreshProjects } = useProject();
   const [open, setOpen] = useState(false);
   const [wizardOpen, setWizardOpen] = useState(false);
 
-  const load = useCallback(async () => {
-    try {
-      const res = await fetch("/api/map/projects");
-      const j = await res.json().catch(() => ({}));
-      if (res.ok && Array.isArray(j.projects)) setProjects(j.projects);
-    } catch {
-      /* keep whatever we have */
-    }
-  }, []);
-
-  useEffect(() => {
-    // Load the registry (an external system) once on mount.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
+  // Escape closes the menu — but not while the wizard is over it, which owns
+  // the top of the overlay stack and closes first.
+  useEscapeKey(() => setOpen(false), open && !wizardOpen);
 
   const current = projects.find((p) => p.key === selected);
 
@@ -105,7 +105,7 @@ export default function ProjectSwitcher({
         <AddProjectWizard
           onClose={() => setWizardOpen(false)}
           onAdded={(key) => {
-            load();
+            void refreshProjects();
             onSelect(key);
           }}
         />
@@ -179,6 +179,12 @@ function AddProjectWizard({
   const [installing, setInstalling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
   const [result, setResult] = useState<InstallResult | null>(null);
+
+  // Escape closes it, like the backdrop and the X already do — and like every
+  // other overlay in the app. Not while an install is in flight, though: that
+  // request is already on its way to GitHub and hiding it would leave the
+  // owner with no idea whether it landed.
+  useEscapeKey(onClose, !installing);
 
   useEffect(() => {
     (async () => {

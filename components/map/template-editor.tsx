@@ -20,7 +20,8 @@ const GREETING =
   "Hi! You're editing the new-project template — the set of agents every NEW project starts with. Tell me what you'd like future projects' loops to do differently (change an agent, add a new one, remove one…) and I'll draft it. You'll see exactly what would change before anything is saved. Existing projects are never touched from here.";
 
 /**
- * One non-workflow baseline file, with where it lands in a new project.
+ * One template file, with where it lands in a new project (`target` is null
+ * for the agent workflows, which always land in `.github/workflows/`).
  *
  * `hash` is the version the server handed us. It goes back with a save so a
  * change someone else made in the meantime is refused rather than overwritten.
@@ -32,7 +33,13 @@ type TemplateAsset = {
   hash?: string;
 };
 
-type TemplateState = { exists: boolean; workflows: string[]; files: TemplateAsset[] };
+/** Which half of the template a file belongs to — the save path differs. */
+type Section = "workflows" | "files";
+
+/** A file plus the half it came from, i.e. everything the editor modal needs. */
+type OpenFile = { asset: TemplateAsset; section: Section };
+
+type TemplateState = { exists: boolean; workflows: TemplateAsset[]; files: TemplateAsset[] };
 
 /** The /map/template screen: explainer, template files, and the chat editor. */
 export default function TemplateEditor() {
@@ -41,7 +48,7 @@ export default function TemplateEditor() {
   const [seeding, setSeeding] = useState(false);
   const [seedError, setSeedError] = useState<string | null>(null);
   const [seededUrl, setSeededUrl] = useState<string | null>(null);
-  const [editing, setEditing] = useState<TemplateAsset | null>(null);
+  const [editing, setEditing] = useState<OpenFile | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -49,7 +56,13 @@ export default function TemplateEditor() {
       const res = await fetch("/api/map/template");
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Couldn't read the template.");
-      setState({ exists: !!j.exists, workflows: j.workflows ?? [], files: j.files ?? [] });
+      setState({
+        exists: !!j.exists,
+        // The workflows carry no `target` — they always land in
+        // `.github/workflows/` under the same name.
+        workflows: (j.workflows ?? []).map((w: TemplateAsset) => ({ ...w, target: null })),
+        files: j.files ?? [],
+      });
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : "Couldn't read the template.");
     }
@@ -151,16 +164,20 @@ export default function TemplateEditor() {
           )}
 
           {/* The agents the template currently contains */}
-          <div>
-            <p className="mb-1.5 text-xs font-semibold text-zinc-300">Agents</p>
+          <div className="max-w-2xl">
+            <p className="mb-1 text-xs font-semibold text-zinc-300">Agents</p>
+            <p className="mb-2 text-xs leading-relaxed text-zinc-500">
+              The workflows every new project starts with. Tap one to read or edit it.
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {state.workflows.map((f) => (
-                <span
-                  key={f}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 font-mono text-[11px] text-zinc-400"
+                <button
+                  key={f.file}
+                  onClick={() => setEditing({ asset: f, section: "workflows" })}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-zinc-800 bg-zinc-900 px-2.5 py-1 font-mono text-[11px] text-zinc-400 transition hover:border-emerald-500/40 hover:bg-zinc-800 hover:text-zinc-200"
                 >
-                  <FileCode2 className="h-3 w-3 text-emerald-400" /> {f}
-                </span>
+                  <FileCode2 className="h-3 w-3 text-emerald-400" /> {f.file}
+                </button>
               ))}
             </div>
           </div>
@@ -177,7 +194,7 @@ export default function TemplateEditor() {
                 {state.files.map((f) => (
                   <button
                     key={f.file}
-                    onClick={() => setEditing(f)}
+                    onClick={() => setEditing({ asset: f, section: "files" })}
                     className="flex w-full items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-2 text-left transition hover:bg-zinc-800"
                   >
                     <FileText className="h-3.5 w-3.5 shrink-0 text-sky-400" />
@@ -198,25 +215,41 @@ export default function TemplateEditor() {
       )}
 
       {editing && (
-        <TemplateFileEditor asset={editing} onClose={() => setEditing(null)} onSaved={load} />
+        <TemplateFileEditor
+          // Remount on a different file so the textarea starts from that
+          // file's content rather than the previous one's.
+          key={`${editing.section}/${editing.asset.file}`}
+          asset={editing.asset}
+          section={editing.section}
+          onClose={() => setEditing(null)}
+          onSaved={load}
+        />
       )}
     </div>
   );
 }
 
 /**
- * Read/edit one starting file, in the same centered modal the map uses.
+ * Read/edit one template file, in the same centered modal the map uses.
  * Saving commits that single file to the template as one change.
+ *
+ * Serves both halves of the screen: the agent workflows (`section:
+ * "workflows"`) and the other starting files (`section: "files"`). Only the
+ * wording and the save target differ — the base-version check, the 409
+ * handling and the disabled-until-dirty Save are identical either way.
  */
 function TemplateFileEditor({
   asset,
+  section,
   onClose,
   onSaved,
 }: {
   asset: TemplateAsset;
+  section: Section;
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const isAgent = section === "workflows";
   const [text, setText] = useState(asset.content);
   /** What's currently in the template — moves forward on every save. */
   const [baseline, setBaseline] = useState(asset.content);
@@ -238,7 +271,7 @@ function TemplateFileEditor({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           file: asset.file,
-          section: "files",
+          section,
           newContent: text,
           summary: `edit ${asset.file}`,
           // Base-version check: the server refuses the save (409) rather than
@@ -274,9 +307,11 @@ function TemplateFileEditor({
         <div className="leading-tight">
           <h2 className="font-mono text-sm font-semibold text-zinc-100">{asset.file}</h2>
           <p className="text-[11px] text-zinc-500">
-            {asset.target
-              ? `Copied into every new project as ${asset.target}`
-              : "Part of every new project"}
+            {isAgent
+              ? `Installed into every new project as .github/workflows/${asset.file}`
+              : asset.target
+                ? `Copied into every new project as ${asset.target}`
+                : "Part of every new project"}
           </p>
         </div>
         <button
@@ -299,6 +334,11 @@ function TemplateFileEditor({
           className="h-[52vh] min-h-[240px] w-full resize-y rounded-lg border border-zinc-800 bg-zinc-950 p-3 font-mono text-[11px] leading-relaxed text-zinc-200 focus:border-emerald-500 focus:outline-none"
         />
         <p className="mt-1.5 text-[11px] text-zinc-500">
+          {isAgent && (
+            <>
+              This is the raw workflow YAML — a wrong edit can stop the agent running.{" "}
+            </>
+          )}
           Changes here only affect projects you add <strong className="text-zinc-400">from
           now on</strong> — projects that already exist are never changed from this page.
         </p>

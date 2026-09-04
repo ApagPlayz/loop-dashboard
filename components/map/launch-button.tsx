@@ -275,14 +275,7 @@ export default function LaunchButton({ projectKey }: { projectKey: string }) {
           Open
           <ExternalLink className="h-3 w-3" />
         </button>
-        <button
-          type="button"
-          onClick={analyze}
-          className="rounded-full border border-zinc-800 p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
-          title="Re-analyze: have Claude redo the launch setup for this project"
-        >
-          <RotateCw className="h-3 w-3" />
-        </button>
+        <ReanalyzeButton onClick={analyze} />
         {errorBits}
       </span>
     );
@@ -299,15 +292,33 @@ export default function LaunchButton({ projectKey }: { projectKey: string }) {
         <Rocket className="h-3 w-3" />
         {error ? "Retry launch" : "Launch"}
       </button>
-      <button
-        type="button"
-        onClick={analyze}
-        className="rounded-full border border-zinc-800 p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200"
-        title="Re-analyze: have Claude redo the launch setup for this project"
-      >
-        <RotateCw className="h-3 w-3" />
-      </button>
+      <ReanalyzeButton onClick={analyze} />
       {errorBits}
     </span>
+  );
+}
+
+/**
+ * "Redo launch setup" — the one control on this toolbar that starts a Claude
+ * run (POST /api/launch/analyze runs the local Claude CLI and rewrites this
+ * project's launcher config).
+ *
+ * It used to be an unlabelled circular icon button: invisible to screen
+ * readers, and to everyone else a mystery you could only solve by pressing it.
+ * Now it says what it does before it is pressed — a visible label, a real
+ * accessible name, and a tooltip spelling out the consequence.
+ */
+function ReanalyzeButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={chipNeutral}
+      aria-label="Redo launch setup — runs Claude to work out how to launch this project again"
+      title="Runs Claude on your Mac to work out how to launch this project again, and rewrites its launcher. Takes a minute or two; the current launcher keeps working until it finishes."
+    >
+      <RotateCw className="h-3 w-3" />
+      Redo launch setup
+    </button>
   );
 }
