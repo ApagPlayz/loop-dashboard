@@ -290,9 +290,17 @@ function BeforeAfterPanel({ date, project }: { date: string; project: string }) 
 export default function InstructionChanges({ project }: { project: string }) {
   const [groups, setGroups] = useState<Group[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [openSha, setOpenSha] = useState<string | null>(null);
+  /**
+   * Keyed by `${group.file}::${sha}`, not sha alone. A template rollout
+   * touches 10+ workflow files, so the same commit shows up as a row under
+   * every agent group on the page. Keying open state by sha alone meant one
+   * click opened that commit's row in every group at once — a dozen diff (or
+   * before/after) panels for a single click. Keying by the row's own group
+   * scopes the click to the row that was actually clicked.
+   */
+  const [openKey, setOpenKey] = useState<string | null>(null);
   const [diffs, setDiffs] = useState<Record<string, FilePatch[] | "loading">>({});
-  const [compareSha, setCompareSha] = useState<string | null>(null);
+  const [compareKey, setCompareKey] = useState<string | null>(null);
 
   useEffect(() => {
     if (!project) return;
@@ -308,12 +316,12 @@ export default function InstructionChanges({ project }: { project: string }) {
   }, [project]);
 
   const toggleDiff = useCallback(
-    async (sha: string) => {
-      if (openSha === sha) {
-        setOpenSha(null);
+    async (key: string, sha: string) => {
+      if (openKey === key) {
+        setOpenKey(null);
         return;
       }
-      setOpenSha(sha);
+      setOpenKey(key);
       if (!diffs[sha]) {
         setDiffs((p) => ({ ...p, [sha]: "loading" }));
         try {
@@ -328,7 +336,7 @@ export default function InstructionChanges({ project }: { project: string }) {
         }
       }
     },
-    [openSha, diffs, project],
+    [openKey, diffs, project],
   );
 
   return (
@@ -381,7 +389,8 @@ export default function InstructionChanges({ project }: { project: string }) {
           </h3>
           <div className="space-y-2">
             {g.commits.map((c) => {
-              const open = openSha === c.sha;
+              const rowKey = `${g.file}::${c.sha}`;
+              const open = openKey === rowKey;
               const diff = diffs[c.sha];
               return (
                 <div
@@ -405,7 +414,7 @@ export default function InstructionChanges({ project }: { project: string }) {
                     </div>
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => toggleDiff(c.sha)}
+                        onClick={() => toggleDiff(rowKey, c.sha)}
                         className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800"
                       >
                         {open ? (
@@ -417,7 +426,7 @@ export default function InstructionChanges({ project }: { project: string }) {
                       </button>
                       <button
                         onClick={() =>
-                          setCompareSha(compareSha === c.sha ? null : c.sha)
+                          setCompareKey(compareKey === rowKey ? null : rowKey)
                         }
                         className="inline-flex items-center gap-1 rounded-md border border-zinc-700 bg-zinc-950 px-2 py-1 text-[11px] text-zinc-300 hover:bg-zinc-800"
                       >
@@ -455,7 +464,7 @@ export default function InstructionChanges({ project }: { project: string }) {
                     </div>
                   )}
 
-                  {compareSha === c.sha && c.date && (
+                  {compareKey === rowKey && c.date && (
                     <div className="border-t border-zinc-800 px-3 py-3">
                       <BeforeAfterPanel date={c.date} project={project} />
                     </div>
