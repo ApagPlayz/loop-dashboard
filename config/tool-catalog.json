@@ -566,7 +566,7 @@
       "rankScore": 0.85,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Cloud & infra"
       ],
       "safetyFlags": [],
       "source": "seed",
@@ -806,7 +806,7 @@
       "rankScore": 0.2,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Dev tools"
       ],
       "safetyFlags": [],
       "source": "anthropic-plugins",
@@ -834,7 +834,7 @@
       "rankScore": 0.2,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Design & media"
       ],
       "safetyFlags": [],
       "source": "anthropic-plugins",
@@ -4619,7 +4619,7 @@
       "rankScore": 0.2,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Dev tools"
       ],
       "safetyFlags": [],
       "source": "anthropic-plugins",
@@ -5329,7 +5329,7 @@
       "rankScore": 0.2,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "AI & data"
       ],
       "safetyFlags": [],
       "source": "anthropic-plugins",
@@ -6749,7 +6749,7 @@
       "rankScore": 0.2,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Cloud & infra"
       ],
       "safetyFlags": [],
       "source": "anthropic-plugins",
@@ -6917,7 +6917,7 @@
       "rankScore": 0.2,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Dev tools"
       ],
       "safetyFlags": [],
       "source": "anthropic-plugins",
@@ -8149,7 +8149,7 @@
       "rankScore": 0.598,
       "stale": false,
       "categories": [
-        "Web search & scraping"
+        "Productivity & docs"
       ],
       "safetyFlags": [
         "Needs an API key or account login — you'll be asked for it.",
@@ -8239,7 +8239,7 @@
       "rankScore": 0.519,
       "stale": false,
       "categories": [
-        "Web search & scraping"
+        "AI & data"
       ],
       "safetyFlags": [],
       "source": "pulsemcp",
@@ -8599,7 +8599,7 @@
       "rankScore": 0.448,
       "stale": false,
       "categories": [
-        "Web search & scraping"
+        "Communication"
       ],
       "safetyFlags": [],
       "source": "pulsemcp",
@@ -8659,7 +8659,6 @@
       "rankScore": 0.434,
       "stale": false,
       "categories": [
-        "Browser & automation",
         "Other"
       ],
       "safetyFlags": [],
@@ -8962,7 +8961,7 @@
       "rankScore": 0.406,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Other"
       ],
       "safetyFlags": [],
       "source": "pulsemcp",
@@ -10706,7 +10705,7 @@
       "rankScore": 0.286,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "AI & data"
       ],
       "safetyFlags": [],
       "source": "pulsemcp",
@@ -11446,7 +11445,7 @@
       "rankScore": 0.191,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Dev tools"
       ],
       "safetyFlags": [],
       "source": "davila7",
@@ -11644,7 +11643,7 @@
       "rankScore": 0.185,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Design & media"
       ],
       "safetyFlags": [],
       "source": "davila7",
@@ -11700,7 +11699,7 @@
       "rankScore": 0.184,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Dev tools"
       ],
       "safetyFlags": [],
       "source": "davila7",
@@ -11786,7 +11785,7 @@
       "rankScore": 0.18,
       "stale": false,
       "categories": [
-        "Web search & scraping"
+        "Productivity & docs"
       ],
       "safetyFlags": [],
       "source": "davila7",
@@ -11928,7 +11927,7 @@
       "rankScore": 0.177,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Design & media"
       ],
       "safetyFlags": [
         "Can change, delete, or run things on your systems."
@@ -12466,7 +12465,7 @@
       "rankScore": 0.163,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Cloud & infra"
       ],
       "safetyFlags": [],
       "source": "davila7",
@@ -12860,7 +12859,7 @@
       "rankScore": 0.157,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Security"
       ],
       "safetyFlags": [],
       "source": "davila7",
@@ -12974,7 +12973,7 @@
       "rankScore": 0.155,
       "stale": false,
       "categories": [
-        "Browser & automation"
+        "Dev tools"
       ],
       "safetyFlags": [],
       "source": "davila7",
