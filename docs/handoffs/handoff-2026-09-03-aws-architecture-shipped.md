@@ -1,5 +1,7 @@
 # Handoff — AWS architecture shipped, repo public (2026-09-03)
 
+> **SUPERSEDED by `handoff-2026-09-05-ui-defect-sweep-and-real-demo.md` (2026-09-05)** — read that file instead; this one is kept for history.
+
 ## TL;DR
 
 The AWS work is **done, live, and verified by running it** — not asserted. The dashboard
