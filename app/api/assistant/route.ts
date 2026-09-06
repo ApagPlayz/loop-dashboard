@@ -6,6 +6,7 @@ import {
   ASSISTANT_CLI_UNAVAILABLE_MESSAGE,
   type ChatMessage,
 } from "@/lib/map-ai";
+import { AI_LABELS } from "@/lib/ai-usage";
 
 // The CLI backend spawns a child process — keep this on the Node runtime.
 export const runtime = "nodejs";
@@ -116,6 +117,7 @@ export async function POST(req: Request) {
       system: SYSTEM_PROMPT,
       messages,
       timeoutMs: CHAT_TIMEOUT_MS,
+      label: AI_LABELS.helpAssistant,
     });
     return NextResponse.json({ reply });
   } catch (err) {

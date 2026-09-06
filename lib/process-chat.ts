@@ -18,6 +18,7 @@
 
 import { snapshotWorkflows } from "./map-history";
 import { aiStructuredCall, aiBackend, AiError, type ChatMessage } from "./map-ai";
+import { AI_LABELS } from "./ai-usage";
 import { listTemplateWorkflows, isValidTemplateFileName } from "./loop-template";
 import { resolveProject } from "./projects";
 import { localCheckoutForRepo, getCheckoutStatus, type CheckoutStatus } from "./local-folders";
@@ -232,6 +233,7 @@ Reply to the owner's most recent message (and draft file changes only if they as
     maxTokens: 32000,
     cwd: canReadCode ? (checkout ?? undefined) : undefined,
     tools: canReadCode ? READONLY_TOOLS : undefined,
+    label: AI_LABELS.processChat,
     schema: {
       type: "object",
       properties: {

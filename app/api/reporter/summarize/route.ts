@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { aiStructuredCall, aiEnabled, AI_DISABLED_MESSAGE, AiError } from "@/lib/map-ai";
+import { AI_LABELS } from "@/lib/ai-usage";
 import { startJob } from "@/lib/map-ai-jobs";
 import { getDigest } from "@/lib/reporter";
 
@@ -57,6 +58,7 @@ Write a short "what's new lately" briefing (3-5 sentences, one paragraph). Lead 
       toolName: "submit_summary",
       toolDescription: "Submit the plain-English briefing paragraph.",
       timeoutMs: SUMMARY_TIMEOUT_MS,
+      label: AI_LABELS.reporterSummarize,
       schema: {
         type: "object",
         properties: {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { aiStructuredCall, aiEnabled, AiError, AI_DISABLED_MESSAGE } from "@/lib/map-ai";
+import { AI_LABELS } from "@/lib/ai-usage";
 import { startJob } from "@/lib/map-ai-jobs";
 import { resolveProject, ProjectError } from "@/lib/projects";
 
@@ -99,6 +100,7 @@ Return 3 to 5 clarifying questions.`;
           toolName: "submit_questions",
           toolDescription: "Submit 3 to 5 plain-English clarifying questions.",
           timeoutMs: AI_TIMEOUT_MS,
+          label: AI_LABELS.customIdeaClarify,
           schema: {
             type: "object",
             properties: {
@@ -173,6 +175,7 @@ Write the polished idea brief.`;
         toolName: "submit_idea",
         toolDescription: "Submit the polished idea title and Markdown body.",
         timeoutMs: AI_TIMEOUT_MS,
+        label: AI_LABELS.customIdeaCompose,
         schema: {
           type: "object",
           properties: {

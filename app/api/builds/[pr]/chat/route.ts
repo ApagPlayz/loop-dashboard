@@ -6,6 +6,7 @@ import {
   AiError,
   type ChatMessage,
 } from "@/lib/map-ai";
+import { AI_LABELS } from "@/lib/ai-usage";
 import { loadPRDetail, isBuilderBranch } from "@/lib/queues";
 import { getOctokit, type RepoConfig } from "@/lib/github";
 import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
@@ -192,6 +193,7 @@ Answer the owner's questions plainly and honestly — be direct about correctnes
       timeoutMs: canReadCode ? CODE_CHAT_TIMEOUT_MS : CHAT_TIMEOUT_MS,
       cwd: canReadCode ? (checkout ?? undefined) : undefined,
       tools: canReadCode ? READONLY_TOOLS : undefined,
+      label: AI_LABELS.prChat,
     });
     return NextResponse.json({ reply });
   } catch (err) {

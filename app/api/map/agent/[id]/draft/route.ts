@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { aiStructuredCall, aiEnabled, AiError, AI_DISABLED_MESSAGE } from "@/lib/map-ai";
+import { AI_LABELS } from "@/lib/ai-usage";
 import { startJob } from "@/lib/map-ai-jobs";
 import { resolveProjectFromUrl, findProjectAgent, ProjectError } from "@/lib/projects";
 
@@ -85,6 +86,7 @@ The owner's request: ${request}`;
       toolName: "submit_revision",
       toolDescription: "Submit the complete revised text.",
       timeoutMs: DRAFT_TIMEOUT_MS,
+      label: AI_LABELS.agentDraft,
       schema: {
         type: "object",
         properties: {

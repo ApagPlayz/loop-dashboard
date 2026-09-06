@@ -35,6 +35,31 @@
 import { costOf, normalizeModelId } from "./ai-pricing";
 import { appendUsage } from "./usage-store";
 
+/**
+ * Every feature-level label an AI call can be attributed to, defined once so a
+ * typo at a call site is a type error instead of a silently new bucket in the
+ * usage summary. Call sites reference `AI_LABELS.xxx`, never a bare string.
+ */
+export const AI_LABELS = {
+  helpAssistant: "help-assistant",
+  prChat: "pr-chat",
+  ideaChat: "idea-chat",
+  customIdeaChat: "custom-idea-chat",
+  customIdeaClarify: "custom-idea-clarify",
+  customIdeaCompose: "custom-idea-compose",
+  agentDraft: "agent-draft",
+  loopEdit: "loop-edit",
+  reporterSummarize: "reporter-summarize",
+  reporterEnrich: "reporter-enrich",
+  processChat: "process-chat",
+  launcherAnalysis: "launcher-analysis",
+  toolFit: "tool-fit",
+  triage: "triage",
+} as const;
+
+/** The union of every valid label value, e.g. "pr-chat" | "tool-fit" | ... */
+export type AiLabel = (typeof AI_LABELS)[keyof typeof AI_LABELS];
+
 /** One AI call, as accounted for. */
 export type AiUsageRecord = {
   /** ISO timestamp of when the call finished. */

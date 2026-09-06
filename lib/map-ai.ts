@@ -38,7 +38,7 @@ import path from "node:path";
 
 import type { AnthropicBedrock, AnthropicBedrockMantle } from "@anthropic-ai/bedrock-sdk";
 
-import { recordUsageFrom, type AiUsageRecord, type RawTokenUsage } from "./ai-usage";
+import { recordUsageFrom, type AiLabel, type AiUsageRecord, type RawTokenUsage } from "./ai-usage";
 
 const API_URL = "https://api.anthropic.com/v1/messages";
 const MAX_TOKENS = 16000;
@@ -471,12 +471,12 @@ export type StructuredCallOpts = {
    */
   tools?: string[];
   /**
-   * Which feature is spending, e.g. "map-draft", "tool-fit". Recorded against
-   * the call so /api/usage can say where the tokens went. Optional and
-   * defaulted to "unknown": the fifteen existing call sites are threaded
-   * separately, and none of them should break for want of a label.
+   * Which feature is spending, e.g. "loop-edit", "tool-fit" — one of
+   * AI_LABELS (lib/ai-usage.ts). Recorded against the call so /api/usage can
+   * say where the tokens went. Optional and defaulted to "unknown" so a call
+   * site that's missed one doesn't break for want of a label.
    */
-  label?: string;
+  label?: AiLabel;
 };
 
 /**
@@ -757,7 +757,7 @@ export type ChatCallOpts = {
    * Which feature is spending, e.g. "help-assistant", "pr-chat". Optional and
    * defaulted to "unknown" — see StructuredCallOpts.label.
    */
-  label?: string;
+  label?: AiLabel;
 };
 
 /** True when a plain-text chat call can actually run right now, on any backend. */

@@ -22,6 +22,7 @@ import { promises as fs } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 import { aiStructuredCall, AiError } from "./map-ai";
+import { AI_LABELS } from "./ai-usage";
 import { resolveProject, type Project } from "./projects";
 import { scanLocalFolders, type LocalFolder } from "./local-folders";
 
@@ -476,6 +477,7 @@ How should the launcher start this product?`,
     toolDescription: "How to launch this project for a non-technical owner",
     schema: ANALYSIS_SCHEMA as unknown as Record<string, unknown>,
     timeoutMs: 180_000,
+    label: AI_LABELS.launcherAnalysis,
   });
 
   if (analysis.kind === "unknown" || !analysis.startCmd.trim()) {

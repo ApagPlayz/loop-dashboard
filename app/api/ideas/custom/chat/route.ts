@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { aiStructuredCall, aiBackend, AiError } from "@/lib/map-ai";
+import { AI_LABELS } from "@/lib/ai-usage";
 import { resolveProject, ProjectError } from "@/lib/projects";
 import { localCheckoutForRepo } from "@/lib/local-folders";
 import { loadCatalog, shortlistForText, type CatalogEntry, type ToolType } from "@/lib/tool-catalog";
@@ -239,6 +240,7 @@ Keep the title concise. Write the body as clear markdown a Builder agent could a
       timeoutMs: CODE_CHAT_TIMEOUT_MS,
       cwd: canReadCode ? (checkout ?? undefined) : undefined,
       tools: canReadCode ? READONLY_TOOLS : undefined,
+      label: AI_LABELS.customIdeaChat,
     });
 
     // Map suggested ids back through the catalog so name/type/url are

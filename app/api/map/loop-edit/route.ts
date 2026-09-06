@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { snapshotWorkflows } from "@/lib/map-history";
 import { aiStructuredCall, aiEnabled, AiError, AI_DISABLED_MESSAGE } from "@/lib/map-ai";
+import { AI_LABELS } from "@/lib/ai-usage";
 import { startJob } from "@/lib/map-ai-jobs";
 import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 import type { RepoConfig } from "@/lib/github";
@@ -87,6 +88,7 @@ The owner's request: ${request}`;
       "Propose the workflow changes: a plain-English summary and the complete new content of each changed file.",
     timeoutMs: LOOP_EDIT_TIMEOUT_MS,
     maxTokens: broad ? 32000 : 16000,
+    label: AI_LABELS.loopEdit,
     schema: {
       type: "object",
       properties: {

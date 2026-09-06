@@ -9,6 +9,7 @@
 
 import { addLabel, createComment, listIssues } from "../github";
 import { aiStructuredCall } from "../map-ai";
+import { AI_LABELS } from "../ai-usage";
 
 import type {
   Assessment,
@@ -150,6 +151,7 @@ async function assessBatch(items: BacklogItem[]): Promise<Assessment[]> {
     toolDescription: "Record one triage assessment for every issue supplied.",
     schema: ASSESS_SCHEMA as unknown as Record<string, unknown>,
     timeoutMs: 180_000,
+    label: AI_LABELS.triage,
   });
   return coerceAssessments(raw, items);
 }

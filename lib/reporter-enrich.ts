@@ -11,6 +11,7 @@
  */
 
 import { aiEnabled, aiStructuredCall } from "@/lib/map-ai";
+import { AI_LABELS } from "@/lib/ai-usage";
 import type { DigestItem } from "@/lib/reporter-types";
 
 /** Bound cost: only the most prominent unenriched items get sent to the AI. */
@@ -92,6 +93,7 @@ For each id, write one plain-English sentence of at most 18 words capturing what
       toolName: "submit_insights",
       toolDescription: "Submit the distilled community-sentiment insight for each discussion thread.",
       timeoutMs: ENRICH_TIMEOUT_MS,
+      label: AI_LABELS.reporterEnrich,
       schema: {
         type: "object",
         properties: {

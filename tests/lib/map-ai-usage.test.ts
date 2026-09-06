@@ -22,7 +22,7 @@ vi.mock("node:fs", async (importOriginal) => {
   return { ...actual, existsSync: () => true, mkdirSync: () => undefined };
 });
 
-import { getRecentUsage, resetUsage } from "../../lib/ai-usage";
+import { AI_LABELS, getRecentUsage, resetUsage } from "../../lib/ai-usage";
 import { aiChatCall, aiStructuredCall } from "../../lib/map-ai";
 
 /* ------------------------------------------------------------------ */
@@ -127,19 +127,19 @@ const STRUCTURED = {
 describe("cli/structured usage extraction", () => {
   test("still returns the structured output unchanged", async () => {
     queueEnvelopes(CLI_ENVELOPE);
-    const out = await aiStructuredCall<{ summary: string }>({ ...STRUCTURED, label: "map-draft" });
+    const out = await aiStructuredCall<{ summary: string }>({ ...STRUCTURED, label: AI_LABELS.loopEdit });
     expect(out).toEqual({ summary: "drafted" });
   });
 
   test("records one usage record with every token bucket off the envelope", async () => {
     queueEnvelopes(CLI_ENVELOPE);
-    await aiStructuredCall({ ...STRUCTURED, label: "map-draft" });
+    await aiStructuredCall({ ...STRUCTURED, label: AI_LABELS.loopEdit });
 
     const [r, ...rest] = getRecentUsage();
     expect(rest).toHaveLength(0);
     expect(r.backend).toBe("cli");
     expect(r.kind).toBe("structured");
-    expect(r.label).toBe("map-draft");
+    expect(r.label).toBe(AI_LABELS.loopEdit);
     expect(r.ok).toBe(true);
     expect(r.errorKind).toBeUndefined();
 
@@ -182,7 +182,7 @@ describe("cli/structured usage extraction", () => {
     const older: Partial<typeof CLI_ENVELOPE> = { ...CLI_ENVELOPE };
     delete older.modelUsage;
     queueEnvelopes(older);
-    await aiStructuredCall({ ...STRUCTURED, label: "map-draft" });
+    await aiStructuredCall({ ...STRUCTURED, label: AI_LABELS.loopEdit });
 
     const r = getRecentUsage()[0];
     expect(r.inputTokens).toBe(12);
@@ -197,13 +197,13 @@ describe("cli/structured usage extraction", () => {
     // A failed turn still burned the prompt, and the CLI reports both in the
     // same envelope. Counting only successes is how a retry storm hides.
     queueEnvelopes({ ...CLI_ENVELOPE, is_error: true, subtype: "error_during_execution" });
-    await expect(aiStructuredCall({ ...STRUCTURED, label: "map-draft" })).rejects.toThrow();
+    await expect(aiStructuredCall({ ...STRUCTURED, label: AI_LABELS.loopEdit })).rejects.toThrow();
 
     const r = getRecentUsage()[0];
     expect(r.ok).toBe(false);
     expect(r.errorKind).toBe("http-502");
     expect(r.totalInputTokens).toBe(24588);
-    expect(r.label).toBe("map-draft");
+    expect(r.label).toBe(AI_LABELS.loopEdit);
   });
 
   test("a spawn failure is still recorded, with no tokens to report", async () => {
@@ -211,7 +211,7 @@ describe("cli/structured usage extraction", () => {
       (_f: string, _a: string[], _o: unknown, cb: (e: unknown, o: string, s: string) => void) =>
         cb(Object.assign(new Error("ENOENT"), { code: "ENOENT" }), "", ""),
     );
-    await expect(aiStructuredCall({ ...STRUCTURED, label: "map-draft" })).rejects.toThrow();
+    await expect(aiStructuredCall({ ...STRUCTURED, label: AI_LABELS.loopEdit })).rejects.toThrow();
 
     const r = getRecentUsage()[0];
     expect(r.ok).toBe(false);
@@ -224,7 +224,7 @@ describe("cli/structured usage extraction", () => {
     const unparseable = { ...CLI_ENVELOPE, structured_output: undefined, result: "no json here" };
     queueEnvelopes(unparseable, CLI_ENVELOPE);
 
-    await aiStructuredCall({ ...STRUCTURED, label: "map-draft" });
+    await aiStructuredCall({ ...STRUCTURED, label: AI_LABELS.loopEdit });
     expect(execFileImpl).toHaveBeenCalledTimes(2);
 
     const records = getRecentUsage(); // newest first

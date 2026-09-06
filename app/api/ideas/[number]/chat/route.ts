@@ -7,6 +7,7 @@ import {
   AI_DISABLED_MESSAGE,
   type ChatMessage,
 } from "@/lib/map-ai";
+import { AI_LABELS } from "@/lib/ai-usage";
 import { getIssue, listThreadComments } from "@/lib/queues";
 import { resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 import { localCheckoutForRepo } from "@/lib/local-folders";
@@ -193,6 +194,7 @@ Answer the owner's questions plainly and honestly — be direct about risk, scop
       timeoutMs: canReadCode ? CODE_CHAT_TIMEOUT_MS : CHAT_TIMEOUT_MS,
       cwd: canReadCode ? checkout : undefined,
       tools: canReadCode ? READONLY_TOOLS : undefined,
+      label: AI_LABELS.ideaChat,
     });
 
     const reply = typeof result.reply === "string" ? result.reply.trim() : "";

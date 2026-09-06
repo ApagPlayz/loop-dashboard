@@ -25,6 +25,7 @@ import path from "node:path";
 import { getOctokit } from "./github";
 import { loadCatalog, type CatalogEntry, type ToolType, type TrustTier } from "./tool-catalog";
 import { aiStructuredCall, aiEnabled, AiError } from "./map-ai";
+import { AI_LABELS } from "./ai-usage";
 import { loadCapabilityInventory } from "./tools";
 import { AGENTS } from "./map-agents";
 
@@ -461,6 +462,7 @@ Score each tool and list which agents (if any) should get it. Return one entry p
     toolDescription: "Submit a fit score, one-line reason, and recommended agents for each tool.",
     schema: SCORE_SCHEMA as unknown as Record<string, unknown>,
     timeoutMs: BATCH_TIMEOUT_MS,
+    label: AI_LABELS.toolFit,
   });
 
   const out = new Map<string, BatchScore>();
