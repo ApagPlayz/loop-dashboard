@@ -56,3 +56,9 @@ next-env.d.ts
 /data/embeddings-local.json
 /data/embeddings-titan.json
 /data/embeddings.json
+
+# AI token/cost accounting log, appended to on every AI call by
+# lib/usage-store.ts. Machine-generated, per-deployment, and rotated in place —
+# it is telemetry about this machine, not source.
+/data/ai-usage.jsonl
+/data/ai-usage.1.jsonl

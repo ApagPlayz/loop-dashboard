@@ -38,6 +38,8 @@ import path from "node:path";
 
 import type { AnthropicBedrock, AnthropicBedrockMantle } from "@anthropic-ai/bedrock-sdk";
 
+import { recordUsageFrom, type AiUsageRecord, type RawTokenUsage } from "./ai-usage";
+
 const API_URL = "https://api.anthropic.com/v1/messages";
 const MAX_TOKENS = 16000;
 const CLI_TIMEOUT_MS = 120_000;
@@ -272,6 +274,174 @@ function bedrockChatModel(): string {
 }
 
 /* ------------------------------------------------------------------ */
+/* Usage accounting                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The slot a backend branch fills in as it learns things.
+ *
+ * `tracked()` below owns the clock and writes the record; a branch only has to
+ * say which model actually answered and what the response reported. Passing it
+ * down (rather than having each branch build its own record) is also how the
+ * chosen backend is decided exactly once, at the entry point, instead of every
+ * branch re-deriving it from the environment mid-call.
+ */
+type CallUsage = {
+  /** Set by `tracked`. Resettable, so a CLI retry times its own attempt. */
+  startedAt: number;
+  /** Whatever the branch sent, refined to what actually answered when known. */
+  model: string;
+  tokens?: RawTokenUsage;
+  /** Only when the backend reported its own dollar figure (the CLI does). */
+  costUsd?: number;
+};
+
+/** Short, groupable tag for why a call failed. */
+function errorKindOf(err: unknown): string {
+  if (err instanceof AiError) return `http-${err.httpStatus}`;
+  const name = (err as { name?: string })?.name;
+  return typeof name === "string" && name ? name : "unknown";
+}
+
+/**
+ * Run one backend call, timing it and recording what it used — on the way out
+ * AND on the way to a throw.
+ *
+ * Failures are recorded deliberately. A call that 429s or times out has still
+ * consumed the input tokens it was given, and a cost view that counts only
+ * successes is precisely the one that under-reports a retry storm.
+ */
+async function tracked<T>(
+  meta: {
+    label: string | undefined;
+    backend: AiUsageRecord["backend"];
+    kind: AiUsageRecord["kind"];
+  },
+  run: (usage: CallUsage) => Promise<T>,
+): Promise<T> {
+  const usage: CallUsage = { startedAt: Date.now(), model: "" };
+  try {
+    const value = await run(usage);
+    recordUsageFrom({
+      ...meta,
+      model: usage.model,
+      tokens: usage.tokens,
+      costUsd: usage.costUsd,
+      durationMs: Date.now() - usage.startedAt,
+      ok: true,
+    });
+    return value;
+  } catch (err) {
+    recordUsageFrom({
+      ...meta,
+      model: usage.model,
+      tokens: usage.tokens,
+      costUsd: usage.costUsd,
+      durationMs: Date.now() - usage.startedAt,
+      ok: false,
+      errorKind: errorKindOf(err),
+    });
+    throw err;
+  }
+}
+
+/**
+ * The `usage` block. Identical field names on the Anthropic Messages API, on
+ * Bedrock, and inside the CLI's envelope — the one thing the three agree on.
+ *
+ * `input_tokens` is the UNCACHED REMAINDER, not the prompt size; the cached
+ * part is split out into the two cache fields. lib/ai-usage.ts is what puts
+ * them back together.
+ */
+type MessagesApiUsage = {
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  cache_read_input_tokens?: number | null;
+  cache_creation_input_tokens?: number | null;
+};
+
+function tokensFromMessagesApi(usage: MessagesApiUsage | undefined | null): RawTokenUsage {
+  return {
+    inputTokens: usage?.input_tokens ?? 0,
+    outputTokens: usage?.output_tokens ?? 0,
+    cacheReadTokens: usage?.cache_read_input_tokens ?? 0,
+    cacheWriteTokens: usage?.cache_creation_input_tokens ?? 0,
+  };
+}
+
+function nonNegative(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
+}
+
+/**
+ * Pull usage out of a CLI envelope.
+ *
+ * `modelUsage` is the better of the two sources: it is keyed by the model id
+ * that actually answered — the CLI resolves the "sonnet" alias itself, so this
+ * is the only place the real id ever appears — and carries the CLI's own
+ * costUSD. The flat `usage` block is the fallback for a CLI old enough not to
+ * emit it.
+ *
+ * A turn can bill against more than one model (a subagent, a compaction pass).
+ * Tokens are summed across all of them so the totals stay exact, and the id
+ * reported is whichever did the most work, which is the honest label for the
+ * effectively-always-one-entry normal case.
+ *
+ * The dollar figure is carried as a LIST price, never as spend: on the owner's
+ * Claude Max subscription the marginal cost of a CLI call is zero, and
+ * `total_cost_usd` is what it would have cost on the API.
+ */
+function usageFromEnvelope(
+  envelope: CliEnvelope,
+  fallbackModel: string,
+): { model: string; tokens: RawTokenUsage; costUsd?: number } {
+  const envelopeCost =
+    typeof envelope.total_cost_usd === "number" ? envelope.total_cost_usd : undefined;
+
+  const entries = Object.entries(envelope.modelUsage ?? {});
+  if (entries.length > 0) {
+    const tokens: RawTokenUsage = {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    };
+    let model = fallbackModel;
+    let heaviest = -1;
+    let summedCost = 0;
+    let sawCost = false;
+
+    for (const [id, entry] of entries) {
+      const input = nonNegative(entry?.inputTokens);
+      const output = nonNegative(entry?.outputTokens);
+      const cacheRead = nonNegative(entry?.cacheReadInputTokens);
+      const cacheWrite = nonNegative(entry?.cacheCreationInputTokens);
+      tokens.inputTokens! += input;
+      tokens.outputTokens! += output;
+      tokens.cacheReadTokens! += cacheRead;
+      tokens.cacheWriteTokens! += cacheWrite;
+      if (typeof entry?.costUSD === "number") {
+        summedCost += entry.costUSD;
+        sawCost = true;
+      }
+      const weight = input + output + cacheRead + cacheWrite;
+      if (weight > heaviest) {
+        heaviest = weight;
+        model = entry?.canonicalModel || id;
+      }
+    }
+
+    return { model, tokens, costUsd: envelopeCost ?? (sawCost ? summedCost : undefined) };
+  }
+
+  return {
+    model: fallbackModel,
+    tokens: tokensFromMessagesApi(envelope.usage),
+    costUsd: envelopeCost,
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Public entry point                                                  */
 /* ------------------------------------------------------------------ */
 
@@ -300,19 +470,31 @@ export type StructuredCallOpts = {
    * here. Ignored by the API backend.
    */
   tools?: string[];
+  /**
+   * Which feature is spending, e.g. "map-draft", "tool-fit". Recorded against
+   * the call so /api/usage can say where the tokens went. Optional and
+   * defaulted to "unknown": the fifteen existing call sites are threaded
+   * separately, and none of them should break for want of a label.
+   */
+  label?: string;
 };
 
 /**
  * Ask the AI for a JSON object matching `schema`. Routed to whichever backend
  * is available; both enforce the schema (API: forced tool use; CLI:
  * --json-schema plus defensive parsing with one retry).
+ *
+ * The backend is resolved once, here, and handed to `tracked` so the usage
+ * record cannot disagree with the branch that actually ran.
  */
 export async function aiStructuredCall<T>(opts: StructuredCallOpts): Promise<T> {
   const backend = aiBackend();
-  if (backend === "cli") return cliStructuredCall<T>(opts);
-  if (backend === "bedrock") return bedrockStructuredCall<T>(opts);
-  if (backend === "api") return apiStructuredCall<T>(opts);
-  throw new AiError(AI_DISABLED_MESSAGE, 503);
+  if (backend === "disabled") throw new AiError(AI_DISABLED_MESSAGE, 503);
+  return tracked({ label: opts.label, backend, kind: "structured" }, (usage) => {
+    if (backend === "cli") return cliStructuredCall<T>(opts, usage);
+    if (backend === "bedrock") return bedrockStructuredCall<T>(opts, usage);
+    return apiStructuredCall<T>(opts, usage);
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -330,12 +512,56 @@ function sandboxDir(): string {
   return dir;
 }
 
+/**
+ * Per-model accounting the CLI emits, keyed by resolved model id. camelCase,
+ * unlike the snake_case `usage` block next to it — the two are produced by
+ * different layers of the CLI and have never agreed on a convention.
+ */
+type CliModelUsage = {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadInputTokens?: number;
+  cacheCreationInputTokens?: number;
+  /** List-price equivalent, computed by the CLI. Not a charge on the subscription. */
+  costUSD?: number;
+  contextWindow?: number;
+  thinkingTokens?: number;
+  /** The real model id behind an alias like "sonnet". */
+  canonicalModel?: string;
+  provider?: string;
+  costBasis?: string;
+};
+
+/**
+ * The CLI's JSON envelope.
+ *
+ * Only the first five fields are load-bearing for getting an answer out; the
+ * rest is accounting the CLI has been emitting all along and this type simply
+ * never admitted existed, so every usage number was parsed and discarded.
+ * Measured against claude 2.1.261.
+ *
+ * All added fields are optional. That is not defensive padding — an older CLI
+ * genuinely omits them, and `usageFromEnvelope` is written to produce a valid
+ * (zeroed) record when it finds nothing.
+ */
 type CliEnvelope = {
   type?: string;
   subtype?: string;
   is_error?: boolean;
   result?: string;
   structured_output?: unknown;
+  usage?: MessagesApiUsage & {
+    output_tokens_details?: { thinking_tokens?: number };
+    service_tier?: string;
+  };
+  modelUsage?: Record<string, CliModelUsage>;
+  total_cost_usd?: number;
+  num_turns?: number;
+  duration_ms?: number;
+  duration_api_ms?: number;
+  ttft_ms?: number;
+  stop_reason?: string;
+  session_id?: string;
 };
 
 function runCli(
@@ -390,9 +616,16 @@ export function parseLoose(text: string): unknown {
   return JSON.parse(cleaned.slice(first, last + 1));
 }
 
-async function cliStructuredCall<T>(opts: StructuredCallOpts, isRetry = false): Promise<T> {
+async function cliStructuredCall<T>(
+  opts: StructuredCallOpts,
+  usage: CallUsage,
+  isRetry = false,
+): Promise<T> {
   const cliPath = findCli();
   if (!cliPath) throw new AiError(AI_DISABLED_MESSAGE, 503);
+
+  // What we asked for; replaced below by whatever the envelope says answered.
+  usage.model = cliModel();
 
   const system = `${opts.system}
 
@@ -435,6 +668,10 @@ IMPORTANT: your previous reply was not valid JSON matching the schema. This time
     throw new AiError("The local Claude app returned an unexpected answer. Try again.");
   }
 
+  // Before the error checks: a failed turn still burned tokens, and the CLI
+  // reports them in the same envelope it reports the failure in.
+  Object.assign(usage, usageFromEnvelope(envelope, usage.model));
+
   if (envelope.is_error || envelope.subtype !== "success") {
     console.error("map-ai(cli): error envelope", JSON.stringify(envelope).slice(0, 500));
     const hint = typeof envelope.result === "string" ? envelope.result.slice(0, 200) : "";
@@ -457,7 +694,24 @@ IMPORTANT: your previous reply was not valid JSON matching the schema. This time
   } catch {
     if (!isRetry) {
       console.warn("map-ai(cli): JSON parse failed, retrying once");
-      return cliStructuredCall<T>(opts, true);
+      // The retry is a second real invocation of the CLI with its own tokens.
+      // Bank this attempt under its own record and hand the retry a clean slot,
+      // otherwise the two collapse into one and half the tokens vanish.
+      recordUsageFrom({
+        label: opts.label,
+        backend: "cli",
+        kind: "structured",
+        model: usage.model,
+        tokens: usage.tokens,
+        costUsd: usage.costUsd,
+        durationMs: Date.now() - usage.startedAt,
+        ok: false,
+        errorKind: "parse",
+      });
+      usage.startedAt = Date.now();
+      usage.tokens = undefined;
+      usage.costUsd = undefined;
+      return cliStructuredCall<T>(opts, usage, true);
     }
     console.error("map-ai(cli): parse failed twice", (envelope.result ?? "").slice(0, 500));
     throw new AiError("The AI couldn't produce a valid draft. Try rephrasing the request.");
@@ -499,6 +753,11 @@ export type ChatCallOpts = {
    * no tools at all (answer-only). Only pass read-only tools here.
    */
   tools?: string[];
+  /**
+   * Which feature is spending, e.g. "help-assistant", "pr-chat". Optional and
+   * defaulted to "unknown" — see StructuredCallOpts.label.
+   */
+  label?: string;
 };
 
 /** True when a plain-text chat call can actually run right now, on any backend. */
@@ -526,10 +785,12 @@ export function assistantCanReadCode(): boolean {
  */
 export async function aiChatCall(opts: ChatCallOpts): Promise<string> {
   const backend = aiBackend();
-  if (backend === "cli") return cliChatCall(opts);
-  if (backend === "bedrock") return bedrockChatCall(opts);
-  if (backend === "api") return apiChatCall(opts);
-  throw new AiError(ASSISTANT_CLI_UNAVAILABLE_MESSAGE, 503);
+  if (backend === "disabled") throw new AiError(ASSISTANT_CLI_UNAVAILABLE_MESSAGE, 503);
+  return tracked({ label: opts.label, backend, kind: "chat" }, (usage) => {
+    if (backend === "cli") return cliChatCall(opts, usage);
+    if (backend === "bedrock") return bedrockChatCall(opts, usage);
+    return apiChatCall(opts, usage);
+  });
 }
 
 /**
@@ -539,9 +800,12 @@ export async function aiChatCall(opts: ChatCallOpts): Promise<string> {
  * text instead of a schema-validated object. Always forces the Sonnet model so
  * the help assistant stays cheap.
  */
-async function cliChatCall(opts: ChatCallOpts): Promise<string> {
+async function cliChatCall(opts: ChatCallOpts, usage: CallUsage): Promise<string> {
   const cliPath = findCli();
   if (!cliPath) throw new AiError(ASSISTANT_CLI_UNAVAILABLE_MESSAGE, 503);
+
+  // Matches the hardcoded --model below; refined from the envelope once we have one.
+  usage.model = "sonnet";
 
   // The CLI takes a single prompt (session persistence is off), so flatten the
   // conversation into a transcript and ask it to reply to the latest turn.
@@ -581,6 +845,8 @@ Write your next reply to the owner's most recent message. Reply with plain text 
     console.error("map-ai(chat): non-JSON envelope", stdout.slice(0, 500));
     throw new AiError("The local Claude app returned an unexpected answer. Try again.");
   }
+
+  Object.assign(usage, usageFromEnvelope(envelope, usage.model));
 
   if (envelope.is_error || envelope.subtype !== "success") {
     console.error("map-ai(chat): error envelope", JSON.stringify(envelope).slice(0, 500));
@@ -635,9 +901,11 @@ export function stopReasonError(stopReason: string | null | undefined): AiError 
   return null;
 }
 
-async function apiStructuredCall<T>(opts: StructuredCallOpts): Promise<T> {
+async function apiStructuredCall<T>(opts: StructuredCallOpts, usage: CallUsage): Promise<T> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new AiError(AI_DISABLED_MESSAGE, 503);
+
+  usage.model = aiModel();
 
   let res: Response;
   try {
@@ -676,8 +944,15 @@ async function apiStructuredCall<T>(opts: StructuredCallOpts): Promise<T> {
 
   const data = (await res.json()) as {
     stop_reason?: string;
+    model?: string;
+    usage?: MessagesApiUsage;
     content?: { type: string; input?: unknown }[];
   };
+
+  // Read before the stop_reason check: a max_tokens truncation is a call we
+  // paid for in full, and it is exactly the kind that costs the most.
+  usage.tokens = tokensFromMessagesApi(data.usage);
+  if (data.model) usage.model = data.model;
 
   const stopErr = stopReasonError(data.stop_reason);
   if (stopErr) throw stopErr;
@@ -699,11 +974,12 @@ async function apiStructuredCall<T>(opts: StructuredCallOpts): Promise<T> {
  * real multi-turn `messages` array instead of a flattened transcript, and no
  * tools — this backend can only answer, never read code.
  */
-async function apiChatCall(opts: ChatCallOpts): Promise<string> {
+async function apiChatCall(opts: ChatCallOpts, usage: CallUsage): Promise<string> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new AiError(ASSISTANT_CLI_UNAVAILABLE_MESSAGE, 503);
 
   const model = chatCanonicalModel();
+  usage.model = model;
 
   let res: Response;
   try {
@@ -735,8 +1011,13 @@ async function apiChatCall(opts: ChatCallOpts): Promise<string> {
 
   const data = (await res.json()) as {
     stop_reason?: string;
+    model?: string;
+    usage?: MessagesApiUsage;
     content?: { type: string; text?: string }[];
   };
+
+  usage.tokens = tokensFromMessagesApi(data.usage);
+  if (data.model) usage.model = data.model;
 
   if (data.stop_reason === "refusal") {
     throw new AiError("The assistant declined that one. Try rephrasing it.", 422);
@@ -826,8 +1107,9 @@ function bedrockError(err: unknown, model: string, label: string): AiError {
  * That parameter is documented as unsupported on the Bedrock Messages endpoint
  * and would break this path.
  */
-async function bedrockStructuredCall<T>(opts: StructuredCallOpts): Promise<T> {
+async function bedrockStructuredCall<T>(opts: StructuredCallOpts, usage: CallUsage): Promise<T> {
   const model = bedrockModel();
+  usage.model = model;
   let message;
   try {
     const client = await getBedrockClient();
@@ -849,6 +1131,10 @@ async function bedrockStructuredCall<T>(opts: StructuredCallOpts): Promise<T> {
     throw bedrockError(err, model, "bedrock");
   }
 
+  // The SDK has always typed `usage`; nothing had ever read it.
+  usage.tokens = tokensFromMessagesApi(message.usage);
+  if (message.model) usage.model = message.model;
+
   const stopErr = stopReasonError(message.stop_reason);
   if (stopErr) throw stopErr;
 
@@ -864,8 +1150,9 @@ async function bedrockStructuredCall<T>(opts: StructuredCallOpts): Promise<T> {
 }
 
 /** The help assistant on Bedrock: same client, plain text, no tools. */
-async function bedrockChatCall(opts: ChatCallOpts): Promise<string> {
+async function bedrockChatCall(opts: ChatCallOpts, usage: CallUsage): Promise<string> {
   const model = bedrockChatModel();
+  usage.model = model;
   let message;
   try {
     const client = await getBedrockClient();
@@ -881,6 +1168,9 @@ async function bedrockChatCall(opts: ChatCallOpts): Promise<string> {
   } catch (err) {
     throw bedrockError(err, model, "chat/bedrock");
   }
+
+  usage.tokens = tokensFromMessagesApi(message.usage);
+  if (message.model) usage.model = message.model;
 
   if (message.stop_reason === "refusal") {
     throw new AiError("The assistant declined that one. Try rephrasing it.", 422);
