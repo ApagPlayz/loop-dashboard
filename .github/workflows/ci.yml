@@ -1,0 +1,51 @@
+# ---------------------------------------------------------------------------
+# Runs the checks that deploy.yml does not: typecheck, lint, and the unit
+# test suite, on every push to main and every PR targeting main.
+#
+# This is status-reporting only — it deliberately does NOT gate or block
+# deploy.yml (Deploy to ECS), which triggers on its own push-to-main event
+# and has no dependency on this workflow. Wiring these as a required check
+# (via branch protection, or making deploy.yml `needs:` this job) is a
+# follow-up decision, not something this file does on its own.
+#
+# Node 22 is pinned to match node:22-alpine in the Dockerfile. package.json
+# has no "engines" field, so this workflow is the only place that version is
+# enforced in CI.
+# ---------------------------------------------------------------------------
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck-lint-test:
+    name: Typecheck, lint, and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx eslint .
+
+      - name: Test
+        run: npm test
