@@ -1,5 +1,7 @@
 # Loop Dashboard
 
+[![CI](https://github.com/ApagPlayz/loop-dashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/ApagPlayz/loop-dashboard/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 A control plane for a loop of autonomous Claude coding agents that propose, build, review, and demonstrate changes to real GitHub repositories — with a human approval gate in the middle.
 
 **[Live demo → d1ougmzejkasx3.cloudfront.net](https://d1ougmzejkasx3.cloudfront.net)** · no login required · running on ECS Fargate behind CloudFront
