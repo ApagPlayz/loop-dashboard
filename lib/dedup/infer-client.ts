@@ -131,7 +131,8 @@ export function dedupInferenceRegion(url: string): string {
  * How long to wait for the whole round trip.
  *
  * The function's own timeout is 15 s and measured latency is 146–275 ms warm,
- * 1.14 s cold (docs/resume-bullets.md). 12 s therefore gives a cold start room
+ * 1.14 s cold (measured against the deployed Function URL). 12 s therefore
+ * gives a cold start room
  * while still failing before the owner concludes the composer has hung. This
  * is an explicit action he asked for, not a background refresh, so a couple of
  * seconds of patience is acceptable in a way it would not be on page load.

@@ -1,39 +1,11 @@
 # Backlog
 
 The agreed list of what to build next, in order, with the reasoning kept attached so it
-survives a context reset. Updated 2026-09-01.
+survives a context reset. Updated 2026-09-07.
 
 **Direction:** this is a personal project first — a tool the owner actually uses to build
 their own projects autonomously on AWS, posted publicly as portfolio work. Selling it is a
 later, separate question. Multi-tenancy is deferred (see `design-decisions.md` §7).
-
----
-
-## 0. Fix the GitHub credential — IN PROGRESS, blocks nothing else but goes first
-
-The `GITHUB_TOKEN` in `.env.local` is **the GitHub CLI's own OAuth token** (`gho_`),
-confirmed by hash comparison — not a fine-grained PAT as `.env.example` and `README.md`
-claim. The `gh` CLI's own OAuth token is far broader than this project needs, so it
-should be replaced with a token scoped to just the target repo(s).
-
-**Steps, in this order:**
-1. Create a fine-grained PAT at <https://github.com/settings/personal-access-tokens>,
-   scoped to the target repo(s), with: Contents (r/w), Issues (r/w), Pull requests (r/w),
-   Actions (r/w), **Secrets (read)**, **Workflows**.
-   The last two are not documented in `.env.example` — they were found only by reading the
-   code (`app/api/map/projects/checklist/route.ts` calls `listRepoSecrets`; writing into
-   `.github/workflows/` needs the Workflows permission).
-2. Put the new value in `.env.local`. No code changes needed — everything reads one variable.
-3. Revoke the old CLI token: <https://github.com/settings/applications> → "GitHub CLI" →
-   Revoke access. `gh auth logout` does **not** revoke, per gh's own help text.
-4. `gh auth login` again to restore the CLI (revoking signs `gh` out on all devices).
-
-**Also:** update `.env.example` to document the two missing permissions. Check what
-`GITHUB_TOKEN` is set to in Vercel's environment variables — if it starts with `gho_` it
-also needs rotating; if `github_pat_`, it is a separate token and is probably fine.
-
-**Not affected:** `secrets.GITHUB_TOKEN` in the loop workflow templates is GitHub Actions'
-auto-issued per-run token. Nothing to rotate.
 
 ---
 
@@ -67,20 +39,22 @@ the credential fix.
 
 ---
 
-## 2. Actually deploy to AWS
+## 2. Deploy to AWS — DONE 2026-09-02/03
 
-Nothing has ever run on AWS; there is no account. Until this happens, none of the AWS
-material is honestly claimable on a resume.
+Shipped. The container runs on ECS Fargate (ARM64/Graviton) behind CloudFront, images are
+pushed to ECR, and `.github/workflows/deploy.yml` authenticates with GitHub OIDC to a
+role whose trust policy is pinned to a single `refs/heads/main` subject — no long-lived
+AWS keys exist anywhere in this repo. Application secrets live in SSM Parameter Store as
+SecureStrings and are injected by the task execution role, so the deploy role has no
+`ssm:GetParameter` permission at all. Bedrock is live for both chat (Claude) and
+embeddings (Titan v2). See `docs/ARCHITECTURE.md` and `infra/`.
 
-1. Create an AWS account, `aws login`, and **request Bedrock model access immediately** —
-   it is an approval on Amazon's side, so start that clock first.
-2. Pilot Bedrock on **one** non-critical workflow per `docs/bedrock-setup.md`; confirm the
-   call appears in CloudTrail. Leave the Scout on the subscription.
-3. Stand the container up on ECS, then set five repo variables for
-   `.github/workflows/deploy.yml`: `AWS_REGION`, `AWS_DEPLOY_ROLE_ARN`, `ECR_REPOSITORY`,
-   `ECS_CLUSTER`, `ECS_SERVICE`. (`AWS_ACCOUNT_ID` is documented in that file's header but
-   never actually consumed by it — it only appears inside the role ARN.)
-4. Create the EventBridge Scheduler rule, then delete `vercel.json`.
+Still open from this workstream:
+
+1. Create the EventBridge Scheduler rule that replaces the old Vercel cron for
+   `/api/reporter/cron`. The route exists and fails closed; nothing schedules it yet.
+2. `AWS_ACCOUNT_ID` is documented in `deploy.yml`'s header but never actually consumed by
+   it — it only appears inside the role ARN. Either wire it or drop the doc line.
 
 ---
 
@@ -207,9 +181,9 @@ scale — it is an active negative signal, not a credential.
 ## 4. Unblock the CGP loop — independent of everything above
 
 CGP's loop is live and running against a **completely empty** `docs/loop-brief.md`
-(untouched template, last modified 2026-07-27). Needs: the owner's yes/no on the five
-drafted goals in `docs/drafts/cgp-loop-brief-draft-2026-08-18.md`, landing it as CGP's
-`docs/loop-brief.md`, and adding a `scout` block to its `.github/loop-config.json`.
+(untouched template, last modified 2026-07-27). Needs: a decision on the five drafted
+goals, landing them as CGP's `docs/loop-brief.md`, and adding a `scout` block to its
+`.github/loop-config.json`.
 Then triage 13 open PRs / 42 open issues — the Scout stands down every run until that
 queue moves (last merge 2026-07-28).
 
@@ -217,12 +191,16 @@ queue moves (last merge 2026-07-28).
 
 ## Open questions
 
-- Has `CRON_SECRET` been set in Vercel? The cron fails closed without it, by design.
-- Was the CGP `@mention` security hole ever exploited? Offered 2026-08-19, never checked.
-- The dashboard UI still has not been opened and looked at since the power-menu changes.
+- Is the scheduler secret set in the deployment environment? The cron route fails closed
+  without it, by design.
+- The reporter cron route is still unreachable behind the auth middleware — see
+  `docs/ARCHITECTURE.md` for the one-line allowlist fix and why it is safe.
 
 ## Known gaps deliberately left alone
 
-- Three pre-existing lint errors: `components/help-chat.tsx:55`,
-  `components/tools/catalog-browser.tsx:231`, `components/map/power-menu.tsx:221`.
-  They predate the AWS work and do not block the build.
+- `metrics/dedup-eval.json` is stamped with the operating point the product reads at
+  runtime; if the corpus is rebuilt without re-running `scripts/ml/evaluate.mjs`, the
+  threshold and the index silently disagree. `tests/lib/dedup/queue-duplicates.test.ts`
+  exists to catch exactly that.
+- 87 of 132 corpus documents exceed MiniLM's context window and are truncated. Real
+  limitation, not a blocker — see `docs/ml-dedup.md`.

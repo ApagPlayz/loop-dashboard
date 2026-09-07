@@ -1,8 +1,7 @@
 # syntax=docker/dockerfile:1
 #
-# Multi-stage build for ECS Fargate. See
-# docs/plans/aws-bedrock-multitenant-plan-2026-08-31.md §2.2 for the plan
-# this implements.
+# Multi-stage build for ECS Fargate. See docs/ARCHITECTURE.md for how this
+# image is built, pushed and deployed.
 #
 # deps -> builder -> runner, on node:22-alpine (current Node LTS). The
 # runner stage only copies the pruned `.next/standalone` output (see

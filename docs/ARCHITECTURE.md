@@ -39,7 +39,7 @@ it never runs the agents' work itself, it reads and writes the GitHub state the 
 ```
                     ┌──────────────────────────────────────────────┐
                     │  Loop Dashboard (Next.js 16, one ECS task)   │
-                    │  9 nav screens · ~68 API routes              │
+                    │  9 nav screens · ~73 API routes              │
                     │  DECIDES: approve / decline / redraft / merge│
                     └───────────────┬──────────────────────────────┘
                                     │ GitHub REST (Octokit, one PAT)
@@ -523,7 +523,7 @@ capability gets a **PromoteChip** ("Give this to all agents").
 "Summarize what's new" background job and a "Refresh now" background job, both captioned
 "Keeps running if you leave this page."
 
-### 2.2 The API surface — 68 routes
+### 2.2 The API surface — 73 routes
 
 `find app/api -name route.ts` = **68**. Grouped: assistant (1), auth/infra (3), ideas (6),
 builds (4), learnings+config (2), map status/projects (5), map agent (4), map AI jobs (2),
@@ -1599,7 +1599,7 @@ expiry, `SESSION_KEY_VERSION` revocation, `verifyPassword`, the `SESSION_SECRET`
 > **An anonymous request never reaches a route handler.**
 
 The reasoning is worth preserving verbatim, because it is the most transferable idea in this
-codebase. An audit of all 68 routes under `app/api/**` found **exactly three safe to *execute*
+codebase. An audit of all 73 routes under `app/api/**` found **exactly three safe to *execute*
 anonymously** — `/api/health`, `/api/login`, `/api/logout`. Every other route reads live private
 GitHub data, calls a paid model, touches the filesystem, or writes something. So rather than
 making sixty-five handlers individually safe — *"a check that has to be right sixty-five times,
@@ -1716,7 +1716,7 @@ what this is.
 
 | # | Issue | Assessment |
 |---|---|---|
-| 1 | **`/api/reporter/cron` is unreachable.** Still true at `0fda2c2` — `ALWAYS_PUBLIC_API` contains only `/api/health`, `/api/login`, `/api/logout`. `verifyAuthCookie` has **no `Authorization`-header fallback**, so a caller presenting a correct `Bearer $CRON_SECRET` and no cookie is rejected before the route's own (correct, fail-closed) check runs. | **Real bug**, though a functional one wearing a security costume. Nothing has scheduled-refreshed in weeks. The fix is one allowlist entry, safe precisely because the route fails closed on its own. Already noted in `docs/plans/aws-bedrock-multitenant-plan-2026-08-31.md`. |
+| 1 | **`/api/reporter/cron` is unreachable.** Still true at `0fda2c2` — `ALWAYS_PUBLIC_API` contains only `/api/health`, `/api/login`, `/api/logout`. `verifyAuthCookie` has **no `Authorization`-header fallback**, so a caller presenting a correct `Bearer $CRON_SECRET` and no cookie is rejected before the route's own (correct, fail-closed) check runs. | **Real bug**, though a functional one wearing a security costume. Nothing has scheduled-refreshed in weeks. The fix is one allowlist entry, safe precisely because the route fails closed on its own. Already noted in the AWS migration plan. |
 | 2 | **Prompt injection into a tool-holding model** via `lib/process-chat.ts`, the one tool-granting call site with neither `filesystemBoundary()` nor the untrusted fence (§4.10). | **Real risk, low likelihood.** Its interpolated content is the owner's own YAML rather than third-party prose, but the checkout is a real repo. The cheapest fix is importing the two helpers the other three routes already use. |
 | 3 | **The local GitHub token is the GitHub CLI's own OAuth token, not a scoped PAT.** It carries far broader account-wide access than this project needs, and should be replaced with a fine-grained PAT limited to the target repo. | **The largest blast radius in the project** — but **local only**. It is deliberately not deployed (§5.3), and `loopDashboardTaskRole` has zero policies (verified live), so a guessed password on the live site reaches fixtures, not GitHub. |
 | 4 | **No CSRF token anywhere.** Protection rests entirely on `sameSite: "lax"`, which blocks cross-site POSTs from forms and `fetch` but is a single point of failure for a surface that can merge PRs and dispatch workflows. | **Acceptable but thin.** `lax` genuinely covers the realistic attacks; the honest note is that there is no second layer. |
@@ -1916,13 +1916,14 @@ over `proxy.ts`/`middleware.ts` shows the cron path has **never** been exempted 
 
 The route's own logic is correct and fail-closed (`timingSafeEqual` over two SHA-256 digests,
 and the old `?token=` query-param fallback was deliberately removed because secrets end up in
-access logs) — it is simply shadowed. **Net effect: the 6-hourly `vercel.json` cron has been
+access logs) — it is simply shadowed. **Net effect: the 6-hourly Vercel cron had been
 firing into a 401**, and a future EventBridge rule would hit the same wall.
 
 Compounding it: `aws scheduler list-schedules` and `aws events list-rules` both return **empty**,
 so no EventBridge rule exists either. **There is no working scheduled reporter refresh anywhere,
-by any path** — and `vercel.json` therefore cannot yet be deleted (`design-decisions.md` §8's
-delete condition is definitively unmet).
+by any path.** `vercel.json` was deleted on 2026-09-07 — nothing deploys to Vercel any more, so
+it could not have been triggering anything; `design-decisions.md` §8 records the schedule it
+encoded so the EventBridge rule can be built from it.
 
 ### 9.3 The `vitest.config.mts` `@` alias — fixed in `0fda2c2`, but the scar tissue remains
 
@@ -1945,7 +1946,8 @@ The suite passed anyway, because every test and every module they pull in was wr
 > runner."*
 
 **`0fda2c2` fixed it** by switching to `fileURLToPath`, with a comment recording the diagnosis.
-Verified: `npm test` now passes **7 files, 146 tests**.
+Verified: `npm test` now passes. (The suite has since grown to **16 files, 284 tests** —
+see §9.6.)
 
 **Why this still matters:** the fix does not undo the convention it caused. The relative-import
 style throughout `tests/` and in `lib/relay-safety.ts` is scar tissue from this bug, not a
@@ -1998,9 +2000,10 @@ under `CLAUDE_PROJECTS_DIR` with a matching git remote.
 
 ### 9.6 Test coverage
 
-**7 files, 146 tests, passing** as of `0fda2c2`. (Every doc in the repo is stale on this number:
-`docs/plans/tonight-2026-09-02.md` says 88, `docs/backlog.md` says 47, and
-`docs/resume-bullets.md` says "8 Vitest files".)
+**16 files, 284 tests, passing** as of 2026-09-07 (was 7 files / 146 tests at `0fda2c2`).
+Ten of those tests depend on the embedding indexes, which are gitignored because S3 is the
+source of truth (`docs/ml-artifacts-s3.md`); they `describe.skip` with an explanatory message
+on a clone that has not built or fetched an index, so `npm test` is green on a fresh checkout.
 
 Covered: `lib/auth.ts` (session crypto — tampered payloads, forged signatures, expiry, key-version
 revocation, constant-time compare under length mismatch), `lib/map-ai.ts` (parsing, error
@@ -2014,7 +2017,7 @@ first, not coverage chasing.
 written down in it, so exposing a new route publicly has to be a deliberate diff rather than an
 oversight. That is a structural guarantee, not a spot check.
 
-**Biggest untested surfaces, ranked:** all **68 API routes** (zero route-level tests, including
+**Biggest untested surfaces, ranked:** all **73 API routes** (zero route-level tests, including
 every write path); `lib/github.ts` (the entire persistence layer); `lib/queues.ts` +
 `queues-evidence.ts` (~600 lines, the ideas/builds model and zip extraction); `lib/tools.ts` (the
 capability regexes, whose *format tolerance* is the whole point); and — **the highest-value gap**
@@ -2055,8 +2058,9 @@ job kind still in the `AiJobKind` union.
   `next dev`. Deleting it from a diff is futile.
 - **ARM64 is mandatory**, not a preference: cross-building `linux/amd64` on Apple Silicon
   segfaults with *"uncaught target signal 11"* under QEMU.
-- **`vercel.json` is kept on purpose** (`design-decisions.md` §8) — it holds the only cron
-  config. But see §9.2: that cron does not work either.
+- **`vercel.json` was deleted 2026-09-07** (`design-decisions.md` §8). Nothing deploys to
+  Vercel; the schedule it encoded is recorded in that decision. See §9.2 — no scheduled
+  reporter refresh exists by any path yet.
 - **`package.json` has no `engines` field and there is no `.nvmrc`.** The only Node pin anywhere
   is the Dockerfile's `node:22-alpine`, and CI has no `setup-node` step because it builds inside
   Docker. Nothing enforces local/prod Node parity.
@@ -2067,9 +2071,9 @@ job kind still in the `AiJobKind` union.
 
 ### 9.9 The docs lie, and two of them are actively dangerous
 
-> **Being fixed as this was written.** A concurrent effort was rewriting `README.md` (+400 lines),
+> **Being fixed as this was written.** A concurrent effort was rewriting `README.md`,
 > `.env.example`, `docs/backlog.md` and `docs/design-decisions.md` at the moment this section was
-> assessed. Treat the specifics below as the state at `0fda2c2` and re-check before quoting any
+> assessed, and `README.md` was restructured again on 2026-09-07. Treat the specifics below as the state at `0fda2c2` and re-check before quoting any
 > single item. The *pattern* — documentation drifting behind a fast-moving repo, with plan
 > documents never marked superseded — is the durable finding. (Watch also for a numbering
 > collision: `docs/design-decisions.md` now contains two entries numbered **9**.)
@@ -2077,11 +2081,12 @@ job kind still in the `AiJobKind` union.
 Only **three** documents were accurate at `0fda2c2`: `docs/bedrock-setup.md`,
 `docs/ml-artifacts-s3.md`, and `.env.example`.
 
-- **`docs/plans/aws-bedrock-multitenant-plan-2026-08-31.md` and `docs/plans/tonight-2026-09-02.md`
-  both prescribe ECS Express Mode with `--platform linux/amd64`.** The stack actually built is
-  standard Fargate on **ARM64**, precisely because amd64 breaks. **Following either plan today
-  breaks the build.** The former also carries a Bedrock IAM policy that the 08-31 handoff
-  explicitly declares wrong. **Nothing in `docs/plans/` is marked superseded.**
+- **The dated planning documents prescribed ECS Express Mode with `--platform linux/amd64`.**
+  The stack actually built is standard Fargate on **ARM64**, precisely because amd64 breaks —
+  so following those plans today breaks the build, and none of them was ever marked superseded.
+  They are no longer published with the repo (they were session-planning artifacts, not
+  documentation); this entry stays because *"plan documents are never marked superseded"* is
+  the durable finding, and it is the reason they were unpublished rather than corrected.
 - **`docs/ml-dedup.md` is the worst case.** It still says Bedrock *"has never made a real
   InvokeModel call — there is still no AWS account"*, that `data/embeddings-titan.json` *"does not
   exist in the repo"*, that labelling is an unstarted human task (it never mentions the LLM
@@ -2094,15 +2099,19 @@ Only **three** documents were accurate at `0fda2c2`: `docs/bedrock-setup.md`,
   `/metrics` (it does not), a fine-grained PAT (the token in use is the broader CLI one), and four
   token permissions (six are needed). It also still instructs contributors to use the old zinc
   palette.
-- **`docs/backlog.md` and the two handoffs** understate what shipped: they say *"Nothing has ever
-  run on AWS; there is no account"* and that Titan was *"never executed live"*. Both false.
+- **`docs/backlog.md`** understated what shipped: it said *"Nothing has ever run on AWS; there
+  is no account"* and that Titan was *"never executed live"*. Both were false, and both were
+  corrected on 2026-09-07.
 
 ### 9.10 Genuinely unfinished work
 
-- **The GitHub credential is still the wrong kind of credential.** `.env.local` holds the
-  GitHub CLI's own OAuth token, which is far broader than this project needs; it should be a
-  fine-grained PAT scoped to the target repo only. Backlog item 0, still open. The
-  `.env.example` half *was* done.
+- **The GitHub credential is broader-scoped than the project needs.** It should be a
+  fine-grained PAT limited to the target repositories, with Contents, Issues, Pull requests,
+  Actions, Secrets (read) and Workflows — the last two are needed by
+  `app/api/map/projects/checklist/route.ts` and by writing into `.github/workflows/`, and were
+  found by reading the code rather than from any doc. `.env.example` documents this; the
+  running credential does not match it yet. No GitHub token is provisioned in the deployed
+  task at all, so this is a local-development gap, not an exposure in the deployment.
 - **The loop templates support Bedrock but have never run.** All 8 workflows carry both branches,
   but they default to `subscription`, the pilot never happened, and CGP's `loop-config.json` has
   no `aiProvider` key. **CGP is still running the old templates** — rollout is a manual push that

@@ -18,8 +18,9 @@ import { DEMO_SNAPSHOT_LABEL } from "@/lib/demo/world";
  *
  * `demoMode` comes from the server layout (`isPublicViewer()` — see
  * lib/demo/viewer.ts) and never changes client-side. When true this renders
- * the anonymous-visitor experience: a banner explaining the data is a frozen,
- * invented snapshot rather than the owner's live private repos, and a
+ * the anonymous-visitor experience: a banner explaining the data is a frozen
+ * snapshot of two real public repositories rather than the owner's live
+ * private repos, and a
  * "Sign in" link wherever "Sign out" would otherwise be — signing out of a
  * session the visitor never had would just be confusing.
  */

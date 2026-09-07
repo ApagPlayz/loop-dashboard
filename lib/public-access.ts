@@ -10,7 +10,7 @@
  *
  *   **An anonymous request never reaches a route handler.**
  *
- * An audit of all 68 routes under `app/api/**` found exactly three that are safe
+ * An audit of all 73 routes under `app/api/**` found exactly three that are safe
  * to *execute* for an anonymous caller (`/api/health`, `/api/login`,
  * `/api/logout`), plus one that carries its own bearer-token check and fails
  * closed without it (`/api/reporter/cron`, the scheduled trigger, which has no
