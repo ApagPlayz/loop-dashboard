@@ -136,18 +136,32 @@ Single-tenant own-use costs nothing extra and is the honest version of what this
 
 ---
 
-## 8. Keep `vercel.json` until AWS cutover
+## 8. Delete `vercel.json` — superseded by the ECS cutover
 
-**Decided:** the Vercel cron config stays in the repo even though the migration plan says
-to delete it.
+**Decided (2026-09-07):** removed. The earlier decision (2026-08-31) was to keep the
+Vercel cron config until an EventBridge Scheduler rule replaced it.
 
-**Why:** it is currently the only thing running the 6-hourly reporter cron. Deleting it
-before the AWS EventBridge Scheduler rule exists would silently stop the reporter with
-nothing to replace it.
+**Why it changed:** the premise no longer holds. The application deploys to ECS Fargate
+behind CloudFront (§2); nothing deploys to Vercel any more, so `vercel.json` could not
+have been running anything. The audit in `docs/ARCHITECTURE.md` §9.2 separately found the
+reporter cron unreachable regardless of the trigger, because `/api/reporter/cron` sits
+behind the auth proxy with no `Authorization`-header fallback. Keeping a dead config file
+for a platform the app has left is worse than removing it: it reads as a live schedule
+that does not exist.
 
-**Delete when:** the EventBridge rule (`0 */6 * * *` → `/api/reporter/cron`) is live.
+**What replaces it, when someone builds it** — the schedule the file encoded, kept here so
+it is not lost with the file:
 
-**When:** 2026-08-31.
+```
+rate: 0 */6 * * *   (every six hours)
+target: POST /api/reporter/cron
+auth: Bearer $CRON_SECRET
+```
+
+Two things must both be done for the reporter to refresh on a schedule again: create the
+EventBridge Scheduler rule above, and add `/api/reporter/cron` to `ALWAYS_PUBLIC_API` in
+`lib/public-access.ts`. The second is safe on its own because the route already fails
+closed without a valid `CRON_SECRET`.
 
 ---
 

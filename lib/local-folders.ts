@@ -12,14 +12,19 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { listProjects, DASHBOARD_REPO } from "./projects";
 import { isLocalModeEnabled } from "./local-mode";
 
 const exec = promisify(execFile);
 
-/** The default Claude projects directory, overridable for other machines. */
-export const DEFAULT_PROJECTS_DIR = "/Users/alessiopagliarulo/Documents/Claude Projects";
+/**
+ * The default Claude projects directory, used when CLAUDE_PROJECTS_DIR isn't
+ * set. Portable fallback (~/Documents/Claude Projects) rather than a literal
+ * path baked in for one machine — set CLAUDE_PROJECTS_DIR to override it.
+ */
+export const DEFAULT_PROJECTS_DIR = path.join(os.homedir(), "Documents", "Claude Projects");
 
 export function getProjectsDir(): string {
   return (process.env.CLAUDE_PROJECTS_DIR ?? DEFAULT_PROJECTS_DIR).trim() || DEFAULT_PROJECTS_DIR;
