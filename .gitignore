@@ -62,3 +62,16 @@ next-env.d.ts
 # it is telemetry about this machine, not source.
 /data/ai-usage.jsonl
 /data/ai-usage.1.jsonl
+
+# Working notes kept locally, deliberately not published.
+# These are AI-session scaffolding and personal planning artifacts, not
+# engineering documentation: per-session handoff notes, dated execution
+# plans, unlanded drafts, and resume material. The durable technical
+# documentation — docs/ARCHITECTURE.md, docs/ml-*.md, docs/audits/,
+# docs/design-decisions.md, docs/backlog.md — stays tracked.
+/CLAUDE.md
+/docs/handoffs/
+/docs/plans/
+/docs/drafts/
+/docs/resume-bullets.md
+/docs/resume-bullets.html
