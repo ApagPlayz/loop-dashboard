@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -20,7 +23,39 @@ import {
  * `ML_ARTIFACT_STORE=local` keeps every case off the network: `artifact-store`
  * would otherwise try S3 first, which in CI is a slow failure and on a laptop
  * with credentials is a slow success.
+ *
+ * `data/embeddings-titan.json` and `data/embeddings-local.json` are the
+ * embedding indexes themselves — gitignored on purpose (see .gitignore and
+ * docs/ml-artifacts-s3.md: S3 is the source of truth, git is the wrong place
+ * for a megabyte of regenerated float32). A fresh clone has neither file, so
+ * this whole suite is SKIPPED rather than failed when they are absent, so
+ * `npm test` stays green for anyone who hasn't built or fetched the indexes.
+ * When they ARE present (built locally or copied down from S3), every test
+ * below runs exactly as before.
  */
+
+/** Paths (relative to repo root) both describe blocks below need on disk. */
+const REQUIRED_ARTIFACTS = ["data/embeddings-titan.json", "data/embeddings-local.json"] as const;
+
+const missingArtifacts = REQUIRED_ARTIFACTS.filter(
+  (relPath) => !existsSync(path.join(process.cwd(), relPath)),
+);
+const hasIndexes = missingArtifacts.length === 0;
+
+if (!hasIndexes) {
+  console.info(
+    "[dedup] skipping tests/lib/dedup/queue-duplicates.test.ts: missing " +
+      `${missingArtifacts.join(", ")}. These are the gitignored ML embedding ` +
+      "indexes (S3 is the source of truth, see docs/ml-artifacts-s3.md) and are " +
+      "not present on a fresh clone. Build them with `node scripts/ml/build-index.mjs` " +
+      "(local/MiniLM backend) and `EMBEDDING_BACKEND=bedrock node scripts/ml/build-index.mjs` " +
+      "(Titan backend, needs AWS Bedrock access), or fetch the latest build from " +
+      "s3://loop-dashboard-ml-777164055831/embeddings/{local,titan}/latest.json.",
+  );
+}
+
+/** `describe` when both indexes are on disk, `describe.skip` otherwise. */
+const describeIfIndexes = hasIndexes ? describe : describe.skip;
 
 /** Two ideas that really are the same proposal, filed twice, in the pilot repo. */
 const KNOWN_PAIR = { a: 27, b: 79 };
@@ -50,7 +85,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("findQueueDuplicates", () => {
+describeIfIndexes("findQueueDuplicates", () => {
   it("uses the Titan index and the 0.842 operating point out of metrics/dedup-eval.json", async () => {
     const report = await findQueueDuplicates(INDEX_REPO, QUEUE);
     expect(report).not.toBeNull();
@@ -172,7 +207,7 @@ describe("findQueueDuplicates", () => {
   });
 });
 
-describe("the local (MiniLM) fallback", () => {
+describeIfIndexes("the local (MiniLM) fallback", () => {
   it("brings its own calibrated threshold rather than reusing Titan's", async () => {
     // Titan's 0.842 was swept for Titan. Applying it to MiniLM cosines would be
     // a different operating point with different precision — so when the
