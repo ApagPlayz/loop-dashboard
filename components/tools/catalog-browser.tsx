@@ -227,9 +227,17 @@ export default function CatalogBrowser({
     });
   }, [entries, query, filter, category, showStale]);
 
-  useEffect(() => {
+  // Reset pagination back to page one whenever the query/filter/category/
+  // stale-toggle combination changes. Adjusted during render (React's
+  // documented pattern for "resetting state when some values change") rather
+  // than in an effect, so there's no extra render with stale (too-long) results
+  // briefly visible before the reset takes effect.
+  const filterKey = JSON.stringify([query, filter, category, showStale]);
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
     setVisible(PAGE_SIZE);
-  }, [query, filter, category, showStale]);
+  }
 
   const counts = useMemo(() => {
     const c = { mcp: 0, skill: 0, plugin: 0 };

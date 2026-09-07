@@ -41,30 +41,27 @@ function loadHistory(): Msg[] {
 export default function HelpChat() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Msg[]>([GREETING]);
+  // Lazy-initialized so the client's very first render already has the
+  // restored history (avoids a synchronous setState-in-effect on mount).
+  // The server always sees `typeof window === "undefined"` inside
+  // loadHistory() and renders just the greeting, which is also all that's
+  // ever in the initial (unopened) DOM, so there's no hydration mismatch.
+  const [messages, setMessages] = useState<Msg[]>(() => loadHistory());
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hydrated, setHydrated] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Restore history once on the client.
-  useEffect(() => {
-    setMessages(loadHistory());
-    setHydrated(true);
-  }, []);
-
   // Persist history.
   useEffect(() => {
-    if (!hydrated) return;
     try {
       window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
     } catch {
       /* storage full / unavailable — non-fatal */
     }
-  }, [messages, hydrated]);
+  }, [messages]);
 
   // Keep the transcript scrolled to the newest message.
   useEffect(() => {

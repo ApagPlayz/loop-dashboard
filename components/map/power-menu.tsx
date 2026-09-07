@@ -218,7 +218,7 @@ function PowerSheet({
               <div className="mt-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-200">
                 <p>
                   No record of what pause turned off, so this would switch ON every workflow
-                  that's currently off — including anything you disabled on purpose:
+                  that&apos;s currently off — including anything you disabled on purpose:
                 </p>
                 <p className="mt-1.5 font-mono text-[11px] text-amber-100">
                   {wouldEnable.length > 0 ? wouldEnable.join(", ") : "(nothing is currently off)"}

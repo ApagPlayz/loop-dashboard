@@ -141,7 +141,11 @@ function IdeasInner() {
           them, and this is where a backlog gets read in one pass. Collapsed
           until asked for, and it starts nothing on its own — running it costs a
           model call. */}
-      <TriagePanel project={project} projectLabel={projectLabel} onChanged={load} />
+      {/* Keyed on project so switching projects remounts the panel with a
+          clean slate instead of needing an effect to reset its state — a
+          stray in-flight request or job from the old project can never land
+          on the new one because the old instance is gone. */}
+      <TriagePanel key={project} project={project} projectLabel={projectLabel} onChanged={load} />
       <AutomationPanel
         project={project}
         projectLabel={projectLabel}

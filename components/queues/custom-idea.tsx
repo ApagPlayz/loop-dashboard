@@ -531,10 +531,10 @@ function DuplicateCheck({
           {flagged.length === 0 && result.outOfDomain ? (
             <div>
               <p className="text-xs text-amber-300">
-                This draft is too short for the check to tell you anything — it's{" "}
+                This draft is too short for the check to tell you anything — it&apos;s{" "}
                 {result.queryChars} characters, and the check needs at least{" "}
-                {result.minCalibratedChars} to compare it fairly. No match showing up here isn't a
-                clean bill of health, it just means there wasn't enough to go on. Write more of the
+                {result.minCalibratedChars} to compare it fairly. No match showing up here isn&apos;t a
+                clean bill of health, it just means there wasn&apos;t enough to go on. Write more of the
                 idea and check again.
               </p>
               {hits.length > 0 && (

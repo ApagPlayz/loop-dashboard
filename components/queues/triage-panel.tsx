@@ -97,14 +97,11 @@ export default function TriagePanel({
     [],
   );
 
-  // Project switch: drop everything and look for a run belonging to the new one.
+  // Mount (a project switch remounts this panel via `key={project}` in
+  // ideas-view.tsx, so this always starts from a clean slate): look for a
+  // run already belonging to this project.
   useEffect(() => {
     const ticket = ++reqIdRef.current;
-    jobIdRef.current = null;
-    setJob(null);
-    setDrafts({});
-    setApply(false);
-    setError(null);
     const t = setTimeout(async () => {
       try {
         const res = await fetch(`/api/triage?project=${encodeURIComponent(project)}`);
