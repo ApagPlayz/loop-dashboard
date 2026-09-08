@@ -13,6 +13,31 @@ import { getFileWithSha, commitFile, type RepoConfig } from "./github";
 export const LOOP_CONFIG_PATH = ".github/loop-config.json";
 
 /**
+ * Opt-in reconciliation of the approved queue against the code that has landed
+ * since. Off by default and stored inside the `scout` block because the Scout
+ * workflow owns it: `claude-scout.yml` has the only live cron, so the check is
+ * a gate inside that hourly run rather than a schedule of its own.
+ *
+ * Both fields have `jq ... // default` fallbacks in the workflow, so an absent
+ * `staleCheck` key means "off" — which is why {@link serializeLoopConfig}
+ * omits it entirely while it is at its default.
+ */
+export type StaleCheckConfig = {
+  /**
+   * Whether the Scout run may reconcile `approved` ideas against `main` at
+   * all. False by default: this posts comments on the owner's issues, and no
+   * feature that writes to a repo turns itself on.
+   */
+  enabled: boolean;
+  /**
+   * Minimum hours between two checks. The Scout cron fires hourly, so this is
+   * a gate inside that run, not a schedule — see `isStaleCheckDue` in
+   * lib/idea-staleness.ts.
+   */
+  intervalHours: number;
+};
+
+/**
  * The per-repo scouting brief. Read by the Scout workflow (same
  * `jq ... // default` pattern as the caps) so it proposes ideas for THIS
  * product rather than software in general. Every field is optional in
@@ -29,6 +54,21 @@ export type ScoutConfig = {
   lenses: string[];
   /** Hard cap on how many ideas a single Scout run may file. */
   maxPerRun: number;
+  /** Opt-in staleness reconciliation for the `approved` queue. */
+  staleCheck: StaleCheckConfig;
+  /**
+   * The same "keep what we don't recognise" contract as {@link LoopConfig.extra},
+   * one level down.
+   *
+   * This block needed its own copy because `normalizeScout` rebuilds the object
+   * from named fields, so anything else inside `scout` was silently dropped on
+   * save — and `claude-scout.yml` already reads a key the dashboard has never
+   * modelled (`scout.aiProvider`, which chooses subscription vs Bedrock). Saving
+   * the brief from the Ideas page was therefore enough to switch a repo's Scout
+   * off Bedrock without anyone touching that setting. Never settable over the
+   * wire: it only ever comes from disk.
+   */
+  extra?: Record<string, unknown>;
 };
 
 export type LoopConfig = {
@@ -65,12 +105,36 @@ const CANONICAL_KEYS = [
   "scout",
 ] as const;
 
+/** Same idea, one level down — see {@link ScoutConfig.extra}. */
+const SCOUT_CANONICAL_KEYS = [
+  "productSummary",
+  "currentGoals",
+  "offLimits",
+  "lenses",
+  "maxPerRun",
+  "staleCheck",
+] as const;
+
+/** Off, and daily when it is switched on. Both halves matter — see below. */
+export const DEFAULT_STALE_CHECK_CONFIG: StaleCheckConfig = {
+  enabled: false,
+  intervalHours: 24,
+};
+
+/** The intervals the settings panel offers. Any 1–168 value is still accepted. */
+export const STALE_CHECK_INTERVAL_CHOICES = [1, 6, 24] as const;
+
+/** Bounds for `scout.staleCheck.intervalHours` — an hour to a week. */
+export const MIN_STALE_INTERVAL_HOURS = 1;
+export const MAX_STALE_INTERVAL_HOURS = 168;
+
 export const DEFAULT_SCOUT_CONFIG: ScoutConfig = {
   productSummary: "",
   currentGoals: [],
   offLimits: [],
   lenses: [],
   maxPerRun: 3,
+  staleCheck: { ...DEFAULT_STALE_CHECK_CONFIG },
 };
 
 export const DEFAULT_LOOP_CONFIG: LoopConfig = {
@@ -143,6 +207,27 @@ function normalizeStringList(value: unknown): string[] {
     .filter(Boolean);
 }
 
+/**
+ * A missing / malformed `staleCheck` is "off", never a crash and never on.
+ * `intervalHours` is clamped rather than rejected so a hand-edited `0` (which
+ * would mean "re-check every single hourly Scout run") lands on the floor
+ * instead of dividing the gate by zero.
+ */
+function normalizeStaleCheck(value: unknown): StaleCheckConfig {
+  const raw = (typeof value === "object" && value !== null ? value : {}) as Record<
+    string,
+    unknown
+  >;
+  const intervalHours =
+    typeof raw.intervalHours === "number" && Number.isInteger(raw.intervalHours)
+      ? Math.min(MAX_STALE_INTERVAL_HOURS, Math.max(MIN_STALE_INTERVAL_HOURS, raw.intervalHours))
+      : DEFAULT_STALE_CHECK_CONFIG.intervalHours;
+  return {
+    enabled: raw.enabled === true,
+    intervalHours,
+  };
+}
+
 function normalizeScout(value: unknown): ScoutConfig {
   const raw = (typeof value === "object" && value !== null ? value : {}) as Record<
     string,
@@ -152,14 +237,26 @@ function normalizeScout(value: unknown): ScoutConfig {
     typeof raw.maxPerRun === "number" && Number.isInteger(raw.maxPerRun)
       ? Math.min(MAX_IDEAS_PER_RUN, Math.max(1, raw.maxPerRun))
       : DEFAULT_SCOUT_CONFIG.maxPerRun;
-  return {
+
+  // Anything inside `scout` this version doesn't model — `aiProvider` today —
+  // rides along verbatim instead of being deleted by the next save.
+  const extra: Record<string, unknown> = {};
+  for (const [key, v] of Object.entries(raw)) {
+    if ((SCOUT_CANONICAL_KEYS as readonly string[]).includes(key)) continue;
+    extra[key] = v;
+  }
+
+  const scout: ScoutConfig = {
     productSummary:
       typeof raw.productSummary === "string" ? raw.productSummary.trim() : "",
     currentGoals: normalizeStringList(raw.currentGoals),
     offLimits: normalizeStringList(raw.offLimits),
     lenses: normalizeStringList(raw.lenses),
     maxPerRun,
+    staleCheck: normalizeStaleCheck(raw.staleCheck),
   };
+  if (Object.keys(extra).length > 0) scout.extra = extra;
+  return scout;
 }
 
 /**
@@ -197,6 +294,23 @@ export function normalizeLoopConfig(value: unknown): LoopConfig {
 }
 
 /**
+ * `undefined` (so JSON.stringify drops the key) whenever the block is at its
+ * default, otherwise the block itself. A non-default interval survives being
+ * switched off, so re-enabling doesn't silently reset it to daily.
+ */
+function serializableStaleCheck(
+  staleCheck: StaleCheckConfig,
+): StaleCheckConfig | undefined {
+  if (
+    !staleCheck.enabled &&
+    staleCheck.intervalHours === DEFAULT_STALE_CHECK_CONFIG.intervalHours
+  ) {
+    return undefined;
+  }
+  return { enabled: staleCheck.enabled, intervalHours: staleCheck.intervalHours };
+}
+
+/**
  * Canonical on-disk form — stable key order, so fingerprints are stable.
  *
  * Unrecognised keys are written first (in the order they were read), then the
@@ -215,11 +329,18 @@ export function serializeLoopConfig(config: LoopConfig): string {
         // valued keys, so an absent demoPort round-trips as absent.
         demoPort: config.demoPort,
         scout: {
+          ...(config.scout.extra ?? {}),
           productSummary: config.scout.productSummary,
           currentGoals: config.scout.currentGoals,
           offLimits: config.scout.offLimits,
           lenses: config.scout.lenses,
           maxPerRun: config.scout.maxPerRun,
+          // Same omit-when-it-means-nothing rule as demoPort above: while the
+          // check is off AND on the default interval the key carries no
+          // information the workflow's `// false` fallback doesn't already
+          // supply, so leaving it out keeps an untouched repo's config
+          // byte-identical to what it was before this feature existed.
+          staleCheck: serializableStaleCheck(config.scout.staleCheck),
         },
       },
       null,
@@ -256,7 +377,10 @@ function parseLoopConfig(raw: string | null): LoopConfig | null {
 }
 
 function defaultConfig(): LoopConfig {
-  return { ...DEFAULT_LOOP_CONFIG, scout: { ...DEFAULT_SCOUT_CONFIG } };
+  return {
+    ...DEFAULT_LOOP_CONFIG,
+    scout: { ...DEFAULT_SCOUT_CONFIG, staleCheck: { ...DEFAULT_STALE_CHECK_CONFIG } },
+  };
 }
 
 /**
@@ -341,10 +465,31 @@ function validatePatch(next: LoopConfig): void {
       `scout.maxPerRun must be a whole number between 1 and ${MAX_IDEAS_PER_RUN}.`,
     );
   }
+
+  const stale = scout.staleCheck;
+  if (typeof stale !== "object" || stale === null) {
+    throw new LoopConfigError("scout.staleCheck must be an object.");
+  }
+  if (typeof stale.enabled !== "boolean") {
+    throw new LoopConfigError("scout.staleCheck.enabled must be true or false.");
+  }
+  if (
+    !Number.isInteger(stale.intervalHours) ||
+    stale.intervalHours < MIN_STALE_INTERVAL_HOURS ||
+    stale.intervalHours > MAX_STALE_INTERVAL_HOURS
+  ) {
+    throw new LoopConfigError(
+      `scout.staleCheck.intervalHours must be a whole number of hours between ${MIN_STALE_INTERVAL_HOURS} and ${MAX_STALE_INTERVAL_HOURS}.`,
+    );
+  }
 }
 
 export type LoopConfigPatch = Partial<Omit<LoopConfig, "scout" | "demoPort" | "extra">> & {
-  scout?: Partial<ScoutConfig>;
+  /**
+   * `extra` is stripped here for the same reason it is at the top level: it is
+   * a record of what was on disk, not a settable field.
+   */
+  scout?: Partial<Omit<ScoutConfig, "extra">>;
   /**
    * Same omitted-vs-explicit convention every other patch field already
    * relies on ("key not in the body" = leave alone), plus one more state
@@ -384,7 +529,17 @@ export async function setLoopConfig(
   // strip it off the patch before anything is merged.
   const incoming = { ...(patch ?? {}) } as Record<string, unknown>;
   delete incoming.extra;
-  const { scout: scoutPatch, demoPort: demoPortPatch, ...rest } = incoming as LoopConfigPatch;
+  const { scout: rawScoutPatch, demoPort: demoPortPatch, ...rest } = incoming as LoopConfigPatch;
+  // Same rule one level down: a caller cannot invent `scout.extra`, and a UI
+  // that round-trips the whole scout block back to us must not be able to
+  // overwrite what was really on disk with its own copy.
+  const scoutPatch = rawScoutPatch
+    ? (() => {
+        const s = { ...(rawScoutPatch as Record<string, unknown>) };
+        delete s.extra;
+        return s as Partial<Omit<ScoutConfig, "extra">>;
+      })()
+    : undefined;
   const next: LoopConfig = {
     ...current,
     ...rest,
@@ -398,7 +553,19 @@ export async function setLoopConfig(
         : demoPortPatch === null
           ? undefined
           : demoPortPatch,
-    scout: { ...current.scout, ...(scoutPatch ?? {}) },
+    scout: {
+      ...current.scout,
+      ...(scoutPatch ?? {}),
+      // Merged one level deeper than everything else in this patch, so a body
+      // of `{ scout: { staleCheck: { enabled: true } } }` turns the check on
+      // without also resetting the interval the owner picked. Every other
+      // scout field is a scalar or a whole list, where replace-wholesale is
+      // exactly right; this one is the only nested object.
+      staleCheck: {
+        ...current.scout.staleCheck,
+        ...(scoutPatch?.staleCheck ?? {}),
+      },
+    },
   };
   validatePatch(next);
 

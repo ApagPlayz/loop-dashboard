@@ -12,8 +12,21 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ChevronDown, ChevronRight, Loader2, Plus, X } from "lucide-react";
-import type { LoopConfig, ScoutConfig } from "@/lib/loop-config";
+import {
+  AlertTriangle,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  Plus,
+  RefreshCw,
+  X,
+} from "lucide-react";
+import type { LoopConfig, ScoutConfig, StaleCheckConfig } from "@/lib/loop-config";
+import type { StalePreview } from "@/lib/idea-staleness";
+import ToggleSwitch from "./toggle-switch";
+
+const DEFAULT_STALE_CHECK: StaleCheckConfig = { enabled: false, intervalHours: 24 };
 
 const DEFAULT_SCOUT: ScoutConfig = {
   productSummary: "",
@@ -21,7 +34,21 @@ const DEFAULT_SCOUT: ScoutConfig = {
   offLimits: [],
   lenses: [],
   maxPerRun: 3,
+  staleCheck: { ...DEFAULT_STALE_CHECK },
 };
+
+/**
+ * The intervals offered as buttons. Any 1–168 value is accepted by the API and
+ * by the workflow — these are just the three anyone actually wants. Duplicated
+ * from lib/loop-config.ts rather than imported for the same reason
+ * DEFAULT_SCOUT is: this is a client component, and that module pulls in
+ * Octokit.
+ */
+const INTERVAL_CHOICES: Array<{ hours: number; label: string }> = [
+  { hours: 1, label: "Every hour" },
+  { hours: 6, label: "Every 6 hours" },
+  { hours: 24, label: "Once a day" },
+];
 
 /** Starter angles offered as one-tap chips — nothing is applied until saved. */
 const LENS_SUGGESTIONS = [
@@ -39,19 +66,35 @@ function sameList(a: string[], b: string[]) {
   return a.length === b.length && a.every((v, i) => v === b[i]);
 }
 
+function sameStaleCheck(a: StaleCheckConfig, b: StaleCheckConfig) {
+  return a.enabled === b.enabled && a.intervalHours === b.intervalHours;
+}
+
 function sameScout(a: ScoutConfig, b: ScoutConfig) {
   return (
     a.productSummary === b.productSummary &&
     a.maxPerRun === b.maxPerRun &&
     sameList(a.currentGoals, b.currentGoals) &&
     sameList(a.offLimits, b.offLimits) &&
-    sameList(a.lenses, b.lenses)
+    sameList(a.lenses, b.lenses) &&
+    sameStaleCheck(a.staleCheck, b.staleCheck)
   );
+}
+
+function readStaleCheck(value: unknown): StaleCheckConfig {
+  const s = (typeof value === "object" && value !== null ? value : {}) as Partial<StaleCheckConfig>;
+  return {
+    enabled: s.enabled === true,
+    intervalHours:
+      typeof s.intervalHours === "number" && Number.isInteger(s.intervalHours)
+        ? s.intervalHours
+        : DEFAULT_STALE_CHECK.intervalHours,
+  };
 }
 
 function readScout(config: LoopConfig | undefined): ScoutConfig {
   const s = config?.scout;
-  if (!s || typeof s !== "object") return { ...DEFAULT_SCOUT };
+  if (!s || typeof s !== "object") return { ...DEFAULT_SCOUT, staleCheck: { ...DEFAULT_STALE_CHECK } };
   return {
     productSummary: typeof s.productSummary === "string" ? s.productSummary : "",
     currentGoals: Array.isArray(s.currentGoals) ? s.currentGoals : [],
@@ -59,6 +102,7 @@ function readScout(config: LoopConfig | undefined): ScoutConfig {
     lenses: Array.isArray(s.lenses) ? s.lenses : [],
     maxPerRun:
       typeof s.maxPerRun === "number" && Number.isInteger(s.maxPerRun) ? s.maxPerRun : 3,
+    staleCheck: readStaleCheck(s.staleCheck),
   };
 }
 
@@ -79,6 +123,22 @@ export default function ScoutSettings({
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
   const savedFlashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The read-only "what would it flag right now" preview. Never fetched on
+  // mount: it walks the approved queue's issue events and commit history, which
+  // is a real handful of GitHub calls, and nobody needs it until they ask.
+  //
+  // Stamped with the project it was run against and read back through the
+  // `project` check below — the same pattern ideas-view uses for the cards. A
+  // list of approved ideas from the previous repo rendered under the new one
+  // would be actively misleading, and deriving that is better than an effect
+  // that clears it after the fact.
+  const [loadedPreview, setLoadedPreview] = useState<
+    { project: string; data: StalePreview } | null
+  >(null);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const preview =
+    loadedPreview && loadedPreview.project === project ? loadedPreview.data : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -114,6 +174,24 @@ export default function ScoutSettings({
   useEffect(() => () => {
     if (savedFlashTimer.current) clearTimeout(savedFlashTimer.current);
   }, []);
+
+  const runPreview = useCallback(async () => {
+    const forProject = project;
+    setPreviewing(true);
+    setPreviewError(null);
+    try {
+      const res = await fetch(
+        `/api/ideas/stale?project=${encodeURIComponent(forProject)}`,
+      );
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload.error ?? "Couldn't check the approved queue");
+      setLoadedPreview({ project: forProject, data: payload as StalePreview });
+    } catch (err) {
+      setPreviewError(err instanceof Error ? err.message : "Couldn't check the approved queue");
+    } finally {
+      setPreviewing(false);
+    }
+  }, [project]);
 
   const flashSaved = useCallback(() => {
     setJustSaved(true);
@@ -209,6 +287,9 @@ export default function ScoutSettings({
         `${saved.currentGoals.length} goal${saved.currentGoals.length === 1 ? "" : "s"}`,
         `${saved.lenses.length} angle${saved.lenses.length === 1 ? "" : "s"}`,
         `up to ${saved.maxPerRun} idea${saved.maxPerRun === 1 ? "" : "s"} per run`,
+        ...(saved.staleCheck.enabled
+          ? [`re-checks approved ideas ${intervalPhrase(saved.staleCheck.intervalHours)}`]
+          : []),
       ].join(" · ")
     : "Not set up yet — the Scout is guessing what matters to you.";
 
@@ -352,6 +433,202 @@ export default function ScoutSettings({
               aria-label="Maximum ideas per Scout run"
             />
           </div>
+
+          {/* ── Stale check ──────────────────────────────────────────────
+              Lives in the Scout's panel because the Scout owns it: it rides the
+              same hourly run, and it is the same blindness (nothing in the loop
+              reads what actually landed on main) that this whole panel exists
+              to correct. */}
+          <div className="border-t border-zinc-800 pt-5">
+            <div className="flex items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm text-zinc-300">
+                  Warn me when an approved idea looks out of date
+                </p>
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  If you (or Claude, working with you) push code that overtakes an
+                  idea you already approved, the Scout adds a{" "}
+                  <span className="rounded bg-amber-500/15 px-1 py-0.5 font-medium text-amber-300">
+                    stale
+                  </span>{" "}
+                  label and explains what changed. It never closes or changes
+                  anything — you decide.
+                </p>
+              </div>
+              <ToggleSwitch
+                checked={draft.staleCheck.enabled}
+                busy={saving}
+                label="Warn me when an approved idea looks out of date"
+                onChange={(enabled) =>
+                  update({ staleCheck: { ...draft.staleCheck, enabled } })
+                }
+              />
+            </div>
+
+            {draft.staleCheck.enabled && (
+              <div className="mt-3 space-y-3">
+                <div>
+                  <p className="mb-1.5 text-xs text-zinc-400">How often should it look?</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {INTERVAL_CHOICES.map(({ hours, label }) => {
+                      const active = draft.staleCheck.intervalHours === hours;
+                      return (
+                        <button
+                          key={hours}
+                          onClick={() =>
+                            update({
+                              staleCheck: { ...draft.staleCheck, intervalHours: hours },
+                            })
+                          }
+                          disabled={saving}
+                          className={`rounded-full border px-3 py-1 text-xs font-medium transition disabled:opacity-50 ${
+                            active
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                              : "border-zinc-800 bg-zinc-950 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1.5 text-xs text-zinc-500">
+                    The Scout already wakes up every hour; this is how often it does
+                    the extra check while it&apos;s awake.
+                  </p>
+                </div>
+
+                <StalePreviewPanel
+                  preview={preview}
+                  loading={previewing}
+                  error={previewError}
+                  onRun={() => void runPreview()}
+                  dirty={!sameStaleCheck(draft.staleCheck, saved.staleCheck)}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** "every hour" / "every 6 hours" / "once a day". */
+function intervalPhrase(hours: number): string {
+  if (hours === 1) return "every hour";
+  if (hours === 24) return "once a day";
+  if (hours % 24 === 0) return `every ${hours / 24} days`;
+  return `every ${hours} hours`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Stale preview — read-only, and deliberately so                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Runs the same tier-1 rule the Scout's hourly job runs, and shows what it
+ * finds — without labelling or commenting on anything.
+ *
+ * It exists because this feature writes to the owner's issues, and asking
+ * someone to switch that on sight-unseen is asking for it to stay off. It also
+ * answers the question TODAY: the automatic half only runs on a repo that has
+ * the updated `claude-scout.yml` rolled out, which is a manual step.
+ */
+function StalePreviewPanel({
+  preview,
+  loading,
+  error,
+  onRun,
+  dirty,
+}: {
+  preview: StalePreview | null;
+  loading: boolean;
+  error: string | null;
+  onRun: () => void;
+  dirty: boolean;
+}) {
+  const flagged = preview?.ideas.filter((i) => i.verdict.candidate) ?? [];
+
+  return (
+    <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-zinc-400">
+          See what it would flag right now — nothing is written.
+        </p>
+        <button
+          onClick={onRun}
+          disabled={loading}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs font-medium text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-50"
+        >
+          {loading ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <RefreshCw className="h-3 w-3" />
+          )}
+          Check now
+        </button>
+      </div>
+
+      {dirty && (
+        <p className="mt-2 text-xs text-amber-400">
+          This preview uses the settings already saved on GitHub, not the ones
+          you&apos;ve just changed.
+        </p>
+      )}
+
+      {error && <p className="mt-2 text-xs text-red-300">{error}</p>}
+
+      {preview && !loading && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-zinc-500">
+            Checked {preview.ideas.length} approved idea
+            {preview.ideas.length === 1 ? "" : "s"}
+            {preview.branch ? ` against ${preview.branch}` : ""}. {preview.gate.reason}
+          </p>
+
+          {flagged.length === 0 ? (
+            <p className="text-xs text-emerald-400">
+              Nothing looks out of date — no hand-written code has landed under
+              any of them.
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {flagged.map((idea) => (
+                <li
+                  key={idea.number}
+                  className="rounded-lg border border-amber-900/60 bg-amber-950/30 p-2.5"
+                >
+                  <a
+                    href={idea.htmlUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-amber-200 hover:text-amber-100"
+                  >
+                    <AlertTriangle className="h-3 w-3 shrink-0" />#{idea.number}{" "}
+                    {idea.title}
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                  </a>
+                  <p className="mt-1 text-xs text-amber-300/90">{idea.verdict.reason}</p>
+                  {!idea.approvedAt.precise && (
+                    <p className="mt-1 text-xs text-amber-400/70">
+                      {idea.approvedAt.caveat}
+                    </p>
+                  )}
+                  {idea.alreadyFlagged && (
+                    <p className="mt-1 text-xs text-zinc-500">
+                      Already carries the <code>stale</code> label.
+                    </p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <p className="text-xs text-zinc-600">
+            A commit touching a file an idea mentions is evidence, not proof. The
+            hourly run reads the actual code before it flags anything.
+          </p>
         </div>
       )}
     </div>

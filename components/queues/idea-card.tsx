@@ -10,6 +10,8 @@ import {
   CornerUpLeft,
   X,
   ExternalLink,
+  AlertTriangle,
+  Check,
 } from "lucide-react";
 import type { IdeaSummary, ThreadComment } from "@/lib/queues";
 import type { DuplicateReport } from "@/lib/dedup/queue-duplicates";
@@ -20,7 +22,16 @@ import IdeaChat from "./idea-chat";
 import { useIdeaChat } from "./use-idea-chat";
 import { useToast } from "./toast";
 
-type ActionKind = "approve" | "unapprove" | "redraft" | "decline";
+type ActionKind = "approve" | "unapprove" | "redraft" | "decline" | "unstale";
+
+/**
+ * The warning the Scout's stale check leaves on an approved idea whose code has
+ * moved underneath it. A plain literal for the same reason the four queue
+ * labels below are: this is a client component, and the canonical constant
+ * (`STALE_LABEL` in lib/idea-staleness.ts) lives in a module that imports
+ * Octokit, which has no business in the browser bundle.
+ */
+const STALE_LABEL = "stale";
 
 /**
  * The chip reads as the idea's CURRENT state, so a closed issue may never wear
@@ -104,6 +115,10 @@ export default function IdeaCard({
     idea.labels.includes("approved") &&
     !idea.labels.includes("proposal") &&
     idea.state === "open";
+  // Only ever shown on a LIVE idea. A closed one already reads "Closed · was
+  // approved", and warning someone that a decision they already made might be
+  // out of date is noise, not information.
+  const isStale = isApproved && idea.labels.includes(STALE_LABEL);
 
   async function loadComments() {
     if (comments || loadingComments) return;
@@ -168,6 +183,13 @@ export default function IdeaCard({
     }
   }
 
+  async function dismissStale() {
+    if (await act("unstale")) {
+      toast.success("Cleared. It stays approved and the Builder will still build it.");
+      onChanged();
+    }
+  }
+
   async function unapprove() {
     if (await act("unapprove")) {
       toast.success("Moved back to “Waiting for you”.");
@@ -224,6 +246,15 @@ export default function IdeaCard({
             >
               {badge.text}
             </span>
+            {/* A second chip rather than a replacement for the first: this idea
+                really is still approved and still in the Builder's path. The
+                warning sits ON TOP of that state, it does not replace it. */}
+            {isStale && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300">
+                <AlertTriangle className="h-3 w-3" />
+                May be out of date
+              </span>
+            )}
             <span className="text-xs text-zinc-500">#{idea.number}</span>
           </div>
           <p className="mt-1.5 font-medium leading-snug text-zinc-100">
@@ -256,6 +287,49 @@ export default function IdeaCard({
       {/* Expanded */}
       {open && (
         <div className="border-t border-zinc-800 p-4">
+          {/* Stale warning. Same amber treatment as the PR card's "falling
+              behind main" banner on purpose — they are the same idea (something
+              that was fine when it was filed and may not be now), so they should
+              read as one system. The WHY lives in the Scout's comment down in
+              "Activity on GitHub"; repeating it here would mean fetching and
+              parsing a comment a model wrote, and it would go stale itself. */}
+          {isStale && (
+            <div className="mb-4 rounded-xl border border-amber-700 bg-amber-950/40 p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-amber-200">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                ⏳ Code has landed since you approved this — it may already be
+                done, or no longer the right thing to build.
+              </p>
+              <p className="mt-1 text-sm text-amber-300/90">
+                The Scout left a note below saying exactly what changed. It is a
+                heads-up, not a verdict — a commit touching a file this idea
+                mentions is evidence, not proof. Nothing has been closed or moved:
+                the Builder will still build this unless you say otherwise.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    setPanel(panel === "feedback" ? null : "feedback");
+                    setPanelText("");
+                  }}
+                  disabled={busy !== null}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-amber-700 bg-amber-900/40 px-4 py-2.5 text-sm font-semibold text-amber-100 transition hover:bg-amber-900/70 disabled:opacity-50"
+                >
+                  <CornerUpLeft className="h-4 w-4" />
+                  Send back with feedback
+                </button>
+                <button
+                  onClick={dismissStale}
+                  disabled={busy !== null}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-zinc-700 px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-50"
+                >
+                  {busy === "unstale" ? <Spinner /> : <Check className="h-4 w-4" />}
+                  It&apos;s still fine — clear this
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="mb-2 flex justify-end">
             <a
               href={idea.htmlUrl}

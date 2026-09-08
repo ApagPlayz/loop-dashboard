@@ -159,6 +159,15 @@ export const LOOP_LABELS: Record<string, { color: string; description: string }>
     color: "6E7781",
     description: "Owner said no — don't build it, and don't propose it again",
   },
+  // NOT a queue state — a warning worn ON TOP of `approved`. Amber to match the
+  // "falling behind" treatment the PR card already uses for the same idea
+  // (something that was fine when it was filed and may not be any more), and
+  // deliberately not one of the four triage labels: the owner still decides.
+  stale: {
+    color: "FBCA04",
+    description:
+      "Approved before code landed that may have overtaken it — the owner decides",
+  },
 };
 
 /** Default colors for labels this app may need to create on the fly. */
@@ -324,6 +333,54 @@ export async function createIssue(
   return issue;
 }
 
+/**
+ * An issue's own event log — the trail GitHub keeps of everything that
+ * happened to it that is not a comment.
+ *
+ * Exists because the issue object itself carries no history: `IdeaSummary` can
+ * say an idea IS `approved`, never WHEN it became approved, and "when" is the
+ * whole question a staleness check asks. The `labeled` events are the only
+ * record of that moment, and they carry `created_at`.
+ *
+ * Paginated: an issue that has been round-tripped through triage a few times
+ * accumulates dozens of events, and the label add we want is usually the
+ * OLDEST-but-one rather than anything near the first page's end.
+ */
+export type IssueLabelEvent = {
+  event: string;
+  createdAt: string;
+  label: string | null;
+  actor: string | null;
+};
+
+export async function listIssueEvents(
+  issueNumber: number,
+  repo: RepoConfig,
+  opts: { per_page?: number } = {},
+): Promise<IssueLabelEvent[]> {
+  const octokit = getOctokit();
+  const rows = await octokit.paginate(octokit.rest.issues.listEvents, {
+    owner: repo.owner,
+    repo: repo.repo,
+    issue_number: issueNumber,
+    per_page: opts.per_page ?? 100,
+  });
+  return rows.map((e) => {
+    const raw = e as unknown as {
+      event?: string;
+      created_at?: string;
+      label?: { name?: string } | null;
+      actor?: { login?: string } | null;
+    };
+    return {
+      event: raw.event ?? "",
+      createdAt: raw.created_at ?? "",
+      label: raw.label?.name ?? null,
+      actor: raw.actor?.login ?? null,
+    };
+  });
+}
+
 /** Create a comment on an issue or PR. */
 export async function createComment(
   issueNumber: number,
@@ -482,6 +539,147 @@ export async function downloadArtifact(
     archive_format: "zip",
   });
   return Buffer.from(res.data as ArrayBuffer);
+}
+
+/* ------------------------------------------------------------------ */
+/* Commits & branches                                                  */
+/* ------------------------------------------------------------------ */
+
+/** A commit on the default branch, flattened to the fields we reason about. */
+export type RepoCommit = {
+  sha: string;
+  /** First 7 characters — what a human reads in a log line. */
+  shortSha: string;
+  /** Author date (when the work was written), NOT the committer date. */
+  committedAt: string;
+  authorName: string;
+  authorEmail: string;
+  /** GitHub login when the commit is linked to an account, else null. */
+  authorLogin: string | null;
+  /** First line of the commit message. */
+  subject: string;
+};
+
+/**
+ * The repo's default branch name. Not hardcoded to "main": the loop's own
+ * template assumes main, but nothing stops a target repo from using `master`
+ * or `trunk`, and a staleness check that silently read the wrong branch would
+ * report "no commits since approval" forever — the exact silent-no-op failure
+ * the change-detection audit is about.
+ */
+export async function getDefaultBranch(repo: RepoConfig): Promise<string> {
+  const res = await getOctokit().rest.repos.get({
+    owner: repo.owner,
+    repo: repo.repo,
+  });
+  return res.data.default_branch ?? "main";
+}
+
+/**
+ * The current tip of the default branch: its name, sha and author date.
+ *
+ * This is the "what does the repo actually look like right now" anchor the
+ * dashboard has never had — every existing read is either an issue, a PR, or a
+ * hardcoded file path. Returns `null` rather than throwing on an empty repo,
+ * which has a default branch name but no commits on it.
+ */
+export async function getDefaultBranchHead(
+  repo: RepoConfig,
+): Promise<{ branch: string; sha: string; committedAt: string } | null> {
+  const branch = await getDefaultBranch(repo);
+  try {
+    const res = await getOctokit().rest.repos.listCommits({
+      owner: repo.owner,
+      repo: repo.repo,
+      sha: branch,
+      per_page: 1,
+    });
+    const head = res.data[0];
+    if (!head) return null;
+    return {
+      branch,
+      sha: head.sha,
+      committedAt: head.commit?.author?.date ?? head.commit?.committer?.date ?? "",
+    };
+  } catch (err: unknown) {
+    // 409 is GitHub's answer for "this repository is empty".
+    if (isNotFound(err) || (err as { status?: number })?.status === 409) return null;
+    throw err;
+  }
+}
+
+/**
+ * Commits on the default branch authored strictly after `since` (an ISO
+ * timestamp), newest first.
+ *
+ * `max` is a hard ceiling, not a page size. A repo that has had four hundred
+ * commits land since an idea was approved does not need all four hundred read
+ * to establish that the idea is stale — the first `max` say it just as loudly,
+ * and an unbounded paginate here would turn one queue check into hundreds of
+ * API calls against a rate limit shared with every other screen.
+ *
+ * Note which clock is which: GitHub filters `since` on the COMMITTER date,
+ * while `committedAt` below is the AUTHOR date (when the work was written,
+ * which is what a person means by "when did this land"). They are the same
+ * value except after a rebase or a cherry-pick, where the author date is the
+ * older of the two — so a rebased commit can come back from this call and then
+ * be filtered out again by a caller comparing `committedAt`. That errs towards
+ * counting fewer commits, which for a staleness check errs towards not
+ * flagging, which is the right direction.
+ */
+export async function listCommitsSince(
+  since: string,
+  repo: RepoConfig,
+  opts: { branch?: string; max?: number } = {},
+): Promise<RepoCommit[]> {
+  const max = opts.max ?? 100;
+  const octokit = getOctokit();
+  try {
+    const res = await octokit.rest.repos.listCommits({
+      owner: repo.owner,
+      repo: repo.repo,
+      sha: opts.branch,
+      since,
+      per_page: Math.min(100, max),
+    });
+    return res.data.slice(0, max).map((c) => ({
+      sha: c.sha,
+      shortSha: c.sha.slice(0, 7),
+      committedAt: c.commit?.author?.date ?? c.commit?.committer?.date ?? "",
+      authorName: c.commit?.author?.name ?? "",
+      authorEmail: c.commit?.author?.email ?? "",
+      authorLogin: c.author?.login ?? null,
+      subject: (c.commit?.message ?? "").split("\n")[0],
+    }));
+  } catch (err: unknown) {
+    if (isNotFound(err) || (err as { status?: number })?.status === 409) return [];
+    throw err;
+  }
+}
+
+/**
+ * The paths one commit touched. Best-effort: an empty list on any failure, so
+ * a single unreadable commit degrades the evidence rather than failing the
+ * whole check.
+ *
+ * GitHub truncates `files` at 300 entries per commit. A commit that big is
+ * already overwhelming evidence of change, so the truncation costs nothing
+ * here — but it is why this must never be read as an exhaustive list.
+ */
+export async function getCommitFiles(
+  sha: string,
+  repo: RepoConfig,
+): Promise<string[]> {
+  try {
+    const res = await getOctokit().rest.repos.getCommit({
+      owner: repo.owner,
+      repo: repo.repo,
+      ref: sha,
+    });
+    return (res.data.files ?? []).map((f) => f.filename).filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 /* ------------------------------------------------------------------ */

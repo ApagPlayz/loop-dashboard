@@ -309,6 +309,30 @@ export async function loadIdeas(
   return { waiting, approved, redraft, closed, duplicates };
 }
 
+/**
+ * Just the `approved` tab, without paying for the other three.
+ *
+ * `loadIdeas` does eight paginated GitHub queries and then scores the whole
+ * queue for near-duplicates against an embedding index. The staleness check
+ * only ever looks at approved ideas, and it runs behind its own interval gate,
+ * so making it drag the entire Ideas payload along would be several times the
+ * work for one quarter of the answer.
+ *
+ * Same exclusions the Approved tab applies: a `declined` idea is out of play
+ * whatever else it carries, and one still wearing `proposal` has not really
+ * been approved yet. A `stale` label is NOT an exclusion — a flagged idea is
+ * still approved, still in the Builder's path, and re-assessing it is how the
+ * flag would get corroborated or (by the owner) cleared.
+ */
+export async function listApprovedIdeas(
+  repoConfig: RepoConfig,
+): Promise<IdeaSummary[]> {
+  const rows = await listIdeasByLabel(repoConfig, "approved");
+  return rows
+    .filter((i) => !i.labels.includes("declined") && !i.labels.includes("proposal"))
+    .sort(byNewest);
+}
+
 function byNewest(a: IdeaSummary, b: IdeaSummary) {
   return +new Date(b.createdAt) - +new Date(a.createdAt);
 }

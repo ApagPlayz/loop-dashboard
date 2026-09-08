@@ -6,6 +6,7 @@ import {
   type RepoConfig,
 } from "@/lib/github";
 import { listThreadComments, closeIssue, getIssue } from "@/lib/queues";
+import { STALE_LABEL } from "@/lib/idea-staleness";
 import { resolveProject, resolveProjectFromUrl, ProjectError } from "@/lib/projects";
 
 export const dynamic = "force-dynamic";
@@ -34,13 +35,27 @@ export async function GET(
 
 type ActionBody = {
   /** `reject` is the legacy name for `decline` and behaves identically. */
-  action: "approve" | "unapprove" | "redraft" | "decline" | "reject";
+  action:
+    | "approve"
+    | "unapprove"
+    | "redraft"
+    | "decline"
+    | "reject"
+    | "unstale";
   text?: string;
   project?: string;
 };
 
-/** Every label this route owns — anything else on the issue is left alone. */
-const QUEUE_LABELS = ["proposal", "approved", "redraft", "declined"] as const;
+/**
+ * Every label this route owns — anything else on the issue is left alone.
+ *
+ * `stale` is in here even though it is not a queue STATE. It is a warning worn
+ * on top of `approved`, and every action below is the owner making a decision
+ * about the thing the warning was about — so any of them clears it. Leaving it
+ * on through an approve/redraft/decline would leave an amber banner sitting
+ * over an idea whose staleness the owner has already answered.
+ */
+const QUEUE_LABELS = ["proposal", "approved", "redraft", "declined", "stale"] as const;
 
 /**
  * The exact label set an issue should end up with after `action`, computed
@@ -96,6 +111,9 @@ async function wake(
  *              label is what makes a rejection legible to the Scout and keeps
  *              the idea in the Closed tab instead of vanishing.
  *  reject    : alias of `decline`, kept for older clients.
+ *  unstale   : drop the `stale` warning, leaving the idea approved. The owner
+ *              looked at what the Scout flagged and decided the idea still
+ *              stands. Nothing else moves.
  *
  * Body carries a `project` field so the mutation targets the right repo.
  */
@@ -135,7 +153,7 @@ export async function POST(
       { status: 400 },
     );
   }
-  if (!["approve", "unapprove", "redraft", "decline"].includes(action)) {
+  if (!["approve", "unapprove", "redraft", "decline", "unstale"].includes(action)) {
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });
   }
 
@@ -156,6 +174,20 @@ export async function POST(
       case "unapprove": {
         await setIssueLabels(issueNumber, nextLabels(current, "proposal"), repo);
         return NextResponse.json({ ok: true });
+      }
+      case "unstale": {
+        // "I looked, it's still fine." The idea stays exactly where it is —
+        // only the warning comes off. A no-op when the label isn't there, so a
+        // double-click or a stale screen can't fail.
+        if (!current.includes(STALE_LABEL)) {
+          return NextResponse.json({ ok: true, changed: false });
+        }
+        await setIssueLabels(
+          issueNumber,
+          current.filter((l) => l !== STALE_LABEL),
+          repo,
+        );
+        return NextResponse.json({ ok: true, changed: true });
       }
       case "redraft": {
         await createComment(

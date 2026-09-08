@@ -2417,6 +2417,10 @@ const LOOP_CONFIG: LoopConfig = {
     offLimits: [],
     lenses: [],
     maxPerRun: 3,
+    // No `staleCheck` in the committed file either, so this is what it
+    // normalises to: the approved-queue reconciliation is off, same as on a
+    // real repo that has never opted in.
+    staleCheck: { enabled: false, intervalHours: 24 },
   },
   extra: { version: 1 },
 };
