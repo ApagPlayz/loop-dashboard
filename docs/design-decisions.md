@@ -356,3 +356,79 @@ check-before-filing (§3 step 6 of the backlog) remains unwired.
   encoder produced the score.
 
 **When:** 2026-09-03.
+
+---
+
+## 13. Local scan roots are machine state, not registry state
+
+**Decided:** the "add a project → a local folder" picker scans a list of root directories the
+owner controls from the UI, persisted to `~/.loop-dashboard/local-roots.json` on the machine
+the dashboard runs on. Folders are addressed by a hash of their absolute path, never by name.
+
+**Why:** the picker previously scanned exactly one hard-coded directory one level deep, so a
+project living anywhere else was simply unreachable — and the list was padded with whatever
+else happened to sit in that folder, because nothing filtered on "is this even a project".
+
+Roots deliberately do **not** go in `config/projects.json`. That registry is read and written
+through the GitHub API into the dashboard repo, so absolute paths from one Mac would be
+committed and pushed to every deploy — publishing the shape of the owner's home directory to
+a public repo, and meaning nothing on any other machine.
+
+The hashed id exists because the old code resolved a folder by bare name. With one root that
+was unique; with several, two roots can each hold a `Resume` and the server could act on the
+wrong one. The id is a hash rather than a path so the browser never hands the server a
+filesystem path it could edit into somewhere else.
+
+**Rejected:**
+- **A free-form "type any path" box.** Most flexible, but it means an arbitrary
+  browser-supplied path reaching `fs`. The existing guard — resolve only against a fresh
+  scan of a known root — is worth more than the flexibility.
+- **`CLAUDE_PROJECTS_DIR` alone.** Already existed, still the seed value, but it is one root
+  and an env var is not a UI.
+- **Dropping low-signal folders from the scan result.** They are flagged and hidden behind a
+  "show all" toggle instead. Removing them would also hide them from `lib/launchers.ts`, and
+  a filter with no escape hatch is a bug report waiting to happen.
+
+**Tradeoff accepted:** the roots list is per-machine and does not sync. That is the point,
+but it does mean a fresh laptop starts from the default root again.
+
+**When:** 2026-09-08.
+
+---
+
+## 14. Stale approvals are flagged by the Scout, never auto-actioned
+
+**Decided:** an opt-in check, owned by the Scout and off by default, reconciles **approved**
+ideas against what has actually landed on the default branch. When an idea looks overtaken by
+real commits it gets a `stale` label and a comment saying why. Nothing is closed, re-queued,
+or un-approved.
+
+**Why:** this closes finding **C4** of `docs/audits/audit-change-detection-2026-08-18.md` —
+*"approved issues never expire; nothing reconciles the queue against reality."* Open PRs
+already had a staleness signal (`behindBy`, the "falling behind" banner); the ideas queue had
+none at all, so an approval quietly rotted every time the owner pushed code with Claude.
+
+Flag-only is the whole design constraint. The check reasons from evidence that a commit
+*touched a related path*, which is evidence an idea is dead, not proof. A false positive that
+adds a label costs a glance; a false positive that closes a good idea loses work silently.
+The existing `redraft` label is the owner's one-click escalation.
+
+**Rejected:**
+- **Auto-closing or auto-redrafting flagged ideas.** See above — the queue reshuffling itself
+  unattended is how you stop trusting the queue.
+- **Stamping a baseline commit SHA on every new proposal.** More precise, but it only helps
+  ideas filed *after* the change ships and needs a migration. Approval time from the issue
+  timeline works on the queue as it stands today, and the imprecision is disclosed rather
+  than hidden.
+- **A new cron.** The app has no working scheduler (`vercel.json` is gone, EventBridge is not
+  built). The interval is a gate inside the Scout's existing hourly run instead.
+- **Running the model on every approved idea every hour.** A deterministic tier-1 filter runs
+  first and only its hits reach a model — the same cheap-gate-then-think shape the Scout
+  already uses for itself.
+
+**Tradeoff accepted:** "approved at" comes from the issue's `labeled` timeline event, falling
+back to `updatedAt` then `createdAt`. The fallbacks are approximate in *known directions*
+(`updatedAt` under-flags, `createdAt` over-flags) and the posted comment says the date is an
+approximation rather than implying precision it does not have.
+
+**When:** 2026-09-08.
