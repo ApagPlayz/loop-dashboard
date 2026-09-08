@@ -67,8 +67,14 @@ function errText(err: unknown): string {
  * it has no remote yet), then run the SAME baseline onboarding as the existing
  * "add an existing repo" flow. Mutates the folder only after the user confirmed.
  *
- * Body: { folder: string, label?: string }
+ * Body: { folderId: string, label?: string }
  * Returns: { ok, steps, project, commitUrl?, installed, skipped, labels }
+ *
+ * `folderId` is the opaque id a fresh scan gave the folder, never a path: with
+ * several scan roots configured, two of them can each hold a folder called
+ * `Resume`, so a bare name no longer identifies one. The browser never gets to
+ * name a directory — it echoes back an id, and lib/local-folders.ts turns that
+ * back into a path only if it still matches a folder inside a validated root.
  *
  * LOCAL-ONLY: this git-inits, commits and pushes a folder on the host, so it
  * 404s unless LOOP_DASHBOARD_LOCAL_MODE is on.
@@ -79,19 +85,19 @@ export async function POST(req: Request) {
   const token = process.env.GITHUB_TOKEN ?? "";
   const steps: Step[] = [];
 
-  let body: { folder?: string; label?: string };
+  let body: { folderId?: string; label?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Bad request." }, { status: 400 });
   }
-  const name = (body.folder ?? "").trim();
-  if (!name) return NextResponse.json({ error: "Pick a folder first." }, { status: 400 });
+  const wantedId = (body.folderId ?? "").trim();
+  if (!wantedId) return NextResponse.json({ error: "Pick a folder first." }, { status: 400 });
 
   // ----- resolve + guard (rejects traversal / already-onboarded) --------
   let folder: LocalFolder | null;
   try {
-    folder = await resolveScannedFolder(name);
+    folder = await resolveScannedFolder(wantedId);
   } catch (err) {
     console.error("local-init: scan failed", err);
     return NextResponse.json({ error: "Couldn't read your local folders. Try again." }, { status: 502 });

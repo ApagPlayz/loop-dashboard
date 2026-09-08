@@ -128,8 +128,13 @@ type CandidateRepo = {
 };
 
 type LocalFolder = {
+  /** Opaque, stable id from the scan — what local-init is told to set up. */
+  id: string;
   name: string;
   path: string;
+  /** The scan root this folder came from, and that root with `~` collapsed. */
+  rootPath: string;
+  rootLabel: string;
   suggestedRepo: string;
   isGitRepo: boolean;
   hasRemote: boolean;
@@ -139,6 +144,16 @@ type LocalFolder = {
   stack: string[];
   onDashboard: boolean;
   selectable: boolean;
+  /** Probably not a project — hidden until "show all" is switched on. */
+  lowSignal: boolean;
+};
+
+/** One directory the picker scans, as /api/projects/local-scan reports it. */
+type LocalRoot = {
+  path: string;
+  display: string;
+  isDefault: boolean;
+  missing: boolean;
 };
 
 type Step = { key: string; label: string; status: "ok" | "skipped" | "error"; detail?: string };
@@ -171,8 +186,10 @@ function AddProjectWizard({
 
   // Local-folder flow
   const [folders, setFolders] = useState<LocalFolder[] | null>(null);
+  const [roots, setRoots] = useState<LocalRoot[]>([]);
   const [localUnavailable, setLocalUnavailable] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [localLoaded, setLocalLoaded] = useState(false);
   const [pickedFolder, setPickedFolder] = useState<LocalFolder | null>(null);
 
   // Shared install state
@@ -200,26 +217,40 @@ function AddProjectWizard({
     })();
   }, []);
 
-  // Load the local folders the first time the owner switches to that tab.
-  useEffect(() => {
-    if (source !== "local" || folders !== null || localUnavailable) return;
-    (async () => {
-      try {
-        setLocalError(null);
-        const res = await fetch("/api/projects/local-scan");
-        const j = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(j.error ?? "Couldn't read your local folders.");
-        if (j.localUnavailable) {
-          setLocalUnavailable(true);
-          setFolders([]);
-        } else {
-          setFolders(j.folders ?? []);
-        }
-      } catch (e) {
-        setLocalError(e instanceof Error ? e.message : "Couldn't read your local folders.");
-      }
-    })();
-  }, [source, folders, localUnavailable]);
+  /**
+   * Scan the local roots. One request returns both the folders and the roots
+   * they came from, so adding or removing a root is just "run this again" —
+   * there's no second endpoint whose answer could drift out of step.
+   */
+  const loadLocal = useCallback(async () => {
+    try {
+      setLocalLoaded(true); // set up front so a double click can't scan twice
+      setLocalError(null);
+      setFolders(null); // back to the spinner while a re-scan is in flight
+      const res = await fetch("/api/projects/local-scan");
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error ?? "Couldn't read your local folders.");
+      setRoots(j.roots ?? []);
+      setLocalUnavailable(!!j.localUnavailable);
+      setFolders(j.folders ?? []);
+    } catch (e) {
+      setFolders([]);
+      setLocalError(e instanceof Error ? e.message : "Couldn't read your local folders.");
+    }
+  }, []);
+
+  /**
+   * Switch to the local tab, scanning the first time it's opened.
+   *
+   * Deliberately NOT an effect keyed on `source`. Scanning is something the
+   * owner's click causes, not state React has to keep in sync with the
+   * filesystem — and doing it in the handler avoids the extra render pass an
+   * effect that immediately calls setState would cost on every tab switch.
+   */
+  function openLocalTab() {
+    setSource("local");
+    if (!localLoaded) void loadLocal();
+  }
 
   async function install() {
     if (!picked) return;
@@ -250,7 +281,7 @@ function AddProjectWizard({
       const res = await fetch("/api/projects/local-init", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folder: pickedFolder.name }),
+        body: JSON.stringify({ folderId: pickedFolder.id }),
       });
       const j = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(j.error ?? "Couldn't set the folder up.");
@@ -428,7 +459,7 @@ function AddProjectWizard({
                   <FolderGit2 className="h-3.5 w-3.5" /> A GitHub repo
                 </button>
                 <button
-                  onClick={() => setSource("local")}
+                  onClick={openLocalTab}
                   className={`inline-flex items-center justify-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition ${
                     source === "local"
                       ? "bg-zinc-800 text-zinc-100"
@@ -489,9 +520,11 @@ function AddProjectWizard({
               ) : (
                 <LocalFolderPicker
                   folders={folders}
+                  roots={roots}
                   unavailable={localUnavailable}
                   error={localError}
                   onPick={setPickedFolder}
+                  onRootsChanged={loadLocal}
                 />
               )}
             </>
@@ -508,15 +541,23 @@ function AddProjectWizard({
 
 function LocalFolderPicker({
   folders,
+  roots,
   unavailable,
   error,
   onPick,
+  onRootsChanged,
 }: {
   folders: LocalFolder[] | null;
+  roots: LocalRoot[];
   unavailable: boolean;
   error: string | null;
   onPick: (f: LocalFolder) => void;
+  onRootsChanged: () => void;
 }) {
+  // Filtered by default — see `lowSignal` in lib/local-folders.ts. Nothing is
+  // ever hidden without the count and the escape hatch being visible below.
+  const [showAll, setShowAll] = useState(false);
+
   if (error) {
     return (
       <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
@@ -524,13 +565,27 @@ function LocalFolderPicker({
       </div>
     );
   }
-  if (unavailable) {
+
+  // No roots at all means the server isn't running local mode — the wrong
+  // machine entirely, and nothing the owner can fix from here. With roots but
+  // none of them readable, they CAN fix it, so the editor stays on screen.
+  if (unavailable && roots.length === 0) {
     return (
       <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-3 text-sm leading-relaxed text-zinc-400">
         This option only works when the dashboard is running on your own Mac (where your project
         folders live). It looks like it&apos;s running somewhere else right now — use the{" "}
         <strong className="text-zinc-300">A GitHub repo</strong> tab instead.
       </div>
+    );
+  }
+  if (unavailable) {
+    return (
+      <>
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-3 text-sm leading-relaxed text-zinc-400">
+          None of the folders below could be read. Check the paths, or add one that exists.
+        </div>
+        <ScanRootsEditor roots={roots} onChanged={onRootsChanged} />
+      </>
     );
   }
   if (folders === null) {
@@ -540,56 +595,244 @@ function LocalFolderPicker({
       </p>
     );
   }
-  if (folders.length === 0) {
-    return <p className="py-4 text-sm text-zinc-500">No project folders found to add.</p>;
+
+  const hidden = folders.filter((f) => f.lowSignal);
+  const visible = showAll ? folders : folders.filter((f) => !f.lowSignal);
+
+  // The scan already sorts by root then name, so grouping is a single pass and
+  // the groups come out in the owner's root order. Only worth the extra
+  // headings when there's more than one root to tell apart.
+  const grouped = roots.length > 1;
+  const groups: { label: string; items: LocalFolder[] }[] = [];
+  for (const f of visible) {
+    const last = groups[groups.length - 1];
+    if (last && last.label === f.rootLabel) last.items.push(f);
+    else groups.push({ label: f.rootLabel, items: [f] });
   }
 
   return (
-    <ul className="space-y-1.5">
-      {folders.map((f) => {
-        const meta = [
-          `~${f.fileCount}${f.fileCount >= 3000 ? "+" : ""} files`,
-          ...f.stack.slice(0, 2),
-        ];
-        return (
-          <li key={f.name}>
+    <>
+      {visible.length === 0 ? (
+        <p className="py-4 text-sm text-zinc-500">
+          {folders.length === 0
+            ? "No project folders found to add."
+            : "Every folder found looks too small to be a project — use “show all” below to see them anyway."}
+        </p>
+      ) : grouped ? (
+        groups.map((g) => (
+          <div key={g.label} className="space-y-1.5">
+            <p className="truncate px-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+              {g.label}
+            </p>
+            <ul className="space-y-1.5">
+              {g.items.map((f) => (
+                <FolderRow key={f.id} folder={f} onPick={onPick} />
+              ))}
+            </ul>
+          </div>
+        ))
+      ) : (
+        <ul className="space-y-1.5">
+          {visible.map((f) => (
+            <FolderRow key={f.id} folder={f} onPick={onPick} />
+          ))}
+        </ul>
+      )}
+
+      {hidden.length > 0 && (
+        <button
+          onClick={() => setShowAll((v) => !v)}
+          className="w-full rounded-lg border border-dashed border-zinc-800 px-3 py-2 text-[11px] text-zinc-500 transition hover:border-zinc-700 hover:text-zinc-300"
+        >
+          {showAll
+            ? "Hide the small ones again"
+            : `${hidden.length} small folder${hidden.length === 1 ? "" : "s"} hidden (no git repo, only a few files) — show all`}
+        </button>
+      )}
+
+      <ScanRootsEditor roots={roots} onChanged={onRootsChanged} />
+    </>
+  );
+}
+
+/** One folder in the picker. */
+function FolderRow({ folder: f, onPick }: { folder: LocalFolder; onPick: (f: LocalFolder) => void }) {
+  const meta = [`~${f.fileCount}${f.fileCount >= 3000 ? "+" : ""} files`, ...f.stack.slice(0, 2)];
+  return (
+    <li>
+      <button
+        disabled={!f.selectable}
+        onClick={() => f.selectable && onPick(f)}
+        className={`w-full rounded-lg border px-3 py-2.5 text-left transition ${
+          f.selectable
+            ? "border-zinc-800 bg-zinc-900 hover:border-emerald-500/40 hover:bg-zinc-800/70"
+            : "cursor-not-allowed border-zinc-800/60 bg-zinc-900/40"
+        }`}
+      >
+        <span className="flex items-center gap-2">
+          <FolderOpen
+            className={`h-3.5 w-3.5 shrink-0 ${f.selectable ? "text-emerald-400" : "text-zinc-600"}`}
+          />
+          <span className={`truncate text-sm font-medium ${f.selectable ? "text-zinc-200" : "text-zinc-500"}`}>
+            {f.name}
+          </span>
+          {f.onDashboard ? (
+            <span className="ml-auto shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">
+              already added
+            </span>
+          ) : f.hasRemote ? (
+            <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-[10px] text-zinc-500">
+              <FolderGit2 className="h-3 w-3" /> on GitHub
+            </span>
+          ) : (
+            <span className="ml-auto shrink-0 text-[10px] text-zinc-500">new repo</span>
+          )}
+        </span>
+        <span className="mt-0.5 block truncate pl-5 text-[11px] text-zinc-500">
+          {meta.join(" · ")}
+          {f.remoteSlug ? ` · ${f.remoteSlug}` : ""}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Which folders get scanned                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Add and remove the directories the picker looks in.
+ *
+ * A plain text field rather than a folder picker, and not for want of trying:
+ * the scan happens on the server, and a browser's directory input hands over
+ * file handles, never a real absolute path — there is nothing to pick WITH. So
+ * the input leans into being typed: it takes `~/…`, shows an example, and the
+ * server's validation comes back inline instead of as an alert.
+ *
+ * Kept deliberately quiet — a strip at the bottom of a modal, not a settings
+ * page. Most of the time there is one root and nothing to do here.
+ */
+function ScanRootsEditor({ roots, onChanged }: { roots: LocalRoot[]; onChanged: () => void }) {
+  const [adding, setAdding] = useState(false);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [rootError, setRootError] = useState<string | null>(null);
+
+  async function send(method: "POST" | "DELETE", body: { path: string }) {
+    setBusy(true);
+    setRootError(null);
+    try {
+      const res = await fetch("/api/projects/local-roots", {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j.error ?? "Couldn't update the folders being scanned.");
+      setAdding(false);
+      setValue("");
+      onChanged(); // re-scan; the response's root list arrives with it
+    } catch (e) {
+      setRootError(e instanceof Error ? e.message : "Couldn't update the folders being scanned.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="space-y-2 rounded-lg border border-zinc-800 bg-zinc-900/40 px-3 py-2.5">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+        Folders being scanned
+      </p>
+      <ul className="space-y-1">
+        {roots.map((r) => (
+          <li key={r.path} className="flex items-center gap-2 text-[11px] text-zinc-400">
+            <FolderOpen className="h-3 w-3 shrink-0 text-zinc-600" />
+            <span className="truncate">{r.display}</span>
+            {r.missing && <span className="shrink-0 text-amber-400/80">not found</span>}
             <button
-              disabled={!f.selectable}
-              onClick={() => f.selectable && onPick(f)}
-              className={`w-full rounded-lg border px-3 py-2.5 text-left transition ${
-                f.selectable
-                  ? "border-zinc-800 bg-zinc-900 hover:border-emerald-500/40 hover:bg-zinc-800/70"
-                  : "cursor-not-allowed border-zinc-800/60 bg-zinc-900/40"
-              }`}
+              // The list can't go empty: the picker would have nowhere to look
+              // and no obvious way back. The server refuses this too.
+              disabled={busy || roots.length < 2}
+              onClick={() => send("DELETE", { path: r.path })}
+              aria-label={`Stop scanning ${r.display}`}
+              title={roots.length < 2 ? "Add another folder first" : `Stop scanning ${r.display}`}
+              className="ml-auto shrink-0 rounded p-0.5 text-zinc-500 transition hover:bg-zinc-800 hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
             >
-              <span className="flex items-center gap-2">
-                <FolderOpen
-                  className={`h-3.5 w-3.5 shrink-0 ${f.selectable ? "text-emerald-400" : "text-zinc-600"}`}
-                />
-                <span className={`truncate text-sm font-medium ${f.selectable ? "text-zinc-200" : "text-zinc-500"}`}>
-                  {f.name}
-                </span>
-                {f.onDashboard ? (
-                  <span className="ml-auto shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] text-emerald-300">
-                    already added
-                  </span>
-                ) : f.hasRemote ? (
-                  <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-[10px] text-zinc-500">
-                    <FolderGit2 className="h-3 w-3" /> on GitHub
-                  </span>
-                ) : (
-                  <span className="ml-auto shrink-0 text-[10px] text-zinc-500">new repo</span>
-                )}
-              </span>
-              <span className="mt-0.5 block truncate pl-5 text-[11px] text-zinc-500">
-                {meta.join(" · ")}
-                {f.remoteSlug ? ` · ${f.remoteSlug}` : ""}
-              </span>
+              <X className="h-3 w-3" />
             </button>
           </li>
-        );
-      })}
-    </ul>
+        ))}
+      </ul>
+
+      {adding ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!busy) void send("POST", { path: value });
+          }}
+          className="space-y-1.5"
+        >
+          <input
+            autoFocus
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="~/Documents/Code"
+            spellCheck={false}
+            className="w-full rounded-lg border border-zinc-800 bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-200 outline-none placeholder:text-zinc-600 focus:border-emerald-500/50"
+          />
+          <p className="text-[11px] leading-relaxed text-zinc-500">
+            Type the full path — the scan runs on your Mac, so there&apos;s no folder picker the
+            browser can hand a real path to. It has to be inside your home folder.
+          </p>
+          {rootError && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-200">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {rootError}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="submit"
+              disabled={busy || value.trim().length === 0}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-2.5 py-1.5 text-xs font-semibold text-zinc-950 transition hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {busy ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+              Add
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setAdding(false);
+                setValue("");
+                setRootError(null);
+              }}
+              className="rounded-lg border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 transition hover:bg-zinc-800"
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      ) : (
+        <>
+          {rootError && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-[11px] text-red-200">
+              <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" /> {rootError}
+            </div>
+          )}
+          <button
+            onClick={() => {
+              setRootError(null);
+              setAdding(true);
+            }}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-400 transition hover:text-emerald-300"
+          >
+            <Plus className="h-3 w-3" /> Add a folder to scan
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 
