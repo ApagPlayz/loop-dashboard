@@ -442,12 +442,41 @@ export async function mergePR(
 /* Workflows / Actions                                                 */
 /* ------------------------------------------------------------------ */
 
-/** List recent workflow runs (optionally scoped to a single workflow file). */
+/**
+ * GitHub's run filter, which confusingly accepts a run *status* OR a run
+ * *conclusion* in the same parameter (`success` is a conclusion, `in_progress`
+ * is a status). Mirrors the endpoint's own union so callers get completion.
+ */
+export type WorkflowRunStatusFilter =
+  | "completed"
+  | "action_required"
+  | "cancelled"
+  | "failure"
+  | "neutral"
+  | "skipped"
+  | "stale"
+  | "success"
+  | "timed_out"
+  | "in_progress"
+  | "queued"
+  | "requested"
+  | "waiting"
+  | "pending";
+
+/**
+ * List recent workflow runs (optionally scoped to a single workflow file).
+ *
+ * `status` narrows server-side. It exists because "has this repo EVER had a
+ * successful run" cannot be answered honestly from a page of recent runs — the
+ * green one may simply be older than the window — and asking GitHub for
+ * successes directly is one call instead of paging back through history.
+ */
 export async function getWorkflowRuns(
   opts: {
     workflowId?: string | number;
     per_page?: number;
     branch?: string;
+    status?: WorkflowRunStatusFilter;
     repo: RepoConfig;
   },
 ) {
@@ -460,6 +489,7 @@ export async function getWorkflowRuns(
       workflow_id: opts.workflowId,
       per_page: opts.per_page ?? 30,
       branch: opts.branch,
+      status: opts.status,
     });
     return res.data.workflow_runs;
   }
@@ -468,6 +498,7 @@ export async function getWorkflowRuns(
     repo,
     per_page: opts.per_page ?? 30,
     branch: opts.branch,
+    status: opts.status,
   });
   return res.data.workflow_runs;
 }

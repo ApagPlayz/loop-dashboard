@@ -41,6 +41,7 @@ import EditMenu from "./edit-menu";
 import LaunchButton from "./launch-button";
 import Modal from "./modal";
 import TemplateDriftChip from "./template-drift";
+import LoopPreflightChip from "./loop-preflight";
 import { useProject } from "@/components/project-context";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -173,6 +174,9 @@ export default function ProcessMap() {
   const [openAgent, setOpenAgent] = useState<string | null>(null);
   const [setupNeeded, setSetupNeeded] = useState(false);
   const [checklistOpen, setChecklistOpen] = useState(false);
+  // Bumped when the preflight panel asks for the template comparison, so the
+  // drift fault can point at the existing panel instead of duplicating it.
+  const [driftOpenToken, setDriftOpenToken] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -264,7 +268,11 @@ export default function ProcessMap() {
             <Wrench className="h-3.5 w-3.5" /> Setup needed
           </button>
         )}
-        <TemplateDriftChip project={project} />
+        <TemplateDriftChip project={project} openToken={driftOpenToken} />
+        {/* Cross-project: "can these loops run at all?" — sits next to the
+            other diagnostics because that is where the owner already looks
+            when something in the loop is off. */}
+        <LoopPreflightChip onCompareTemplate={() => setDriftOpenToken((t) => t + 1)} />
       </div>
 
       {statusError && (

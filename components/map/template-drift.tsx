@@ -85,9 +85,30 @@ function isDrift(v: unknown): v is Drift {
   );
 }
 
-export default function TemplateDriftChip({ project }: { project: string }) {
+export default function TemplateDriftChip({
+  project,
+  openToken = 0,
+}: {
+  project: string;
+  /**
+   * Bumped by another toolbar control (the loop-preflight panel) to say "open
+   * this comparison now". A counter rather than a boolean so two consecutive
+   * requests both land, and so the caller never has to reset a flag.
+   *
+   * Handled during render — the codebase's existing derived-state idiom (see
+   * launch-button.tsx) — because `react-hooks/set-state-in-effect` is enforced
+   * and reacting to a prop change is not a side effect.
+   */
+  openToken?: number;
+}) {
   const [drift, setDrift] = useState<Drift | null>(null);
   const [open, setOpen] = useState(false);
+
+  const [seenToken, setSeenToken] = useState(openToken);
+  if (seenToken !== openToken) {
+    setSeenToken(openToken);
+    setOpen(true);
+  }
 
   // One comparison per selected project — it reads GitHub, so it is not polled.
   useEffect(() => {
