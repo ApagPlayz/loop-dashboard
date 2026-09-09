@@ -32,20 +32,27 @@ export type Project = {
 };
 
 /**
- * The pilot — the first project the loop ever ran on.
+ * The seed project — the one the app shell selects when the registry itself
+ * cannot be read.
  *
  * It is NOT a fallback. Nothing here silently substitutes it for a project
  * that wasn't named or a registry that wouldn't load: doing that quietly
- * pointed writes at the pilot's repo from the wrong screen. It survives as a
- * seed value for the one place a hard default is genuinely needed (the app
- * shell's initial selection when the registry is unreadable).
+ * pointed writes at this repo from the wrong screen. It survives as a seed
+ * value for the one place a hard default is genuinely needed (the app shell's
+ * initial selection when the registry is unreadable).
+ *
+ * This must name a project that is actually IN the registry. It used to name
+ * content-generation-platform, the first repo the loop ever ran on; when that
+ * project was removed on 2026-09-08 the constant stayed behind, so a failed
+ * registry read would have shown the owner a project they had deliberately
+ * taken out of the loop — and offered writes against it.
  */
 export const PILOT_PROJECT: Project = {
-  key: "content-generation-platform",
+  key: "supply-chain-optimizer",
   owner: "ApagPlayz",
-  repo: "content-generation-platform",
-  label: "Content Generation Platform",
-  addedAt: "2026-07-15T00:00:00Z",
+  repo: "supply-chain-optimizer",
+  label: "Logistics Project",
+  addedAt: "2026-07-16T15:16:21.328Z",
 };
 
 export class ProjectError extends Error {
