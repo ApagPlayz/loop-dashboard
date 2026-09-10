@@ -223,7 +223,15 @@ export default function ProcessMap() {
           `/api/map/projects/checklist?project=${encodeURIComponent(project)}`,
         );
         const j = await res.json().catch(() => ({}));
-        if (!cancelled && res.ok) setSetupNeeded(j.secret === false);
+        // Two conditions, not one. The secret missing is the obvious way a
+        // loop can't run; a brief that still holds its placeholder text is the
+        // quiet one — the agents trigger on schedule, stand down, and report
+        // success, so every other signal on this page looks healthy while
+        // nothing is being proposed. Checking only the secret is why this chip
+        // stayed hidden through two days of a loop doing nothing.
+        if (!cancelled && res.ok) {
+          setSetupNeeded(j.secret === false || j.brief?.filled === false);
+        }
       } catch {
         /* no chip on failure */
       }

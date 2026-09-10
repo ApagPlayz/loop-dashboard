@@ -11,12 +11,11 @@ import {
   X,
   Check,
   AlertTriangle,
-  ExternalLink,
-  RefreshCw,
 } from "lucide-react";
 import type { Project } from "@/lib/projects";
 import { useProject } from "@/components/project-context";
 import { useEscapeKey } from "./use-escape";
+import { ProjectChecklist } from "./project-checklist";
 
 /* ------------------------------------------------------------------ */
 /* Switcher                                                            */
@@ -347,7 +346,7 @@ function AddProjectWizard({
               </div>
               {result.steps && result.steps.length > 0 && <StepList steps={result.steps} />}
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-                Two things only you can do
+                Before this loop can do anything
               </p>
               <ProjectChecklist project={result.project.key} />
               <button
@@ -864,98 +863,10 @@ function StepList({ steps }: { steps: Step[] }) {
 /* Setup checklist                                                     */
 /* ------------------------------------------------------------------ */
 
-type Checklist = {
-  secret: boolean | null;
-  secretHelp: string;
-  app: { status: string; note: string; url: string };
-};
-
-/** The post-install setup checks. Reused by the wizard and the map chip. */
-export function ProjectChecklist({ project }: { project: string }) {
-  const [data, setData] = useState<Checklist | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [checking, setChecking] = useState(false);
-
-  const check = useCallback(async () => {
-    setChecking(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/map/projects/checklist?project=${encodeURIComponent(project)}`);
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(j.error ?? "Couldn't run the checks.");
-      setData(j);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't run the checks.");
-    } finally {
-      setChecking(false);
-    }
-  }, [project]);
-
-  useEffect(() => {
-    // Run the setup checks against GitHub when shown.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    check();
-  }, [check]);
-
-  return (
-    <div className="space-y-2">
-      {error && (
-        <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
-          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {error}
-        </div>
-      )}
-
-      {/* 1. Secret */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-        <p className="flex items-center gap-2 text-sm font-medium text-zinc-200">
-          {data === null ? (
-            <Loader2 className="h-4 w-4 animate-spin text-zinc-500" />
-          ) : data.secret === true ? (
-            <Check className="h-4 w-4 text-emerald-400" />
-          ) : data.secret === false ? (
-            <AlertTriangle className="h-4 w-4 text-amber-400" />
-          ) : (
-            <AlertTriangle className="h-4 w-4 text-zinc-500" />
-          )}
-          1. The Claude login token (CLAUDE_CODE_OAUTH_TOKEN)
-        </p>
-        {data && data.secret !== true && (
-          <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
-            {data.secret === false
-              ? "Not set yet — the agents can't run without it. "
-              : "The dashboard's token can't check this one — if you've already added it, you're fine. "}
-            {data.secretHelp}
-          </p>
-        )}
-      </div>
-
-      {/* 2. GitHub App */}
-      <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-3">
-        <p className="flex items-center gap-2 text-sm font-medium text-zinc-200">
-          <AlertTriangle className="h-4 w-4 text-zinc-500" />
-          2. The Claude GitHub app
-        </p>
-        <p className="mt-1.5 text-xs leading-relaxed text-zinc-400">
-          {data?.app.note ?? "Make sure the Claude GitHub app covers this repo."}{" "}
-          <a
-            className="inline-flex items-center gap-0.5 text-emerald-400 underline"
-            href={data?.app.url ?? "https://github.com/apps/claude"}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Open the app page <ExternalLink className="h-3 w-3" />
-          </a>
-        </p>
-      </div>
-
-      <button
-        disabled={checking}
-        onClick={check}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-700 px-2.5 py-1.5 text-xs font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
-      >
-        {checking ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-        Verify again
-      </button>
-    </div>
-  );
-}
+/**
+ * Re-exported so `process-map.tsx` (and anything else that already imports it
+ * from here) keeps working. The implementation moved to its own file when the
+ * checklist grew from two read-only statements into three checks that can each
+ * be acted on in place.
+ */
+export { ProjectChecklist };
