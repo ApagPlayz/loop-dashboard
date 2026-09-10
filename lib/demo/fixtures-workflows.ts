@@ -5,12 +5,12 @@
  * holds no GITHUB_TOKEN and cannot read any of them at request time:
  *
  *   1. `DEMO_REPO_WORKFLOWS` — the ten workflow files actually installed at
- *      `.github/workflows/` on github.com/ApagPlayz/content-generation-platform,
+ *      `.github/workflows/` on github.com/alessiopagliarulo/content-generation-platform,
  *      as of 4 September 2026. The agent drawer runs the REAL extractors
  *      (`extractPrompt`, `parseCapabilities`) over these, so what a visitor
  *      reads in the drawer is what the agent is genuinely told to do.
  *   2. `DEMO_SECOND_REPO_WORKFLOWS` — the same ten files as installed on
- *      github.com/ApagPlayz/supply-chain-optimizer. They are NOT the same as
+ *      github.com/alessiopagliarulo/supply-chain-optimizer. They are NOT the same as
  *      the first repo's: the loop was ported across and has drifted since, and
  *      the drift screen has to be able to say so per project.
  *   3. `DEMO_TEMPLATE_WORKFLOWS` / `DEMO_TEMPLATE_FILES` — this repo's own

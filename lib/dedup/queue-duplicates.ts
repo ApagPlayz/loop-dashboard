@@ -81,7 +81,7 @@ import { loadEmbeddingIndex, loadJsonArtifact, type ArtifactSource } from "./art
  * "#79 duplicates #27" about two issues in a repository the vectors have never
  * seen. Any other project simply gets no duplicate report.
  */
-export const INDEX_REPO = { owner: "ApagPlayz", repo: "content-generation-platform" };
+export const INDEX_REPO = { owner: "alessiopagliarulo", repo: "content-generation-platform" };
 
 /* ------------------------------------------------------------------ */
 /* Threshold                                                           */

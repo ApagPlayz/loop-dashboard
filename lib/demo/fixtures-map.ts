@@ -77,7 +77,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T17:28:08Z",
       updatedAt: "2026-09-04T17:28:23Z",
       durationSec: 15,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33900734875",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33900734875",
     },
     {
       id: 33877319005,
@@ -86,7 +86,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T13:18:21Z",
       updatedAt: "2026-09-04T13:18:35Z",
       durationSec: 14,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33877319005",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33877319005",
     },
     {
       id: 33854559992,
@@ -95,7 +95,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T08:40:21Z",
       updatedAt: "2026-09-04T08:40:36Z",
       durationSec: 15,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33854559992",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33854559992",
     },
     {
       id: 33834291216,
@@ -104,7 +104,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T03:44:17Z",
       updatedAt: "2026-09-04T03:44:28Z",
       durationSec: 11,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33834291216",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33834291216",
     },
     {
       id: 33816043859,
@@ -113,7 +113,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-03T23:05:26Z",
       updatedAt: "2026-09-03T23:05:41Z",
       durationSec: 15,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33816043859",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33816043859",
     },
   ],
   redraft: [
@@ -124,7 +124,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-25T15:16:26Z",
       updatedAt: "2026-08-25T15:16:27Z",
       durationSec: 1,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/32864760736",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/32864760736",
     },
     {
       id: 30770188465,
@@ -133,7 +133,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T22:28:53Z",
       updatedAt: "2026-08-02T22:28:54Z",
       durationSec: 1,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30770188465",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30770188465",
     },
     {
       id: 30384700338,
@@ -142,7 +142,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-28T17:50:16Z",
       updatedAt: "2026-07-28T17:50:18Z",
       durationSec: 2,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30384700338",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30384700338",
     },
     {
       id: 30381870468,
@@ -151,7 +151,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-28T17:12:54Z",
       updatedAt: "2026-07-28T17:12:55Z",
       durationSec: 1,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30381870468",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30381870468",
     },
     {
       id: 30302445228,
@@ -160,7 +160,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-27T20:24:29Z",
       updatedAt: "2026-07-27T20:24:30Z",
       durationSec: 1,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30302445228",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30302445228",
     },
   ],
   builder: [
@@ -171,7 +171,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T19:44:48Z",
       updatedAt: "2026-09-04T19:46:02Z",
       durationSec: 74,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33912732448",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33912732448",
     },
     {
       id: 33899958637,
@@ -180,7 +180,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T17:19:31Z",
       updatedAt: "2026-09-04T17:20:28Z",
       durationSec: 57,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33899958637",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33899958637",
     },
     {
       id: 33880731192,
@@ -189,7 +189,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T13:55:08Z",
       updatedAt: "2026-09-04T13:56:34Z",
       durationSec: 86,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33880731192",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33880731192",
     },
     {
       id: 33860117324,
@@ -198,7 +198,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T09:47:59Z",
       updatedAt: "2026-09-04T09:49:04Z",
       durationSec: 65,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33860117324",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33860117324",
     },
     {
       id: 33840078731,
@@ -207,7 +207,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T05:19:43Z",
       updatedAt: "2026-09-04T05:20:50Z",
       durationSec: 67,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33840078731",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33840078731",
     },
   ],
   audit: [
@@ -218,7 +218,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-31T00:15:42Z",
       updatedAt: "2026-08-31T00:15:42Z",
       durationSec: 0,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33344051344",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33344051344",
     },
     {
       id: 32868858539,
@@ -227,7 +227,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-25T15:56:08Z",
       updatedAt: "2026-08-25T16:10:24Z",
       durationSec: 856,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/32868858539",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/32868858539",
     },
     {
       id: 30771334603,
@@ -236,7 +236,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T23:00:34Z",
       updatedAt: "2026-09-01T23:01:43Z",
       durationSec: 2592069,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30771334603",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30771334603",
     },
     {
       id: 30771294924,
@@ -245,7 +245,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T22:59:33Z",
       updatedAt: "2026-08-02T23:11:56Z",
       durationSec: 743,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30771294924",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30771294924",
     },
     {
       id: 30770881376,
@@ -254,7 +254,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T22:47:41Z",
       updatedAt: "2026-08-02T23:04:29Z",
       durationSec: 1008,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30770881376",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30770881376",
     },
   ],
   demo: [
@@ -265,7 +265,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-31T00:15:42Z",
       updatedAt: "2026-08-31T00:15:42Z",
       durationSec: 0,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33344051380",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33344051380",
     },
     {
       id: 32868858545,
@@ -274,7 +274,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-25T15:56:08Z",
       updatedAt: "2026-08-25T16:04:17Z",
       durationSec: 489,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/32868858545",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/32868858545",
     },
     {
       id: 30771334608,
@@ -283,7 +283,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T23:00:34Z",
       updatedAt: "2026-09-01T23:01:43Z",
       durationSec: 2592069,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30771334608",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30771334608",
     },
     {
       id: 30771294921,
@@ -292,7 +292,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T22:59:33Z",
       updatedAt: "2026-08-02T23:08:50Z",
       durationSec: 557,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30771294921",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30771294921",
     },
     {
       id: 30770881364,
@@ -301,7 +301,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T22:47:41Z",
       updatedAt: "2026-08-02T23:00:16Z",
       durationSec: 755,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30770881364",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30770881364",
     },
   ],
   retro: [
@@ -312,7 +312,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-31T00:07:42Z",
       updatedAt: "2026-08-31T00:17:02Z",
       durationSec: 560,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33343636364",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33343636364",
     },
     {
       id: 32669995586,
@@ -321,7 +321,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-23T22:14:44Z",
       updatedAt: "2026-08-23T22:14:58Z",
       durationSec: 14,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/32669995586",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/32669995586",
     },
     {
       id: 31975766951,
@@ -330,7 +330,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-16T22:13:46Z",
       updatedAt: "2026-08-16T22:13:57Z",
       durationSec: 11,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/31975766951",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/31975766951",
     },
     {
       id: 31339246234,
@@ -339,7 +339,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-09T22:22:55Z",
       updatedAt: "2026-08-09T22:28:38Z",
       durationSec: 343,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/31339246234",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/31339246234",
     },
     {
       id: 30770952185,
@@ -348,7 +348,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T22:49:41Z",
       updatedAt: "2026-08-02T23:00:50Z",
       durationSec: 669,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30770952185",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30770952185",
     },
   ],
   metrics: [
@@ -359,7 +359,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-04T14:41:35Z",
       updatedAt: "2026-09-04T14:41:58Z",
       durationSec: 23,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33885201689",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33885201689",
     },
     {
       id: 33769163187,
@@ -368,7 +368,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-03T14:49:56Z",
       updatedAt: "2026-09-03T14:50:20Z",
       durationSec: 24,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33769163187",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33769163187",
     },
     {
       id: 33644945788,
@@ -377,7 +377,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-02T14:53:03Z",
       updatedAt: "2026-09-02T14:53:22Z",
       durationSec: 19,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33644945788",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33644945788",
     },
     {
       id: 33525243994,
@@ -386,7 +386,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-09-01T15:21:34Z",
       updatedAt: "2026-09-01T15:21:56Z",
       durationSec: 22,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33525243994",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33525243994",
     },
     {
       id: 33421430099,
@@ -395,7 +395,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-31T17:46:58Z",
       updatedAt: "2026-08-31T17:47:23Z",
       durationSec: 25,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33421430099",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33421430099",
     },
   ],
   mention: [
@@ -406,7 +406,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-31T00:16:35Z",
       updatedAt: "2026-08-31T00:16:36Z",
       durationSec: 1,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33344097672",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33344097672",
     },
     {
       id: 33344080334,
@@ -415,7 +415,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-31T00:16:14Z",
       updatedAt: "2026-08-31T00:16:16Z",
       durationSec: 2,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33344080334",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33344080334",
     },
     {
       id: 32870319671,
@@ -424,7 +424,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-25T16:10:13Z",
       updatedAt: "2026-08-25T16:10:19Z",
       durationSec: 6,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/32870319671",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/32870319671",
     },
     {
       id: 32869682614,
@@ -433,7 +433,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-25T16:04:01Z",
       updatedAt: "2026-08-25T16:04:02Z",
       durationSec: 1,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/32869682614",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/32869682614",
     },
     {
       id: 32867341546,
@@ -442,7 +442,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-25T15:41:17Z",
       updatedAt: "2026-08-25T15:41:18Z",
       durationSec: 1,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/32867341546",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/32867341546",
     },
   ],
   toolinstall: [
@@ -453,7 +453,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-17T21:55:28Z",
       updatedAt: "2026-07-17T22:13:04Z",
       durationSec: 1056,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/29616269119",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/29616269119",
     },
     {
       id: 29616253072,
@@ -462,7 +462,7 @@ const DEFAULT_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-17T21:55:07Z",
       updatedAt: "2026-07-17T22:09:26Z",
       durationSec: 859,
-      url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/29616253072",
+      url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/29616253072",
     },
   ],
 };
@@ -477,7 +477,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T21:44:12Z",
       updatedAt: "2026-08-02T21:44:38Z",
       durationSec: 26,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/30768545689",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/30768545689",
     },
     {
       id: 30764829049,
@@ -486,7 +486,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T20:05:21Z",
       updatedAt: "2026-08-02T20:05:50Z",
       durationSec: 29,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/30764829049",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/30764829049",
     },
     {
       id: 30762182760,
@@ -495,7 +495,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T18:54:37Z",
       updatedAt: "2026-08-02T18:55:02Z",
       durationSec: 25,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/30762182760",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/30762182760",
     },
     {
       id: 30759854021,
@@ -504,7 +504,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T17:52:56Z",
       updatedAt: "2026-08-02T17:53:27Z",
       durationSec: 31,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/30759854021",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/30759854021",
     },
     {
       id: 30757375307,
@@ -513,7 +513,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T16:46:05Z",
       updatedAt: "2026-08-02T16:46:36Z",
       durationSec: 31,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/30757375307",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/30757375307",
     },
   ],
   redraft: [],
@@ -525,7 +525,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-18T09:33:16Z",
       updatedAt: "2026-08-18T09:33:26Z",
       durationSec: 10,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/32122206083",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/32122206083",
     },
     {
       id: 32117249611,
@@ -534,7 +534,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-18T08:36:34Z",
       updatedAt: "2026-08-18T08:36:46Z",
       durationSec: 12,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/32117249611",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/32117249611",
     },
     {
       id: 32112345921,
@@ -543,7 +543,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-18T07:37:47Z",
       updatedAt: "2026-08-18T07:37:56Z",
       durationSec: 9,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/32112345921",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/32112345921",
     },
     {
       id: 32108884307,
@@ -552,7 +552,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-18T06:53:28Z",
       updatedAt: "2026-08-18T06:53:40Z",
       durationSec: 12,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/32108884307",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/32108884307",
     },
     {
       id: 32104880242,
@@ -561,7 +561,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-18T05:57:05Z",
       updatedAt: "2026-08-18T05:57:17Z",
       durationSec: 12,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/32104880242",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/32104880242",
     },
   ],
   audit: [
@@ -572,7 +572,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-14T16:33:43Z",
       updatedAt: "2026-07-14T16:33:55Z",
       durationSec: 12,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/29350154438",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/29350154438",
     },
     {
       id: 29338778289,
@@ -581,7 +581,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-14T13:58:32Z",
       updatedAt: "2026-07-14T13:58:50Z",
       durationSec: 18,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/29338778289",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/29338778289",
     },
     {
       id: 29338396159,
@@ -590,7 +590,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-14T13:53:17Z",
       updatedAt: "2026-07-14T13:53:31Z",
       durationSec: 14,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/29338396159",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/29338396159",
     },
   ],
   demo: [],
@@ -602,7 +602,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-16T22:17:20Z",
       updatedAt: "2026-08-16T22:17:32Z",
       durationSec: 12,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/31975932876",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/31975932876",
     },
     {
       id: 31339407673,
@@ -611,7 +611,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-09T22:26:46Z",
       updatedAt: "2026-08-09T22:26:55Z",
       durationSec: 9,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/31339407673",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/31339407673",
     },
     {
       id: 30771080108,
@@ -620,7 +620,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-02T22:53:14Z",
       updatedAt: "2026-08-02T22:53:27Z",
       durationSec: 13,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/30771080108",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/30771080108",
     },
     {
       id: 30224164511,
@@ -629,7 +629,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-26T22:56:48Z",
       updatedAt: "2026-07-26T22:57:14Z",
       durationSec: 26,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/30224164511",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/30224164511",
     },
     {
       id: 29706808987,
@@ -638,7 +638,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-07-19T22:48:22Z",
       updatedAt: "2026-07-19T22:48:51Z",
       durationSec: 29,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/29706808987",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/29706808987",
     },
   ],
   metrics: [
@@ -649,7 +649,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-17T11:20:02Z",
       updatedAt: "2026-08-17T11:20:18Z",
       durationSec: 16,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/32024428316",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/32024428316",
     },
     {
       id: 31943801223,
@@ -658,7 +658,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-16T11:14:38Z",
       updatedAt: "2026-08-16T11:14:54Z",
       durationSec: 16,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/31943801223",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/31943801223",
     },
     {
       id: 31881571749,
@@ -667,7 +667,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-15T11:15:05Z",
       updatedAt: "2026-08-15T11:15:23Z",
       durationSec: 18,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/31881571749",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/31881571749",
     },
     {
       id: 31797157528,
@@ -676,7 +676,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-14T11:40:20Z",
       updatedAt: "2026-08-14T11:40:38Z",
       durationSec: 18,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/31797157528",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/31797157528",
     },
     {
       id: 31696630601,
@@ -685,7 +685,7 @@ const SECOND_RUNS: Record<string, RawRun[]> = {
       createdAt: "2026-08-13T11:41:37Z",
       updatedAt: "2026-08-13T11:41:50Z",
       durationSec: 13,
-      url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/31696630601",
+      url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/31696630601",
     },
   ],
   mention: [],
@@ -707,63 +707,63 @@ const DEFAULT_BADGES: Record<string, Badge> = {
     status: "completed",
     conclusion: "success",
     createdAt: "2026-09-04T17:28:08Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33900734875",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33900734875",
   },
   redraft: {
     enabled: true,
     status: "completed",
     conclusion: "skipped",
     createdAt: "2026-08-25T15:16:26Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/32864760736",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/32864760736",
   },
   builder: {
     enabled: true,
     status: "completed",
     conclusion: "success",
     createdAt: "2026-09-04T19:44:48Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33912732448",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33912732448",
   },
   audit: {
     enabled: true,
     status: "completed",
     conclusion: "action_required",
     createdAt: "2026-08-31T00:15:42Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33344051344",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33344051344",
   },
   demo: {
     enabled: true,
     status: "completed",
     conclusion: "action_required",
     createdAt: "2026-08-31T00:15:42Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33344051380",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33344051380",
   },
   retro: {
     enabled: true,
     status: "completed",
     conclusion: "success",
     createdAt: "2026-08-31T00:07:42Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33343636364",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33343636364",
   },
   metrics: {
     enabled: true,
     status: "completed",
     conclusion: "success",
     createdAt: "2026-09-04T14:41:35Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33885201689",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33885201689",
   },
   mention: {
     enabled: true,
     status: "completed",
     conclusion: "skipped",
     createdAt: "2026-08-31T00:16:35Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33344097672",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33344097672",
   },
   toolinstall: {
     enabled: true,
     status: "completed",
     conclusion: "success",
     createdAt: "2026-07-17T21:55:28Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/29616269119",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/29616269119",
   },
 };
 
@@ -773,7 +773,7 @@ const SECOND_BADGES: Record<string, Badge> = {
     status: "completed",
     conclusion: "failure",
     createdAt: "2026-08-02T21:44:12Z",
-    url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/30768545689",
+    url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/30768545689",
   },
   redraft: {
     enabled: false,
@@ -787,14 +787,14 @@ const SECOND_BADGES: Record<string, Badge> = {
     status: "completed",
     conclusion: "success",
     createdAt: "2026-08-18T09:33:16Z",
-    url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/32122206083",
+    url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/32122206083",
   },
   audit: {
     enabled: false,
     status: "completed",
     conclusion: "success",
     createdAt: "2026-07-14T16:33:43Z",
-    url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/29350154438",
+    url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/29350154438",
   },
   demo: {
     enabled: false,
@@ -808,14 +808,14 @@ const SECOND_BADGES: Record<string, Badge> = {
     status: "completed",
     conclusion: "success",
     createdAt: "2026-08-16T22:17:20Z",
-    url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/31975932876",
+    url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/31975932876",
   },
   metrics: {
     enabled: false,
     status: "completed",
     conclusion: "success",
     createdAt: "2026-08-17T11:20:02Z",
-    url: "https://github.com/ApagPlayz/supply-chain-optimizer/actions/runs/32024428316",
+    url: "https://github.com/alessiopagliarulo/supply-chain-optimizer/actions/runs/32024428316",
   },
   mention: {
     enabled: true,
@@ -979,61 +979,61 @@ const HISTORY_COMMITS: HistoryCommit[] = [
     sha: "91a814cbe0fbd4f0371b9ff738f451b6b60f4bec",
     message: "Security: gate the @mention agent behind a permission check",
     date: "2026-08-18T15:19:40Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/91a814cbe0fbd4f0371b9ff738f451b6b60f4bec",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/91a814cbe0fbd4f0371b9ff738f451b6b60f4bec",
   },
   {
     sha: "e02f1130fdd83b77620a3171ec993e35503a0307",
     message: "Loop: Builder claim-detection matches issue# in PR title + branch, not just body",
     date: "2026-07-23T03:10:39Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/e02f1130fdd83b77620a3171ec993e35503a0307",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/e02f1130fdd83b77620a3171ec993e35503a0307",
   },
   {
     sha: "ae799942b906126975fa51af80e6bfc87295f743",
     message: "Loop: Scout dedups against open PRs + approved ideas (pull-requests: read)",
     date: "2026-07-23T03:10:33Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/ae799942b906126975fa51af80e6bfc87295f743",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/ae799942b906126975fa51af80e6bfc87295f743",
   },
   {
     sha: "1f0a6863f23eef75f30323b307686485a471d03b",
     message: "loop-config: support prCap: \"unlimited\" (mirrors ideaQueueCap)",
     date: "2026-07-21T17:00:04Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/1f0a6863f23eef75f30323b307686485a471d03b",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/1f0a6863f23eef75f30323b307686485a471d03b",
   },
   {
     sha: "a94abd9bd1bbcbddfc97442be3a5610d59a2683d",
     message: "loop-config: re-trigger Auditor/Demo/Tests after an @mention pushes a follow-up fix to an existing PR (GITHUB_TOKEN pushes don't cascade pull_request:synchronize, so the old verdict was staying stale forever)",
     date: "2026-07-20T14:53:29Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/a94abd9bd1bbcbddfc97442be3a5610d59a2683d",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/a94abd9bd1bbcbddfc97442be3a5610d59a2683d",
   },
   {
     sha: "211a9201fbb07a4bf4fee46ff37de50068bffc4c",
     message: "loop-config: re-trigger Auditor/Demo/Tests after an @mention pushes a follow-up fix to an existing PR (GITHUB_TOKEN pushes don't cascade pull_request:synchronize, so the old verdict was staying stale forever)",
     date: "2026-07-20T14:53:27Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/211a9201fbb07a4bf4fee46ff37de50068bffc4c",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/211a9201fbb07a4bf4fee46ff37de50068bffc4c",
   },
   {
     sha: "a5125580f8679805b50b7d06fc453e9cb2a3a939",
     message: "loop-config: replace hardcoded overnight cap-lift and unconditional self-pick with configurable .github/loop-config.json settings (default: approval-required, no time-of-day cap lift)",
     date: "2026-07-20T13:57:52Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/a5125580f8679805b50b7d06fc453e9cb2a3a939",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/a5125580f8679805b50b7d06fc453e9cb2a3a939",
   },
   {
     sha: "fa3473d284d6397d014bcc868b7326fbf01f3974",
     message: "loop-config: replace hardcoded overnight cap-lift and unconditional self-pick with configurable .github/loop-config.json settings (default: approval-required, no time-of-day cap lift)",
     date: "2026-07-20T13:57:50Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/fa3473d284d6397d014bcc868b7326fbf01f3974",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/fa3473d284d6397d014bcc868b7326fbf01f3974",
   },
   {
     sha: "0443cd32c0da3398e9559b48015cbbf2707e04b4",
     message: "Builder: start on approval, never build the same issue twice, read the comments (#33)",
     date: "2026-07-14T20:08:42Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/0443cd32c0da3398e9559b48015cbbf2707e04b4",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/0443cd32c0da3398e9559b48015cbbf2707e04b4",
   },
   {
     sha: "59c22f91ec6e5b26f111a6b1238093854751366a",
     message: "Let the Auditor review the Builder's PRs (allowed_bots) (#24)",
     date: "2026-07-14T16:15:40Z",
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/59c22f91ec6e5b26f111a6b1238093854751366a",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/59c22f91ec6e5b26f111a6b1238093854751366a",
   },
 ];
 
@@ -1045,7 +1045,7 @@ type CommitDiff = {
 
 const HISTORY_PATCHES: Record<string, CommitDiff> = {
   "91a814cbe0fbd4f0371b9ff738f451b6b60f4bec": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/91a814cbe0fbd4f0371b9ff738f451b6b60f4bec",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/91a814cbe0fbd4f0371b9ff738f451b6b60f4bec",
     patches: [
       {
         filename: ".github/workflows/claude-mention.yml",
@@ -1122,7 +1122,7 @@ const HISTORY_PATCHES: Record<string, CommitDiff> = {
     ],
   },
   "e02f1130fdd83b77620a3171ec993e35503a0307": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/e02f1130fdd83b77620a3171ec993e35503a0307",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/e02f1130fdd83b77620a3171ec993e35503a0307",
     patches: [
       {
         filename: ".github/workflows/claude-builder.yml",
@@ -1160,7 +1160,7 @@ const HISTORY_PATCHES: Record<string, CommitDiff> = {
     ],
   },
   "ae799942b906126975fa51af80e6bfc87295f743": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/ae799942b906126975fa51af80e6bfc87295f743",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/ae799942b906126975fa51af80e6bfc87295f743",
     patches: [
       {
         filename: ".github/workflows/claude-scout.yml",
@@ -1232,7 +1232,7 @@ const HISTORY_PATCHES: Record<string, CommitDiff> = {
     ],
   },
   "1f0a6863f23eef75f30323b307686485a471d03b": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/1f0a6863f23eef75f30323b307686485a471d03b",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/1f0a6863f23eef75f30323b307686485a471d03b",
     patches: [
       {
         filename: ".github/workflows/claude-builder.yml",
@@ -1251,7 +1251,7 @@ const HISTORY_PATCHES: Record<string, CommitDiff> = {
     ],
   },
   "a94abd9bd1bbcbddfc97442be3a5610d59a2683d": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/a94abd9bd1bbcbddfc97442be3a5610d59a2683d",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/a94abd9bd1bbcbddfc97442be3a5610d59a2683d",
     patches: [
       {
         filename: ".github/workflows/claude-mention.yml",
@@ -1327,7 +1327,7 @@ const HISTORY_PATCHES: Record<string, CommitDiff> = {
     ],
   },
   "211a9201fbb07a4bf4fee46ff37de50068bffc4c": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/211a9201fbb07a4bf4fee46ff37de50068bffc4c",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/211a9201fbb07a4bf4fee46ff37de50068bffc4c",
     patches: [
       {
         filename: ".github/workflows/claude-audit.yml",
@@ -1398,7 +1398,7 @@ const HISTORY_PATCHES: Record<string, CommitDiff> = {
     ],
   },
   "a5125580f8679805b50b7d06fc453e9cb2a3a939": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/a5125580f8679805b50b7d06fc453e9cb2a3a939",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/a5125580f8679805b50b7d06fc453e9cb2a3a939",
     patches: [
       {
         filename: ".github/workflows/claude-scout.yml",
@@ -1471,7 +1471,7 @@ const HISTORY_PATCHES: Record<string, CommitDiff> = {
     ],
   },
   "fa3473d284d6397d014bcc868b7326fbf01f3974": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/fa3473d284d6397d014bcc868b7326fbf01f3974",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/fa3473d284d6397d014bcc868b7326fbf01f3974",
     patches: [
       {
         filename: ".github/workflows/claude-builder.yml",
@@ -1589,7 +1589,7 @@ const HISTORY_PATCHES: Record<string, CommitDiff> = {
     ],
   },
   "0443cd32c0da3398e9559b48015cbbf2707e04b4": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/0443cd32c0da3398e9559b48015cbbf2707e04b4",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/0443cd32c0da3398e9559b48015cbbf2707e04b4",
     patches: [
       {
         filename: ".github/workflows/claude-builder.yml",
@@ -1718,7 +1718,7 @@ const HISTORY_PATCHES: Record<string, CommitDiff> = {
     ],
   },
   "59c22f91ec6e5b26f111a6b1238093854751366a": {
-    url: "https://github.com/ApagPlayz/content-generation-platform/commit/59c22f91ec6e5b26f111a6b1238093854751366a",
+    url: "https://github.com/alessiopagliarulo/content-generation-platform/commit/59c22f91ec6e5b26f111a6b1238093854751366a",
     patches: [
       {
         filename: ".github/workflows/claude-audit.yml",

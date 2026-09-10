@@ -5,7 +5,7 @@
  * ## Everything here is real, and copied verbatim
  *
  * Twenty-three pull requests from
- * github.com/ApagPlayz/content-generation-platform, captured on 4 September
+ * github.com/alessiopagliarulo/content-generation-platform, captured on 4 September
  * 2026 (see lib/demo/world.ts for why the snapshot is frozen even though the
  * repo is public). Titles, branch names, diff sizes,
  * descriptions, and both agent comments on each PR — the Auditor's five-lens
@@ -221,7 +221,7 @@ The conclusion still holds — I verified all six polish/measurement issues (#72
 
 **6. Pruning the \`--assignee\` entry is not safe yet — \`claude-retro.yml\` is the counter-example.**
 
-The PR body justifies the deletion with "the Scout and Builder gates now resolve the flags themselves". True for those two (\`claude-builder.yml:121-134\`, \`claude-scout.yml:252-263\`). But \`grep -n assignee .github/workflows/claude-retro.yml\` → **no matches**: the retro opens both an issue and a PR with no assignee/reviewer resolution and no flags in its prompt. This PR itself carries \`assignees: [ApagPlayz], reviewers: [ApagPlayz]\` — added because the retro agent read the very entry it is deleting. Next Sunday's retro can file an unassigned issue and PR that never reach the inbox, with no red run.
+The PR body justifies the deletion with "the Scout and Builder gates now resolve the flags themselves". True for those two (\`claude-builder.yml:121-134\`, \`claude-scout.yml:252-263\`). But \`grep -n assignee .github/workflows/claude-retro.yml\` → **no matches**: the retro opens both an issue and a PR with no assignee/reviewer resolution and no flags in its prompt. This PR itself carries \`assignees: [alessiopagliarulo], reviewers: [alessiopagliarulo]\` — added because the retro agent read the very entry it is deleting. Next Sunday's retro can file an unassigned issue and PR that never reach the inbox, with no red run.
 
 Cheapest fix: keep this entry and prune \`LEARNINGS.md:28-30\` ("Don't rebuild an issue already being built") instead — it is superseded by the new line 39-42, which is the same subject carried further. \`claude-mention.yml:66\` has the same gap.
 
@@ -1503,7 +1503,7 @@ const PR_DETAILS: Record<number, PRDetail> = {
     title: "Apply the Warm Creator look: light by default, dark toggle, one nav bar",
     headRef: "claude/issue-126-warm-creator-v2",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/131",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/131",
     createdAt: "2026-08-25T15:56:05Z",
     updatedAt: "2026-08-25T16:10:09Z",
     mergedAt: null,
@@ -1576,14 +1576,14 @@ Run \`npm run go\`, then:
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_131,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/131#issuecomment-5413267234",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/131#issuecomment-5413267234",
       author: "claude[bot]",
       createdAt: "2026-08-25T16:10:09Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_131,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/131#issuecomment-5413191694",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/131#issuecomment-5413191694",
     },
     comments: [
       {
@@ -1592,7 +1592,7 @@ Run \`npm run go\`, then:
         authorAvatar: "",
         body: DEMO_131,
         createdAt: "2026-08-25T16:03:58Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/131#issuecomment-5413191694",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/131#issuecomment-5413191694",
         isBot: true,
       },
       {
@@ -1601,7 +1601,7 @@ Run \`npm run go\`, then:
         authorAvatar: "",
         body: AUDIT_131,
         createdAt: "2026-08-25T16:10:09Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/131#issuecomment-5413267234",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/131#issuecomment-5413267234",
         isBot: true,
       },
     ],
@@ -1611,7 +1611,7 @@ Run \`npm run go\`, then:
     title: "[retro] Week of 2026-07-27 — record the idle-Builder week + the first idea-quality lesson",
     headRef: "claude/retro-2026-08-02-idle-builder",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/128",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/128",
     createdAt: "2026-08-02T22:59:30Z",
     updatedAt: "2026-08-31T00:16:33Z",
     mergedAt: null,
@@ -1657,14 +1657,14 @@ Nothing runs from either file. \`LEARNINGS.md\` is context every agent loads; \`
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_128,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/128#issuecomment-5160800822",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/128#issuecomment-5160800822",
       author: "claude[bot]",
       createdAt: "2026-08-02T23:11:38Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_128,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/128#issuecomment-5160789038",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/128#issuecomment-5160789038",
     },
     comments: [
       {
@@ -1673,7 +1673,7 @@ Nothing runs from either file. \`LEARNINGS.md\` is context every agent loads; \`
         authorAvatar: "",
         body: DEMO_128,
         createdAt: "2026-08-02T23:08:26Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/128#issuecomment-5160789038",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/128#issuecomment-5160789038",
         isBot: true,
       },
       {
@@ -1682,7 +1682,7 @@ Nothing runs from either file. \`LEARNINGS.md\` is context every agent loads; \`
         authorAvatar: "",
         body: AUDIT_128,
         createdAt: "2026-08-02T23:11:38Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/128#issuecomment-5160800822",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/128#issuecomment-5160800822",
         isBot: true,
       },
       {
@@ -1714,7 +1714,7 @@ Non-blocking items also addressed: heading collision fixed with distinguishing c
 
 The idle-Builder bug this PR documented on 2 August has now burned **101 more Opus agent boots** in the last 7 days, because this PR has been open 29 days. The retro's own output is stuck in the same review queue it is reporting on. Merging this is the cheapest thing on the list — it changes three text files and no app code.`,
         createdAt: "2026-08-31T00:16:33Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/128#issuecomment-5472169300",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/128#issuecomment-5472169300",
         isBot: true,
       },
     ],
@@ -1724,7 +1724,7 @@ The idle-Builder bug this PR documented on 2 August has now burned **101 more Op
     title: "Fix sports videos going out with the big hook text missing",
     headRef: "claude/issue-82-drawtext-escaping",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/125",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/125",
     createdAt: "2026-07-28T20:19:44Z",
     updatedAt: "2026-07-28T20:38:44Z",
     mergedAt: null,
@@ -1801,14 +1801,14 @@ One caveat, stated plainly: **you can't force this by clicking.** The hook is wr
     verdict: {
       verdict: "SHIP",
       body: AUDIT_125,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/125#issuecomment-5109423420",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/125#issuecomment-5109423420",
       author: "claude[bot]",
       createdAt: "2026-07-28T20:38:44Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_125,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/125#issuecomment-5109341758",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/125#issuecomment-5109341758",
     },
     comments: [
       {
@@ -1817,7 +1817,7 @@ One caveat, stated plainly: **you can't force this by clicking.** The hook is wr
         authorAvatar: "",
         body: DEMO_125,
         createdAt: "2026-07-28T20:29:57Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/125#issuecomment-5109341758",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/125#issuecomment-5109341758",
         isBot: true,
       },
       {
@@ -1826,7 +1826,7 @@ One caveat, stated plainly: **you can't force this by clicking.** The hook is wr
         authorAvatar: "",
         body: AUDIT_125,
         createdAt: "2026-07-28T20:38:44Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/125#issuecomment-5109423420",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/125#issuecomment-5109423420",
         isBot: true,
       },
     ],
@@ -1836,7 +1836,7 @@ One caveat, stated plainly: **you can't force this by clicking.** The hook is wr
     title: "Make a 60s+ cut for TikTok only, so those posts can actually earn",
     headRef: "claude/issue-77-tiktok-long-cut",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/124",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/124",
     createdAt: "2026-07-28T18:31:48Z",
     updatedAt: "2026-07-28T18:45:05Z",
     mergedAt: null,
@@ -1914,14 +1914,14 @@ I have not run the real pipeline end-to-end here (that needs \`yt-dlp\`, ffmpeg 
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_124,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/124#issuecomment-5108339601",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/124#issuecomment-5108339601",
       author: "claude[bot]",
       createdAt: "2026-07-28T18:45:05Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_124,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/124#issuecomment-5108306030",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/124#issuecomment-5108306030",
     },
     comments: [
       {
@@ -1930,7 +1930,7 @@ I have not run the real pipeline end-to-end here (that needs \`yt-dlp\`, ffmpeg 
         authorAvatar: "",
         body: DEMO_124,
         createdAt: "2026-07-28T18:41:40Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/124#issuecomment-5108306030",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/124#issuecomment-5108306030",
         isBot: true,
       },
       {
@@ -1939,7 +1939,7 @@ I have not run the real pipeline end-to-end here (that needs \`yt-dlp\`, ffmpeg 
         authorAvatar: "",
         body: AUDIT_124,
         createdAt: "2026-07-28T18:45:05Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/124#issuecomment-5108339601",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/124#issuecomment-5108339601",
         isBot: true,
       },
     ],
@@ -1949,7 +1949,7 @@ I have not run the real pipeline end-to-end here (that needs \`yt-dlp\`, ffmpeg 
     title: "Stop the voice mispronouncing names & acronyms — add a pronunciation step before every voiceover",
     headRef: "claude/issue-51-pronunciation-pass",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/123",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/123",
     createdAt: "2026-07-28T18:01:14Z",
     updatedAt: "2026-07-28T18:14:44Z",
     mergedAt: null,
@@ -2052,14 +2052,14 @@ integrations were attached to use._
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_123,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/123#issuecomment-5108004574",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/123#issuecomment-5108004574",
       author: "claude[bot]",
       createdAt: "2026-07-28T18:14:44Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_123,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/123#issuecomment-5107934919",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/123#issuecomment-5107934919",
     },
     comments: [
       {
@@ -2068,7 +2068,7 @@ integrations were attached to use._
         authorAvatar: "",
         body: DEMO_123,
         createdAt: "2026-07-28T18:08:27Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/123#issuecomment-5107934919",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/123#issuecomment-5107934919",
         isBot: true,
       },
       {
@@ -2077,7 +2077,7 @@ integrations were attached to use._
         authorAvatar: "",
         body: AUDIT_123,
         createdAt: "2026-07-28T18:14:44Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/123#issuecomment-5108004574",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/123#issuecomment-5108004574",
         isBot: true,
       },
     ],
@@ -2087,7 +2087,7 @@ integrations were attached to use._
     title: "Cut the AI writing bill on true-crime & history videos (prompt caching fix)",
     headRef: "claude/prompt-caching-fix-90",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/121",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/121",
     createdAt: "2026-07-23T22:50:27Z",
     updatedAt: "2026-07-23T22:59:05Z",
     mergedAt: null,
@@ -2134,14 +2134,14 @@ The issue also mentioned optionally routing very simple scripts to a cheaper mod
     verdict: {
       verdict: "SHIP",
       body: AUDIT_121,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/121#issuecomment-5064354257",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/121#issuecomment-5064354257",
       author: "claude[bot]",
       createdAt: "2026-07-23T22:59:05Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_121,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/121#issuecomment-5064347920",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/121#issuecomment-5064347920",
     },
     comments: [
       {
@@ -2150,7 +2150,7 @@ The issue also mentioned optionally routing very simple scripts to a cheaper mod
         authorAvatar: "",
         body: DEMO_121,
         createdAt: "2026-07-23T22:58:03Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/121#issuecomment-5064347920",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/121#issuecomment-5064347920",
         isBot: true,
       },
       {
@@ -2159,7 +2159,7 @@ The issue also mentioned optionally routing very simple scripts to a cheaper mod
         authorAvatar: "",
         body: AUDIT_121,
         createdAt: "2026-07-23T22:59:05Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/121#issuecomment-5064354257",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/121#issuecomment-5064354257",
         isBot: true,
       },
     ],
@@ -2169,7 +2169,7 @@ The issue also mentioned optionally routing very simple scripts to a cheaper mod
     title: "Give TikTok its own caption so cross-posts aren't seen as 'reused' (#88)",
     headRef: "claude/tiktok-caption-differentiation-88",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/120",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/120",
     createdAt: "2026-07-23T21:24:03Z",
     updatedAt: "2026-07-23T21:32:18Z",
     mergedAt: null,
@@ -2228,14 +2228,14 @@ The issue named three things; I shipped only the highest-value, lowest-risk one.
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_120,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/120#issuecomment-5063737290",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/120#issuecomment-5063737290",
       author: "claude[bot]",
       createdAt: "2026-07-23T21:32:18Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_120,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/120#issuecomment-5063724190",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/120#issuecomment-5063724190",
     },
     comments: [
       {
@@ -2244,7 +2244,7 @@ The issue named three things; I shipped only the highest-value, lowest-risk one.
         authorAvatar: "",
         body: DEMO_120,
         createdAt: "2026-07-23T21:31:00Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/120#issuecomment-5063724190",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/120#issuecomment-5063724190",
         isBot: true,
       },
       {
@@ -2253,7 +2253,7 @@ The issue named three things; I shipped only the highest-value, lowest-risk one.
         authorAvatar: "",
         body: AUDIT_120,
         createdAt: "2026-07-23T21:32:18Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/120#issuecomment-5063737290",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/120#issuecomment-5063737290",
         isBot: true,
       },
     ],
@@ -2263,7 +2263,7 @@ The issue named three things; I shipped only the highest-value, lowest-risk one.
     title: "Fix: video previews now play & scrub on Mac Safari and iPhone",
     headRef: "claude/fix-video-preview-range-70",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/119",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/119",
     createdAt: "2026-07-23T19:46:07Z",
     updatedAt: "2026-07-23T19:56:02Z",
     mergedAt: null,
@@ -2311,14 +2311,14 @@ If it plays and you can scrub on both devices, it's working.
     verdict: {
       verdict: "SHIP",
       body: AUDIT_119,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/119#issuecomment-5062710858",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/119#issuecomment-5062710858",
       author: "claude[bot]",
       createdAt: "2026-07-23T19:53:05Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_119,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/119#issuecomment-5062740622",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/119#issuecomment-5062740622",
     },
     comments: [
       {
@@ -2327,7 +2327,7 @@ If it plays and you can scrub on both devices, it's working.
         authorAvatar: "",
         body: AUDIT_119,
         createdAt: "2026-07-23T19:53:05Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/119#issuecomment-5062710858",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/119#issuecomment-5062710858",
         isBot: true,
       },
       {
@@ -2336,7 +2336,7 @@ If it plays and you can scrub on both devices, it's working.
         authorAvatar: "",
         body: DEMO_119,
         createdAt: "2026-07-23T19:56:02Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/119#issuecomment-5062740622",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/119#issuecomment-5062740622",
         isBot: true,
       },
     ],
@@ -2346,7 +2346,7 @@ If it plays and you can scrub on both devices, it's working.
     title: "Auto-post your videos to Facebook Reels too (in addition to YouTube + TikTok)",
     headRef: "claude/facebook-reels-58",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/117",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/117",
     createdAt: "2026-07-23T17:56:12Z",
     updatedAt: "2026-07-23T18:04:58Z",
     mergedAt: null,
@@ -2402,14 +2402,14 @@ Full owner setup note: \`Updates/2026-07-23-auto-post-to-facebook-reels.md\`.
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_117,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/117#issuecomment-5061732280",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/117#issuecomment-5061732280",
       author: "claude[bot]",
       createdAt: "2026-07-23T18:04:58Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_117,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/117#issuecomment-5061705760",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/117#issuecomment-5061705760",
     },
     comments: [
       {
@@ -2418,7 +2418,7 @@ Full owner setup note: \`Updates/2026-07-23-auto-post-to-facebook-reels.md\`.
         authorAvatar: "",
         body: DEMO_117,
         createdAt: "2026-07-23T18:01:59Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/117#issuecomment-5061705760",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/117#issuecomment-5061705760",
         isBot: true,
       },
       {
@@ -2427,7 +2427,7 @@ Full owner setup note: \`Updates/2026-07-23-auto-post-to-facebook-reels.md\`.
         authorAvatar: "",
         body: AUDIT_117,
         createdAt: "2026-07-23T18:04:58Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/117#issuecomment-5061732280",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/117#issuecomment-5061732280",
         isBot: true,
       },
     ],
@@ -2437,7 +2437,7 @@ Full owner setup note: \`Updates/2026-07-23-auto-post-to-facebook-reels.md\`.
     title: "Tell me when my paid voice breaks — stop silently posting in the free robot voice (#57)",
     headRef: "claude/issue-57-paid-voice-fallback-alert",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/116",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/116",
     createdAt: "2026-07-23T17:35:09Z",
     updatedAt: "2026-07-23T17:44:02Z",
     mergedAt: null,
@@ -2499,14 +2499,14 @@ Very little, and it's the safe direction:
     verdict: {
       verdict: "SHIP",
       body: AUDIT_116,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/116#issuecomment-5061520214",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/116#issuecomment-5061520214",
       author: "claude[bot]",
       createdAt: "2026-07-23T17:40:59Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_116,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/116#issuecomment-5061546840",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/116#issuecomment-5061546840",
     },
     comments: [
       {
@@ -2515,7 +2515,7 @@ Very little, and it's the safe direction:
         authorAvatar: "",
         body: AUDIT_116,
         createdAt: "2026-07-23T17:40:59Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/116#issuecomment-5061520214",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/116#issuecomment-5061520214",
         isBot: true,
       },
       {
@@ -2524,7 +2524,7 @@ Very little, and it's the safe direction:
         authorAvatar: "",
         body: DEMO_116,
         createdAt: "2026-07-23T17:44:02Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/116#issuecomment-5061546840",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/116#issuecomment-5061546840",
         isBot: true,
       },
     ],
@@ -2534,7 +2534,7 @@ Very little, and it's the safe direction:
     title: "Put your links & CTAs on every video — earn before monetization (#27)",
     headRef: "claude/issue-27-per-factory-cta-links",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/113",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/113",
     createdAt: "2026-07-23T16:06:12Z",
     updatedAt: "2026-07-23T16:15:01Z",
     mergedAt: null,
@@ -2591,14 +2591,14 @@ Closes #27
     verdict: {
       verdict: "SHIP",
       body: AUDIT_113,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/113#issuecomment-5060734243",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/113#issuecomment-5060734243",
       author: "claude[bot]",
       createdAt: "2026-07-23T16:15:01Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_113,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/113#issuecomment-5060707166",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/113#issuecomment-5060707166",
     },
     comments: [
       {
@@ -2607,7 +2607,7 @@ Closes #27
         authorAvatar: "",
         body: DEMO_113,
         createdAt: "2026-07-23T16:12:11Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/113#issuecomment-5060707166",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/113#issuecomment-5060707166",
         isBot: true,
       },
       {
@@ -2616,7 +2616,7 @@ Closes #27
         authorAvatar: "",
         body: AUDIT_113,
         createdAt: "2026-07-23T16:15:01Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/113#issuecomment-5060734243",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/113#issuecomment-5060734243",
         isBot: true,
       },
     ],
@@ -2626,7 +2626,7 @@ Closes #27
     title: "Protect Sports from demonetization: extend the anti-repetition gate to every factory (#17)",
     headRef: "claude/anti-repetition-f9-sports-17-v2",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/112",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/112",
     createdAt: "2026-07-23T15:55:03Z",
     updatedAt: "2026-07-23T16:08:45Z",
     mergedAt: null,
@@ -2703,14 +2703,14 @@ you to take a look.
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_112,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/112#issuecomment-5060674888",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/112#issuecomment-5060674888",
       author: "claude[bot]",
       createdAt: "2026-07-23T16:08:45Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_112,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/112#issuecomment-5060634396",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/112#issuecomment-5060634396",
     },
     comments: [
       {
@@ -2719,7 +2719,7 @@ you to take a look.
         authorAvatar: "",
         body: DEMO_112,
         createdAt: "2026-07-23T16:04:47Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/112#issuecomment-5060634396",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/112#issuecomment-5060634396",
         isBot: true,
       },
       {
@@ -2728,7 +2728,7 @@ you to take a look.
         authorAvatar: "",
         body: AUDIT_112,
         createdAt: "2026-07-23T16:08:45Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/112#issuecomment-5060674888",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/112#issuecomment-5060674888",
         isBot: true,
       },
     ],
@@ -2738,7 +2738,7 @@ you to take a look.
     title: "Add Playwright browser tool (MCP) to the autonomous loop",
     headRef: "claude/add-playwright-mcp",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/62",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/62",
     createdAt: "2026-07-17T22:12:41Z",
     updatedAt: "2026-07-17T22:21:20Z",
     mergedAt: null,
@@ -2804,14 +2804,14 @@ something this PR fully resolves on its own.
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_62,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/62#issuecomment-5008029300",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/62#issuecomment-5008029300",
       author: "claude[bot]",
       createdAt: "2026-07-17T22:21:20Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_62,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/62#issuecomment-5008017594",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/62#issuecomment-5008017594",
     },
     comments: [
       {
@@ -2820,7 +2820,7 @@ something this PR fully resolves on its own.
         authorAvatar: "",
         body: DEMO_62,
         createdAt: "2026-07-17T22:19:52Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/62#issuecomment-5008017594",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/62#issuecomment-5008017594",
         isBot: true,
       },
       {
@@ -2829,7 +2829,7 @@ something this PR fully resolves on its own.
         authorAvatar: "",
         body: AUDIT_62,
         createdAt: "2026-07-17T22:21:20Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/62#issuecomment-5008029300",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/62#issuecomment-5008029300",
         isBot: true,
       },
     ],
@@ -2839,7 +2839,7 @@ something this PR fully resolves on its own.
     title: "Stop an auto-posted video from calling a real person guilty — close two holes in the legal safety check",
     headRef: "claude/issue-45-defamation-name-matching",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/122",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/122",
     createdAt: "2026-07-27T20:44:32Z",
     updatedAt: "2026-07-28T17:49:37Z",
     mergedAt: "2026-07-28T17:49:37Z",
@@ -2947,14 +2947,14 @@ safety fix — better reviewed on its own.
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_122,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/122#issuecomment-5096882857",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/122#issuecomment-5096882857",
       author: "claude[bot]",
       createdAt: "2026-07-27T21:13:32Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_122,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/122#issuecomment-5096768452",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/122#issuecomment-5096768452",
     },
     comments: [
       {
@@ -2963,7 +2963,7 @@ safety fix — better reviewed on its own.
         authorAvatar: "",
         body: DEMO_122,
         createdAt: "2026-07-27T21:00:20Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/122#issuecomment-5096768452",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/122#issuecomment-5096768452",
         isBot: true,
       },
       {
@@ -2972,7 +2972,7 @@ safety fix — better reviewed on its own.
         authorAvatar: "",
         body: AUDIT_122,
         createdAt: "2026-07-27T21:13:32Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/122#issuecomment-5096882857",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/122#issuecomment-5096882857",
         isBot: true,
       },
     ],
@@ -2982,7 +2982,7 @@ safety fix — better reviewed on its own.
     title: "Make the budget cap actually stop a run (#26)",
     headRef: "claude/budget-cap-hard-stop-26",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/111",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/111",
     createdAt: "2026-07-23T04:09:04Z",
     updatedAt: "2026-07-23T14:58:11Z",
     mergedAt: "2026-07-23T14:58:11Z",
@@ -3027,14 +3027,14 @@ Closes #26`,
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_111,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/111#issuecomment-5054280055",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/111#issuecomment-5054280055",
       author: "claude[bot]",
       createdAt: "2026-07-23T04:18:06Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_111,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/111#issuecomment-5054269705",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/111#issuecomment-5054269705",
     },
     comments: [
       {
@@ -3043,7 +3043,7 @@ Closes #26`,
         authorAvatar: "",
         body: DEMO_111,
         createdAt: "2026-07-23T04:16:06Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/111#issuecomment-5054269705",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/111#issuecomment-5054269705",
         isBot: true,
       },
       {
@@ -3052,7 +3052,7 @@ Closes #26`,
         authorAvatar: "",
         body: AUDIT_111,
         createdAt: "2026-07-23T04:18:06Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/111#issuecomment-5054280055",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/111#issuecomment-5054280055",
         isBot: true,
       },
     ],
@@ -3062,7 +3062,7 @@ Closes #26`,
     title: "Stop sports videos from silently hanging for 30 minutes — add the stall-timeout the other two video types already have",
     headRef: "claude/sports-stage-timeout-96",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/99",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/99",
     createdAt: "2026-07-22T14:52:41Z",
     updatedAt: "2026-07-23T03:06:02Z",
     mergedAt: "2026-07-23T03:06:02Z",
@@ -3110,14 +3110,14 @@ This is a background-reliability fix, so there's nothing new to click in the app
     verdict: {
       verdict: "SHIP",
       body: AUDIT_99,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/99#issuecomment-5047827774",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/99#issuecomment-5047827774",
       author: "claude[bot]",
       createdAt: "2026-07-22T15:02:48Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_99,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/99#issuecomment-5047782573",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/99#issuecomment-5047782573",
     },
     comments: [
       {
@@ -3126,7 +3126,7 @@ This is a background-reliability fix, so there's nothing new to click in the app
         authorAvatar: "",
         body: DEMO_99,
         createdAt: "2026-07-22T14:59:03Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/99#issuecomment-5047782573",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/99#issuecomment-5047782573",
         isBot: true,
       },
       {
@@ -3135,7 +3135,7 @@ This is a background-reliability fix, so there's nothing new to click in the app
         authorAvatar: "",
         body: AUDIT_99,
         createdAt: "2026-07-22T15:02:48Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/99#issuecomment-5047827774",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/99#issuecomment-5047827774",
         isBot: true,
       },
     ],
@@ -3145,7 +3145,7 @@ This is a background-reliability fix, so there's nothing new to click in the app
     title: "Warn when your TikTok login expires (stop the false 'Connected')",
     headRef: "claude/tiktok-reconnect-warning-56",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/66",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/66",
     createdAt: "2026-07-18T06:44:01Z",
     updatedAt: "2026-07-23T03:05:56Z",
     mergedAt: "2026-07-23T03:05:56Z",
@@ -3201,14 +3201,14 @@ YouTube also shows a warning banner on the **dashboard home page**; I scoped thi
     verdict: {
       verdict: "SHIP",
       body: AUDIT_66,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/66#issuecomment-5010315680",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/66#issuecomment-5010315680",
       author: "claude[bot]",
       createdAt: "2026-07-18T06:56:39Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_66,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/66#issuecomment-5010297917",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/66#issuecomment-5010297917",
     },
     comments: [
       {
@@ -3217,7 +3217,7 @@ YouTube also shows a warning banner on the **dashboard home page**; I scoped thi
         authorAvatar: "",
         body: DEMO_66,
         createdAt: "2026-07-18T06:49:59Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/66#issuecomment-5010297917",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/66#issuecomment-5010297917",
         isBot: true,
       },
       {
@@ -3226,7 +3226,7 @@ YouTube also shows a warning banner on the **dashboard home page**; I scoped thi
         authorAvatar: "",
         body: AUDIT_66,
         createdAt: "2026-07-18T06:56:39Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/66#issuecomment-5010315680",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/66#issuecomment-5010315680",
         isBot: true,
       },
     ],
@@ -3236,7 +3236,7 @@ YouTube also shows a warning banner on the **dashboard home page**; I scoped thi
     title: "[retro] Bound the overnight Builder queue; prune LEARNINGS under 50 lines",
     headRef: "claude/retro-2026-07-17-cap-backlog",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/64",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/64",
     createdAt: "2026-07-17T22:30:16Z",
     updatedAt: "2026-07-23T03:05:37Z",
     mergedAt: "2026-07-23T03:05:37Z",
@@ -3286,14 +3286,14 @@ Closes nothing on the product side — this only touches the loop.
     verdict: {
       verdict: "SHIP",
       body: AUDIT_64,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/64#issuecomment-5008124611",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/64#issuecomment-5008124611",
       author: "claude[bot]",
       createdAt: "2026-07-17T22:33:34Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_64,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/64#issuecomment-5008138614",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/64#issuecomment-5008138614",
     },
     comments: [
       {
@@ -3302,7 +3302,7 @@ Closes nothing on the product side — this only touches the loop.
         authorAvatar: "",
         body: AUDIT_64,
         createdAt: "2026-07-17T22:33:34Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/64#issuecomment-5008124611",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/64#issuecomment-5008124611",
         isBot: true,
       },
       {
@@ -3311,7 +3311,7 @@ Closes nothing on the product side — this only touches the loop.
         authorAvatar: "",
         body: DEMO_64,
         createdAt: "2026-07-17T22:35:26Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/64#issuecomment-5008138614",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/64#issuecomment-5008138614",
         isBot: true,
       },
     ],
@@ -3321,7 +3321,7 @@ Closes nothing on the product side — this only touches the loop.
     title: "Winners leaderboard refreshes itself hourly (no more clicking Refresh)",
     headRef: "claude/auto-refresh-metrics-50",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/53",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/53",
     createdAt: "2026-07-17T06:34:40Z",
     updatedAt: "2026-07-23T03:05:24Z",
     mergedAt: "2026-07-23T03:05:24Z",
@@ -3365,14 +3365,14 @@ The whole point of an autonomous channel factory is: it publishes, it watches wh
     verdict: {
       verdict: "SHIP",
       body: AUDIT_53,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/53#issuecomment-4999786900",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/53#issuecomment-4999786900",
       author: "claude[bot]",
       createdAt: "2026-07-17T06:41:33Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_53,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/53#issuecomment-4999784572",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/53#issuecomment-4999784572",
     },
     comments: [
       {
@@ -3381,7 +3381,7 @@ The whole point of an autonomous channel factory is: it publishes, it watches wh
         authorAvatar: "",
         body: DEMO_53,
         createdAt: "2026-07-17T06:41:17Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/53#issuecomment-4999784572",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/53#issuecomment-4999784572",
         isBot: true,
       },
       {
@@ -3390,7 +3390,7 @@ The whole point of an autonomous channel factory is: it publishes, it watches wh
         authorAvatar: "",
         body: AUDIT_53,
         createdAt: "2026-07-17T06:41:33Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/53#issuecomment-4999786900",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/53#issuecomment-4999786900",
         isBot: true,
       },
     ],
@@ -3400,7 +3400,7 @@ The whole point of an autonomous channel factory is: it publishes, it watches wh
     title: "Apply the Warm Creator look: light by default, dark toggle, one nav bar",
     headRef: "claude/issue-126-warm-creator-redesign",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/127",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/127",
     createdAt: "2026-08-02T22:47:38Z",
     updatedAt: "2026-08-25T15:16:18Z",
     mergedAt: null,
@@ -3469,14 +3469,14 @@ No context section was attached to the issue, so no extra tools or integrations 
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_127,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/127#issuecomment-5160771369",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/127#issuecomment-5160771369",
       author: "claude[bot]",
       createdAt: "2026-08-02T23:04:04Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_127,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/127#issuecomment-5160755501",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/127#issuecomment-5160755501",
     },
     comments: [
       {
@@ -3485,7 +3485,7 @@ No context section was attached to the issue, so no extra tools or integrations 
         authorAvatar: "",
         body: DEMO_127,
         createdAt: "2026-08-02T22:59:52Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/127#issuecomment-5160755501",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/127#issuecomment-5160755501",
         isBot: true,
       },
       {
@@ -3494,16 +3494,16 @@ No context section was attached to the issue, so no extra tools or integrations 
         authorAvatar: "",
         body: AUDIT_127,
         createdAt: "2026-08-02T23:04:04Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/127#issuecomment-5160771369",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/127#issuecomment-5160771369",
         isBot: true,
       },
       {
         id: 5412586986,
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         authorAvatar: "",
         body: "🔁 Closing this PR — it conflicts with the latest `main` and can't be merged as-is. Sending idea #126 back through the loop so the Builder rebuilds it fresh against current main.",
         createdAt: "2026-08-25T15:16:17Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/127#issuecomment-5412586986",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/127#issuecomment-5412586986",
         isBot: false,
       },
     ],
@@ -3513,7 +3513,7 @@ No context section was attached to the issue, so no extra tools or integrations 
     title: "Add shared Memory (MCP server) to the loop — config + prepared wiring (needs #59)",
     headRef: "claude/add-memory-mcp-server",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/60",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/60",
     createdAt: "2026-07-17T22:08:58Z",
     updatedAt: "2026-07-28T17:13:40Z",
     mergedAt: null,
@@ -3588,14 +3588,14 @@ re-sent.
     verdict: {
       verdict: "SHIP",
       body: AUDIT_60,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/60#issuecomment-5007997992",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/60#issuecomment-5007997992",
       author: "claude[bot]",
       createdAt: "2026-07-17T22:17:20Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_60,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/60#issuecomment-5007984282",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/60#issuecomment-5007984282",
     },
     comments: [
       {
@@ -3604,7 +3604,7 @@ re-sent.
         authorAvatar: "",
         body: DEMO_60,
         createdAt: "2026-07-17T22:15:31Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/60#issuecomment-5007984282",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/60#issuecomment-5007984282",
         isBot: true,
       },
       {
@@ -3613,16 +3613,16 @@ re-sent.
         authorAvatar: "",
         body: AUDIT_60,
         createdAt: "2026-07-17T22:17:20Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/60#issuecomment-5007997992",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/60#issuecomment-5007997992",
         isBot: true,
       },
       {
         id: 5107360738,
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         authorAvatar: "",
         body: "dont want this mcp",
         createdAt: "2026-07-28T17:13:39Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/60#issuecomment-5107360738",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/60#issuecomment-5107360738",
         isBot: false,
       },
     ],
@@ -3632,7 +3632,7 @@ re-sent.
     title: "Stop the voice mispronouncing names & acronyms — add a pronunciation step before every voiceover",
     headRef: "claude/pronunciation-normalization-51",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/54",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/54",
     createdAt: "2026-07-17T08:54:52Z",
     updatedAt: "2026-07-28T17:12:46Z",
     mergedAt: null,
@@ -3708,14 +3708,14 @@ the corrected version. So your viewers **hear it right and read it right.**
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_54,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/54#issuecomment-5001098633",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/54#issuecomment-5001098633",
       author: "claude[bot]",
       createdAt: "2026-07-17T09:03:25Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_54,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/54#issuecomment-5001091436",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/54#issuecomment-5001091436",
     },
     comments: [
       {
@@ -3724,7 +3724,7 @@ the corrected version. So your viewers **hear it right and read it right.**
         authorAvatar: "",
         body: DEMO_54,
         createdAt: "2026-07-17T09:02:50Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/54#issuecomment-5001091436",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/54#issuecomment-5001091436",
         isBot: true,
       },
       {
@@ -3733,16 +3733,16 @@ the corrected version. So your viewers **hear it right and read it right.**
         authorAvatar: "",
         body: AUDIT_54,
         createdAt: "2026-07-17T09:03:25Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/54#issuecomment-5001098633",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/54#issuecomment-5001098633",
         isBot: true,
       },
       {
         id: 5107351971,
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         authorAvatar: "",
         body: "🔁 Closing this PR — it conflicts with the latest `main` and can't be merged as-is. Sending idea #51 back through the loop so the Builder rebuilds it fresh against current main.",
         createdAt: "2026-07-28T17:12:45Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/54#issuecomment-5107351971",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/54#issuecomment-5107351971",
         isBot: false,
       },
     ],
@@ -3752,7 +3752,7 @@ the corrected version. So your viewers **hear it right and read it right.**
     title: "Stop an auto-posted true-crime video from calling a living person guilty (#45)",
     headRef: "claude/defamation-name-matching-45",
     baseRef: "main",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/47",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/47",
     createdAt: "2026-07-16T06:46:01Z",
     updatedAt: "2026-07-27T20:09:35Z",
     mergedAt: null,
@@ -3803,14 +3803,14 @@ Closes #45`,
     verdict: {
       verdict: "FIX FIRST",
       body: AUDIT_47,
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/47#issuecomment-4989055792",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/47#issuecomment-4989055792",
       author: "claude[bot]",
       createdAt: "2026-07-16T06:55:20Z",
     },
     demo: {
       status: "comment-only",
       commentBody: DEMO_47,
-      commentUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/47#issuecomment-4989043056",
+      commentUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/47#issuecomment-4989043056",
     },
     comments: [
       {
@@ -3819,7 +3819,7 @@ Closes #45`,
         authorAvatar: "",
         body: DEMO_47,
         createdAt: "2026-07-16T06:53:30Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/47#issuecomment-4989043056",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/47#issuecomment-4989043056",
         isBot: true,
       },
       {
@@ -3828,16 +3828,16 @@ Closes #45`,
         authorAvatar: "",
         body: AUDIT_47,
         createdAt: "2026-07-16T06:55:20Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/47#issuecomment-4989055792",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/47#issuecomment-4989055792",
         isBot: true,
       },
       {
         id: 5096271827,
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         authorAvatar: "",
         body: "🔁 Closing this PR — it conflicts with the latest `main` and can't be merged as-is. Sending idea #45 back through the loop so the Builder rebuilds it fresh against current main.",
         createdAt: "2026-07-27T20:09:34Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/47#issuecomment-5096271827",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/47#issuecomment-5096271827",
         isBot: false,
       },
     ],

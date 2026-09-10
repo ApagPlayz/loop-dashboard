@@ -58,7 +58,7 @@ const FLIP = { approve: "decline", decline: "needs-info", "needs-info": "skip" }
 let closeLoader = async () => {};
 
 async function main() {
-  const slug = flag("repo", "ApagPlayz/content-generation-platform");
+  const slug = flag("repo", "alessiopagliarulo/content-generation-platform");
   const [owner, repo] = slug.split("/");
   const limit = Number(flag("limit", "8"));
 

@@ -45,7 +45,7 @@ function flag(name, fallback) {
 }
 const has = (name) => process.argv.includes(`--${name}`);
 
-const DEFAULT_REPO_SLUG = "ApagPlayz/content-generation-platform";
+const DEFAULT_REPO_SLUG = "alessiopagliarulo/content-generation-platform";
 
 /**
  * Load .env.local into process.env (real env always wins).

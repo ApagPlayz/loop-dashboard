@@ -6,8 +6,8 @@
  * A FROZEN SNAPSHOT OF THE OWNER'S REAL LOOP, captured with `gh` on
  * 4 September 2026 from two repositories that are now PUBLIC:
  *
- *   - github.com/ApagPlayz/content-generation-platform  (loop running)
- *   - github.com/ApagPlayz/supply-chain-optimizer       (loop paused on purpose)
+ *   - github.com/alessiopagliarulo/content-generation-platform  (loop running)
+ *   - github.com/alessiopagliarulo/supply-chain-optimizer       (loop paused on purpose)
  *
  * Every issue title, PR body, audit verdict, workflow file, learning and metric
  * below was copied from those repos, not written for the demo. An earlier
@@ -68,7 +68,7 @@ export const DEMO_CAPTURED_LABEL = "4 September 2026";
 export const DEMO_SNAPSHOT_LABEL = `Frozen snapshot · captured ${DEMO_CAPTURED_LABEL}`;
 
 /** The owner's real GitHub handle — both demo repos are public under it. */
-export const DEMO_OWNER = "ApagPlayz";
+export const DEMO_OWNER = "alessiopagliarulo";
 
 /**
  * The two real projects the loop runs on, in the order the dashboard lists

@@ -207,8 +207,8 @@ function DemoBanner() {
       <p>
         You&apos;re viewing a read-only demo of a real system. Everything below is a
         frozen snapshot of the owner&apos;s actual loop, taken from the public repos{" "}
-        <code className="rounded bg-amber-500/15 px-1">ApagPlayz/content-generation-platform</code>{" "}
-        and <code className="rounded bg-amber-500/15 px-1">ApagPlayz/supply-chain-optimizer</code> —
+        <code className="rounded bg-amber-500/15 px-1">alessiopagliarulo/content-generation-platform</code>{" "}
+        and <code className="rounded bg-amber-500/15 px-1">alessiopagliarulo/supply-chain-optimizer</code> —
         real issues, pull requests and agent audits, not live data. {DEMO_SNAPSHOT_LABEL}.{" "}
         <Link href="/login" className="font-medium text-amber-100 underline underline-offset-2 hover:text-white">
           Sign in

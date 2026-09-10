@@ -19,7 +19,7 @@
  * ## THE RULE: everything in this file is real, and copied, not written
  *
  * The ideas below are forty-four actual GitHub issues from
- * github.com/ApagPlayz/content-generation-platform — a public repo the owner's
+ * github.com/alessiopagliarulo/content-generation-platform — a public repo the owner's
  * nine-agent loop runs on — captured 4 September 2026. Titles, bodies, labels,
  * dates and comment threads are verbatim. The Waiting and Approved tabs are
  * COMPLETE: every open issue carrying the `proposal` label (23) and every open
@@ -88,7 +88,7 @@ This is a small, self-contained change to an existing feature — no new APIs, n
 
 ## How we'd know it worked
 The winners digest written to each agent ranks/describes videos by how much of them people watched (not just view count), and a unit test proves a high-views/low-retention video no longer outranks a lower-views/high-retention one.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/118",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/118",
     createdAt: "2026-07-23T18:24:38Z",
     updatedAt: "2026-07-23T18:24:39Z",
     commentCount: 0,
@@ -127,7 +127,7 @@ Cache generated stills by a **prompt-hash** (prompt + style + provider/model), s
 ## How we'd know it worked
 After the first few videos, the \`CostLedger\` \`gpt-image-1\` rows per video drop toward zero for recurring themes, and a cache-hit counter climbs above zero — with no change to the images that appear in the finished videos.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/115",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/115",
     createdAt: "2026-07-23T16:48:10Z",
     updatedAt: "2026-07-23T16:48:10Z",
     commentCount: 0,
@@ -168,7 +168,7 @@ Don't gate a not-yet-posted platform on the video already being \`'published'\` 
 ## How we'd know it worked
 An \`autonomy=auto\` run with YouTube + TikTok both enabled produces a **live** TikTok Post (not a failed one), and the new two-platform test passes.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/114",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/114",
     createdAt: "2026-07-23T16:47:50Z",
     updatedAt: "2026-07-23T16:47:51Z",
     commentCount: 0,
@@ -208,7 +208,7 @@ This is distinct from proposal #102 (which *relies on* this same 30-min sweeper 
 
 ## How we'd know it worked
 A test with a 29-minute-old \`rendering\` video (assemble budget 30 min) confirms the sweeper leaves it alone; a real ~25–30 min first render completes and publishes without ever flipping to "failed" mid-render.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/110",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/110",
     createdAt: "2026-07-23T03:25:15Z",
     updatedAt: "2026-07-23T03:25:15Z",
     commentCount: 0,
@@ -240,7 +240,7 @@ The good news: **the gate already exists in your code** — it just isn't wired 
 
 ## How we'd know it worked
 A test sports script that focuses on a fight/injury or shows betting odds gets flagged for review (or blocked) instead of auto-publishing; in normal operation the rate of sports videos landing in YouTube "limited ads" trends toward zero.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/109",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/109",
     createdAt: "2026-07-23T03:24:54Z",
     updatedAt: "2026-07-23T03:24:55Z",
     commentCount: 0,
@@ -272,7 +272,7 @@ This is different from the "earnings-by-niche dashboard" proposal (#72, which on
 
 ## How we'd know it worked
 The new factory produces publishable finance/business shorts through the normal pipeline, with the claims safeguard active, and (once measured) shows a higher RPM than the entertainment niches.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/103",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/103",
     createdAt: "2026-07-22T15:14:19Z",
     updatedAt: "2026-07-22T15:14:20Z",
     commentCount: 0,
@@ -304,7 +304,7 @@ This fits the reliability work already merged (recover stuck runs, queued-videos
 
 ## How we'd know it worked
 A deliberately slow/hung sports-data response makes the run fail and retry within seconds, instead of hanging until the 30-minute recovery sweep.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/102",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/102",
     createdAt: "2026-07-22T15:14:06Z",
     updatedAt: "2026-07-22T15:14:07Z",
     commentCount: 0,
@@ -335,7 +335,7 @@ This is distinct from the hook-score work (#89, which grades the first 3 seconds
 
 ## How we'd know it worked
 Every finished video has a generated thumbnail with readable overlaid text, and the YouTube upload uses it instead of an auto-picked frame.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/101",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/101",
     createdAt: "2026-07-22T15:13:55Z",
     updatedAt: "2026-07-22T15:13:56Z",
     commentCount: 0,
@@ -367,7 +367,7 @@ This is **not** the same as the existing "duplicate video" proposal (#71, which 
 
 ## How we'd know it worked
 The same short posted to YouTube and TikTok arrives as two byte-different files with clean metadata and no foreign watermark, and cross-posted videos stop showing the tell-tale ~20x view gap versus a fresh upload.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/100",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/100",
     createdAt: "2026-07-22T15:13:44Z",
     updatedAt: "2026-07-22T15:13:45Z",
     commentCount: 0,
@@ -398,7 +398,7 @@ The opening 3 seconds is the single biggest driver of whether a short gets views
 ## How we'd know it worked
 A video whose best hook scores below the threshold is regenerated or held for review instead of being auto-published, and the owner can set the threshold.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/89",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/89",
     createdAt: "2026-07-20T16:35:42Z",
     updatedAt: "2026-07-20T16:35:42Z",
     commentCount: 0,
@@ -431,7 +431,7 @@ Automatically stitch each week's short videos (per niche) into **one long-form Y
 ## How we'd know it worked
 Once a week the app produces and uploads a single long-form compilation per active niche, and YouTube Studio starts accruing long-form watch hours toward the 4,000-hour threshold.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/87",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/87",
     createdAt: "2026-07-20T16:35:33Z",
     updatedAt: "2026-07-20T16:35:34Z",
     commentCount: 0,
@@ -462,7 +462,7 @@ This is an **existential** risk, not a nice-to-have. In July 2025 YouTube rename
 ## How we'd know it worked
 Before publishing, the owner sees a clear "monetization-risk" score with the reasons (e.g. "94% structurally identical to your last 5 videos"), and near-duplicate uploads get held instead of auto-posted.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/86",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/86",
     createdAt: "2026-07-20T16:35:31Z",
     updatedAt: "2026-07-20T16:35:32Z",
     commentCount: 0,
@@ -511,7 +511,7 @@ The spend tracker only earns its place if you trust it. Right now it does the op
 
 A new sports video shows the same estimated figure the other niches do, **and** that figure is clearly labelled as an estimate covered by your plan — so glancing at the dashboard tells you which niche uses the most AI, with zero worry that money is being taken.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/85",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/85",
     createdAt: "2026-07-20T16:35:29Z",
     updatedAt: "2026-07-21T18:46:09Z",
     commentCount: 2,
@@ -542,7 +542,7 @@ A black video with a voice over it is the single most embarrassing thing that ca
 ## How we'd know it worked
 When every image source fails, the video is held for review with a clear "no visuals — needs attention" flag instead of silently publishing a black screen.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/84",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/84",
     createdAt: "2026-07-20T16:35:22Z",
     updatedAt: "2026-07-20T16:35:22Z",
     commentCount: 0,
@@ -573,7 +573,7 @@ Right now the app publishes to TikTok but **never measures it**. Every TikTok vi
 ## How we'd know it worked
 A video published to TikTok shows real view counts in the app within a day of posting and becomes eligible for the Winners leaderboard.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/83",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/83",
     createdAt: "2026-07-20T16:35:20Z",
     updatedAt: "2026-07-20T16:35:20Z",
     commentCount: 0,
@@ -602,7 +602,7 @@ For faceless channels, ad revenue is only 30–50% of income; the rest is affili
 ## How we'd know it worked
 Every published video carries the right description + pinned-comment block with working, UTM-tagged links, and you can see which niche drove the most clicks.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/79",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/79",
     createdAt: "2026-07-20T14:22:11Z",
     updatedAt: "2026-07-20T14:22:12Z",
     commentCount: 0,
@@ -631,7 +631,7 @@ The script tool produces a single \`title\`/\`description\`/\`hashtags\` set (\`
 ## How we'd know it worked
 One generated video ships with distinct, platform-appropriate titles/descriptions/hashtags to YouTube, TikTok, and Reels.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/78",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/78",
     createdAt: "2026-07-20T14:22:09Z",
     updatedAt: "2026-07-20T14:22:10Z",
     commentCount: 0,
@@ -660,7 +660,7 @@ Creators repeatedly report AI-tool exports (odd HDR, oversized, wrong bitrate) g
 ## How we'd know it worked
 A rendered video uploaded to each platform looks as sharp on-platform as it does locally (no visible softening/washout).
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/76",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/76",
     createdAt: "2026-07-20T14:21:59Z",
     updatedAt: "2026-07-20T14:22:00Z",
     commentCount: 0,
@@ -689,7 +689,7 @@ Competitors (Opus Clip, Repurpose.io) reframe text into each platform's safe zon
 ## How we'd know it worked
 Render the same video for each platform and the captions/CTA always land inside that platform's visible area (verified against an on-screen safe-zone overlay).
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/75",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/75",
     createdAt: "2026-07-20T14:21:57Z",
     updatedAt: "2026-07-20T14:21:58Z",
     commentCount: 0,
@@ -718,7 +718,7 @@ Today a video can show a green "Published" in your dashboard while nothing is ac
 ## How we'd know it worked
 A TikTok upload that isn't confirmed live shows a "processing/submitted" state (not a fake "Posted"), and can be retried or reconciled later.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/74",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/74",
     createdAt: "2026-07-20T14:21:55Z",
     updatedAt: "2026-07-20T14:21:56Z",
     commentCount: 0,
@@ -747,7 +747,7 @@ Two things break: (1) your spend numbers get inflated, which trips the budget ca
 ## How we'd know it worked
 Force a mid-stage retry in a test and the video ends up with exactly one cost row per paid step (no double charge).
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/73",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/73",
     createdAt: "2026-07-20T14:21:52Z",
     updatedAt: "2026-07-20T14:21:54Z",
     commentCount: 0,
@@ -776,7 +776,7 @@ This is the core promise in your own PRD: *"tells me which formats and topics ar
 ## How we'd know it worked
 The dashboard shows, per factory, real earnings, cost, and profit-per-video — and you can point to the higher-earning niche and say "make more of that."
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/72",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/72",
     createdAt: "2026-07-20T14:21:43Z",
     updatedAt: "2026-07-20T14:21:44Z",
     commentCount: 0,
@@ -805,7 +805,7 @@ A duplicate run wastes generation cost, burns ~1,600 units of your limited daily
 ## How we'd know it worked
 Fire two ticks at the same instant against one due schedule and exactly one run is created (proven by a test).
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/71",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/71",
     createdAt: "2026-07-20T14:21:41Z",
     updatedAt: "2026-07-20T14:21:42Z",
     commentCount: 0,
@@ -869,12 +869,12 @@ Out of scope (do not touch in this PR):
 - Exactly one nav bar is visible on every page, with fewer top-level tabs than today.
 - No feature that worked before is now unreachable.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/126",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/126",
     createdAt: "2026-08-02T22:28:44Z",
     updatedAt: "2026-08-25T15:41:14Z",
     commentCount: 4,
     labels: ["approved"],
-    author: "ApagPlayz",
+    author: "alessiopagliarulo",
     authorAvatar: "",
     state: "open",
     closedAt: null,
@@ -899,7 +899,7 @@ Every video calls Claude with a big shared system prompt (style rules, complianc
 ## How we'd know it worked
 The Claude cost per video in the spend tracker drops materially (target: 50%+ on the input cost) with no change to script quality.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/90",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/90",
     createdAt: "2026-07-20T16:35:43Z",
     updatedAt: "2026-07-23T22:33:37Z",
     commentCount: 4,
@@ -931,7 +931,7 @@ Shadowbans are the #1 TikTok creator complaint, and automated bulk posting + reu
 ## How we'd know it worked
 TikTok posts go out on staggered, human-looking times with platform-specific captions, and if views crater across recent posts the owner gets a clear "possible shadowban — pause posting" warning.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/88",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/88",
     createdAt: "2026-07-20T16:35:40Z",
     updatedAt: "2026-07-23T21:14:34Z",
     commentCount: 3,
@@ -961,7 +961,7 @@ Curiosity-gap hooks routinely use commas — they're some of the best-performing
 ## How we'd know it worked
 A sports video whose hook contains a comma and a \`%\` renders successfully instead of failing, and a quick test feeding such a hook to the assemble step passes.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/82",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/82",
     createdAt: "2026-07-20T16:35:18Z",
     updatedAt: "2026-07-28T20:12:12Z",
     commentCount: 1,
@@ -990,7 +990,7 @@ TikTok's Creator Rewards Program **only pays on original videos longer than 1 mi
 ## How we'd know it worked
 The TikTok-bound render comes out at 60s+ (padding/pacing, not filler) while Shorts/Reels stay short — making each TikTok post a payout candidate.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/77",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/77",
     createdAt: "2026-07-20T14:22:07Z",
     updatedAt: "2026-07-28T18:14:13Z",
     commentCount: 1,
@@ -1019,7 +1019,7 @@ Reviewing videos before they auto-post is your single most important daily actio
 ## How we'd know it worked
 Open the Review Inbox in Safari on your Mac (and on your iPhone) and the preview plays and scrubs without a workaround.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/70",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/70",
     createdAt: "2026-07-20T14:21:39Z",
     updatedAt: "2026-07-23T19:37:50Z",
     commentCount: 1,
@@ -1062,7 +1062,7 @@ Like YouTube today, this needs the owner to create a free Meta developer app and
 ## How we'd know it worked
 A single generated video appears live on **four** platforms (YouTube, TikTok, Instagram, Facebook) from one run, with four rows in the dashboard's publish status — and re-running the pipeline does **not** double-post any of them.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/58",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/58",
     createdAt: "2026-07-17T22:01:51Z",
     updatedAt: "2026-07-23T17:40:08Z",
     commentCount: 4,
@@ -1102,7 +1102,7 @@ When a **paid** voice provider fails (not just "no key set" — an actual expire
 ## How we'd know it worked
 Set an invalid ElevenLabs key, run a true-crime video, and the app warns you the paid voice failed and the video fell back to the free voice — instead of silently publishing it.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/57",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/57",
     createdAt: "2026-07-17T16:24:00Z",
     updatedAt: "2026-07-23T17:12:48Z",
     commentCount: 3,
@@ -1140,7 +1140,7 @@ The AI voice reads your scripts as-is, so it **mispronounces exactly the words y
 ## How we'd know it worked
 Generate a video whose script contains a tricky name and an acronym (e.g. a specific athlete plus "FBI"): the voiceover pronounces both correctly, and any name the system didn't recognise shows up as a quick confirm-pronunciation prompt in the Review Inbox instead of being guessed wrong on the published video.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/51",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/51",
     createdAt: "2026-07-16T17:27:19Z",
     updatedAt: "2026-07-28T17:51:08Z",
     commentCount: 3,
@@ -1177,7 +1177,7 @@ Ad revenue (YouTube's Partner Program) requires **1,000 subscribers + 10M Shorts
 ## How we'd know it worked
 Every published video carries the factory's link/CTA in its description and a pinned comment — verifiable on the live YouTube upload — and the dashboard can show clicks per factory, so the channel starts earning affiliate income before it ever hits the ad-revenue threshold.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/27",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/27",
     createdAt: "2026-07-14T17:22:38Z",
     updatedAt: "2026-07-23T16:06:22Z",
     commentCount: 4,
@@ -1209,7 +1209,7 @@ This repo already ships a real anti-repetition system: \`checkVariation()\` in \
 ## How we'd know it worked
 Generate 10 videos from the same factory back-to-back: the gate flags/forces variation on the near-duplicates instead of letting a wall of identical uploads go out.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/17",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/17",
     createdAt: "2026-07-14T15:08:39Z",
     updatedAt: "2026-07-23T15:39:13Z",
     commentCount: 3,
@@ -1258,7 +1258,7 @@ Confirmed: \`find src/lib/compliance -name '*.test.ts'\` returns nothing. The de
 
 ## How we'd know it worked
 A test suite exists for the compliance gate, and a script that says **\\"Smith killed her\\"** (subject stored as \\"John Smith\\", living, not convicted) — or names a person not in the subject list at all — is held for review instead of auto-published.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/45",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/45",
     createdAt: "2026-07-15T20:20:34Z",
     updatedAt: "2026-07-28T17:49:38Z",
     commentCount: 4,
@@ -1300,7 +1300,7 @@ Every video spends real money — paid TTS, image generation, and Claude calls. 
 ## How we'd know it worked
 Set an agent's budget to a tiny number and start a run: it stops itself and shows *"Stopped: run hit your $X budget cap"* instead of billing past it. Set a low monthly ceiling and the dashboard warns as spend approaches it.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/26",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/26",
     createdAt: "2026-07-14T17:22:18Z",
     updatedAt: "2026-07-23T14:58:12Z",
     commentCount: 3,
@@ -1345,7 +1345,7 @@ Wrap each sports pipeline stage in the same \`withTimeout(...)\` guard the other
 ### How we'd know it worked
 
 A sports stage that never returns (simulate a hanging step) causes the run to be marked **failed with a clear "exceeded its Nmin budget" error within its time budget**, instead of sitting in "running" until the recovery sweep — matched by a unit test like the true-crime/history ones.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/96",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/96",
     createdAt: "2026-07-21T19:40:58Z",
     updatedAt: "2026-07-23T03:06:03Z",
     commentCount: 1,
@@ -1383,7 +1383,7 @@ Mirror the YouTube reconnect flow for TikTok: when a TikTok token refresh fails 
 ## How we'd know it worked
 Revoke/expire the TikTok login, run a publish, and Settings shows a "TikTok — reconnect needed" banner instead of a green "Connected," matching YouTube's behavior.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/56",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/56",
     createdAt: "2026-07-17T16:23:42Z",
     updatedAt: "2026-07-23T03:05:57Z",
     commentCount: 1,
@@ -1422,7 +1422,7 @@ The whole promise of an autonomous channel factory is: *it publishes, it watches
 ## How we'd know it worked
 Publish a video, then walk away without touching the app: within the hour the Winners leaderboard and view/watch-time numbers update on their own, and the dashboard shows a recent "last refreshed" time — no button click required.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/50",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/50",
     createdAt: "2026-07-16T17:27:17Z",
     updatedAt: "2026-07-23T03:05:25Z",
     commentCount: 1,
@@ -1475,7 +1475,7 @@ Videos made **after** a winner-digest exists beat the pre-loop baseline on media
 
 ---
 *Filed by the Scout. Evidence verified against the codebase (\`source.ts:68\`, \`schema.prisma:40\`, \`analytics.ts\`). Independently surfaced by three separate research passes (codebase-fragility, revenue, and competitor) as the highest-leverage missing capability.*`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/43",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/43",
     createdAt: "2026-07-15T12:24:06Z",
     updatedAt: "2026-07-22T14:25:18Z",
     commentCount: 1,
@@ -1539,7 +1539,7 @@ The fix mirrors YouTube: add a TikTok \`isAuthError\` + \`markNeedsReconnect()\`
 2. The top bar shows a small number of grouped tabs (Home / Studio / Pipeline / Settings) instead of seven.
 3. Revoke/expire the TikTok token → Settings shows **"Reconnect"** (not green), and auto-posting resumes once you reconnect.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/49",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/49",
     createdAt: "2026-07-16T15:10:30Z",
     updatedAt: "2026-07-22T14:25:13Z",
     commentCount: 3,
@@ -1573,7 +1573,7 @@ The remarkable part: **the system already plans the music, it just never plays i
 
 ## How we'd know it worked
 Play a newly generated true-crime video from the Review Inbox: you hear music underneath the narration that swells at the dramatic peak, at a level that never drowns out the voice.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/35",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/35",
     createdAt: "2026-07-14T21:08:05Z",
     updatedAt: "2026-07-22T14:25:09Z",
     commentCount: 2,
@@ -1622,7 +1622,7 @@ The final safety check (\`isEmptyRender\` in \`src/lib/pipeline/finalize.ts:23\`
 ## How we'd know it worked
 A test where some (but not all) slideshow stills fail to render no longer produces a published video shorter than its narration — it's held for review instead. In real runs, no true-crime/history video ends before its voiceover finishes.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/94",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/94",
     createdAt: "2026-07-21T15:55:40Z",
     updatedAt: "2026-07-22T14:25:05Z",
     commentCount: 1,
@@ -1649,12 +1649,12 @@ A test where some (but not all) slideshow stills fail to render no longer produc
 **Effort:** S
 
 **How we'd know it worked:** push a commit to main from somewhere else, then run \`npm run go\` locally — it pulls that commit automatically before building, no manual git pull needed.`,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/92",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/92",
     createdAt: "2026-07-20T18:02:47Z",
     updatedAt: "2026-07-21T14:00:22Z",
     commentCount: 0,
     labels: ["proposal"],
-    author: "ApagPlayz",
+    author: "alessiopagliarulo",
     authorAvatar: "",
     state: "closed",
     closedAt: "2026-07-21T14:00:22Z",
@@ -1666,13 +1666,13 @@ const IDEA_COMMENTS: Record<number, ThreadComment[]> = {
   85: [
     {
       id: 5037769878,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: `**Owner feedback for redraft:**
 
 wait what money is being spent, what have i linked up account wise and where is the money being taken from?`,
       createdAt: "2026-07-21T18:44:30Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/85#issuecomment-5037769878",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/85#issuecomment-5037769878",
       isBot: false,
     },
     {
@@ -1683,7 +1683,7 @@ wait what money is being spent, what have i linked up account wise and where is 
 
 So I've reshaped this: instead of only making sports show a number, the fix now also **re-labels the figure as an estimate** (with a plain tooltip) so it never looks like a live bill again — and still fixes sports showing blank so all niches compare fairly. Sending it back for your approval.`,
       createdAt: "2026-07-21T18:46:08Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/85#issuecomment-5037786503",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/85#issuecomment-5037786503",
       isBot: true,
     },
   ],
@@ -1694,16 +1694,16 @@ So I've reshaped this: instead of only making sports show a number, the fix now 
       authorAvatar: "",
       body: "🤖 Builder run started — implementing the Warm Creator redesign (light default, dark toggle, single consolidated nav). Will open one PR against this issue.",
       createdAt: "2026-08-02T22:29:39Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/126#issuecomment-5160648090",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/126#issuecomment-5160648090",
       isBot: true,
     },
     {
       id: 5412588451,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-08-25T15:16:24Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/126#issuecomment-5412588451",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/126#issuecomment-5412588451",
       isBot: false,
     },
     {
@@ -1712,7 +1712,7 @@ So I've reshaped this: instead of only making sports show a number, the fix now 
       authorAvatar: "",
       body: "🤖 Builder run started — recreating the Warm Creator redesign (light default, dark toggle, single consolidated nav) cleanly against current `main`. Will open one PR against this issue.",
       createdAt: "2026-08-25T15:17:17Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/126#issuecomment-5412599982",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/126#issuecomment-5412599982",
       isBot: true,
     },
     {
@@ -1721,7 +1721,7 @@ So I've reshaped this: instead of only making sports show a number, the fix now 
       authorAvatar: "",
       body: "🤖 Builder run started — rebuilding the Warm Creator redesign (light default, dark toggle, one consolidated nav bar) cleanly against current `main`. One PR will follow against this issue.",
       createdAt: "2026-08-25T15:41:14Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/126#issuecomment-5412912469",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/126#issuecomment-5412912469",
       isBot: true,
     },
   ],
@@ -1732,7 +1732,7 @@ So I've reshaped this: instead of only making sports show a number, the fix now 
       authorAvatar: "",
       body: "🤖 Builder loop starting on this now — turning on Anthropic prompt caching for the script-generation step. Will open one PR shortly.",
       createdAt: "2026-07-22T14:04:45Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/90#issuecomment-5047039530",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/90#issuecomment-5047039530",
       isBot: true,
     },
     {
@@ -1741,16 +1741,16 @@ So I've reshaped this: instead of only making sports show a number, the fix now 
       authorAvatar: "",
       body: "✅ Opened PR #98 with the fix. The caching was already switched on but was being thrown away every video because the rotating editorial angle sat inside the reusable block — I moved it just outside so the big instruction block is genuinely reused (~90% off the repeated part). Same videos, lower bill. Full test suite, lint, and build all pass. It's assigned to you for review.",
       createdAt: "2026-07-22T14:19:24Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/90#issuecomment-5047298483",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/90#issuecomment-5047298483",
       isBot: true,
     },
     {
       id: 5060367784,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-07-23T15:38:41Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/90#issuecomment-5060367784",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/90#issuecomment-5060367784",
       isBot: false,
     },
     {
@@ -1759,7 +1759,7 @@ So I've reshaped this: instead of only making sports show a number, the fix now 
       authorAvatar: "",
       body: "🤖 Builder loop starting on this again — recreating the prompt-caching fix cleanly against current main (the previous PR #98 conflicted and was closed). Will open one PR shortly.",
       createdAt: "2026-07-23T22:33:37Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/90#issuecomment-5064190900",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/90#issuecomment-5064190900",
       isBot: true,
     },
   ],
@@ -1770,16 +1770,16 @@ So I've reshaped this: instead of only making sports show a number, the fix now 
       authorAvatar: "",
       body: "🤖 Builder run starting on this issue. Scoping to the **smallest honest, highest-value slice**: per-platform caption differentiation so a TikTok post is never byte-identical to the YouTube metadata (the #1 named shadowban trigger), with a humanized/varied opener + a native `#fyp`-style tag. The posting-time jitter and the reach-drop alert are being deliberately deferred to follow-up PRs to keep this change small and safe — I'll note that in the PR.",
       createdAt: "2026-07-22T13:57:34Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/88#issuecomment-5046911300",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/88#issuecomment-5046911300",
       isBot: true,
     },
     {
       id: 5060366635,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-07-23T15:38:34Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/88#issuecomment-5060366635",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/88#issuecomment-5060366635",
       isBot: false,
     },
     {
@@ -1788,7 +1788,7 @@ So I've reshaped this: instead of only making sports show a number, the fix now 
       authorAvatar: "",
       body: "🤖 Builder run starting (clean rebuild after the prior PR was closed for conflicting with main). Scoping to the **smallest honest, highest-value slice**: guarantee a TikTok post is never byte-identical to the YouTube metadata — per-platform caption/hook differentiation with a humanized varied opener and a native `#fyp`-style tag (the #1 named shadowban trigger: reused metadata). Posting-time jitter and the reach-drop alert are deliberately deferred to follow-up PRs to keep this change small and safe — noted in the PR.",
       createdAt: "2026-07-23T21:14:33Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/88#issuecomment-5063496846",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/88#issuecomment-5063496846",
       isBot: true,
     },
   ],
@@ -1801,7 +1801,7 @@ So I've reshaped this: instead of only making sports show a number, the fix now 
 
 One thing worth flagging up front: I tested the exact failure against real ffmpeg before writing any code, and **the issue body's diagnosis is partly wrong** — but the underlying bug is real and actually *worse* than described. Details will be in the PR.`,
       createdAt: "2026-07-28T20:12:12Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/82#issuecomment-5109156580",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/82#issuecomment-5109156580",
       isBot: true,
     },
   ],
@@ -1812,7 +1812,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder run started — I've picked this up and am working on it now. I'll open a pull request against this issue shortly.",
       createdAt: "2026-07-28T18:14:13Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/77#issuecomment-5107998961",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/77#issuecomment-5107998961",
       isBot: true,
     },
   ],
@@ -1823,7 +1823,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder starting on this now — fixing the media preview route to support HTTP Range requests so Safari/iPhone can play and scrub previews. Will open one PR shortly.",
       createdAt: "2026-07-23T19:37:50Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/70#issuecomment-5062576050",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/70#issuecomment-5062576050",
       isBot: true,
     },
   ],
@@ -1834,7 +1834,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder run started — I'm implementing this now (auto-post to Meta as an addition to YouTube + TikTok). Will open one PR shortly.",
       createdAt: "2026-07-18T10:26:26Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/58#issuecomment-5010913815",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/58#issuecomment-5010913815",
       isBot: true,
     },
     {
@@ -1843,16 +1843,16 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "✅ Opened PR #68 — auto-post to Facebook Reels (YouTube + TikTok + Facebook now). Instagram is deferred there with an explanation. Ready for your review.",
       createdAt: "2026-07-18T10:37:04Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/58#issuecomment-5010942331",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/58#issuecomment-5010942331",
       isBot: true,
     },
     {
       id: 5060364845,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-07-23T15:38:24Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/58#issuecomment-5060364845",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/58#issuecomment-5060364845",
       isBot: false,
     },
     {
@@ -1861,7 +1861,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder run started — recreating the Meta auto-post cleanly (the earlier PR #68 was closed for conflicting with main). Will open one PR shortly. Facebook Reels ships now; Instagram is deferred with an explanation (its Graph API requires a public video URL this local app can't provide).",
       createdAt: "2026-07-23T17:40:08Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/58#issuecomment-5061512641",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/58#issuecomment-5061512641",
       isBot: true,
     },
   ],
@@ -1872,16 +1872,16 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder run starting on this now — I'll open a PR shortly. Picking this over #58 (Instagram/Facebook auto-post) because it's a small, self-contained safety fix that fits the silent-failure-surfacing pattern the owner has already approved, and it can be verified without external OAuth setup.",
       createdAt: "2026-07-18T08:54:44Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/57#issuecomment-5010659929",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/57#issuecomment-5010659929",
       isBot: true,
     },
     {
       id: 5060363682,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-07-23T15:38:17Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/57#issuecomment-5060363682",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/57#issuecomment-5060363682",
       isBot: false,
     },
     {
@@ -1890,7 +1890,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder run starting on this now — I'll open a PR shortly. Building the smallest honest slice: when a **paid** voice provider (ElevenLabs/OpenAI) actually fails mid-run, record it, log it, and put a visible flag on the affected video so you know it shipped in the free fallback voice instead of silently swapping.",
       createdAt: "2026-07-23T17:12:48Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/57#issuecomment-5061262121",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/57#issuecomment-5061262121",
       isBot: true,
     },
   ],
@@ -1901,16 +1901,16 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder run starting on this now — adding a pronunciation-normalization pass before TTS (shared by the True Crime + History narration pipelines), plus a seed per-niche lexicon and unit tests. Will open a PR shortly.",
       createdAt: "2026-07-17T08:39:52Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/51#issuecomment-5000836889",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/51#issuecomment-5000836889",
       isBot: true,
     },
     {
       id: 5107353211,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-07-28T17:12:53Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/51#issuecomment-5107353211",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/51#issuecomment-5107353211",
       isBot: false,
     },
     {
@@ -1919,7 +1919,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder run starting on this now (clean rebuild after the previous PR was closed for conflicts). Scope: a shared pronunciation-normalization pass that runs on the narration just before TTS — acronym spelling-out, natural year/decade reading, and an editable respelling lexicon — with on-screen captions keeping the original spelling. Will open a PR shortly.",
       createdAt: "2026-07-28T17:51:08Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/51#issuecomment-5107748445",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/51#issuecomment-5107748445",
       isBot: true,
     },
   ],
@@ -1930,16 +1930,16 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder run starting on this now — scoping the **smallest honest slice**: a per-factory link/CTA block automatically appended to every video's description (the description is already generated today; we just never attach the money part). I'll deliberately leave the pinned-first-comment and UTM click-tracking dashboard for a follow-up (both need extra YouTube API scopes / a new analytics surface) and note that in the PR. One PR incoming.",
       createdAt: "2026-07-16T08:59:09Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/27#issuecomment-4990019640",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/27#issuecomment-4990019640",
       isBot: true,
     },
     {
       id: 5060361183,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-07-23T15:38:04Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/27#issuecomment-5060361183",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/27#issuecomment-5060361183",
       isBot: false,
     },
     {
@@ -1948,7 +1948,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder run starting now. Rebuilding cleanly per your note. Scoping the **smallest honest slice**: a per-factory link/CTA block automatically appended to every video's description (the description is already generated today — we just never attach the money part). I'll deliberately leave the pinned-first-comment and UTM click-tracking dashboard for a follow-up (both need extra YouTube API scopes / a new analytics surface) and note that in the PR. One PR incoming.",
       createdAt: "2026-07-23T15:56:40Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/27#issuecomment-5060547500",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/27#issuecomment-5060547500",
       isBot: true,
     },
     {
@@ -1957,7 +1957,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "✅ Opened PR #113 with the smallest honest slice: a per-factory **Links / call-to-action** box (set on the New Factory screen) that's automatically appended to every video's YouTube description, plus a 🔗 badge on the factory card so you can verify it saved at a glance. Build, lint, and all 492 tests pass. Deferred to follow-ups (noted in the PR): editing links after creation, pinned first comment, click tracking, and TikTok.",
       createdAt: "2026-07-23T16:06:22Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/27#issuecomment-5060650338",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/27#issuecomment-5060650338",
       isBot: true,
     },
   ],
@@ -1968,16 +1968,16 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder loop: starting on this now — extending the existing anti-repetition (variation + same-clip) gate to the generic sports/reddit pipeline, which today has no template-similarity brake. Will open a PR shortly.",
       createdAt: "2026-07-18T04:36:12Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/17#issuecomment-5009921875",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/17#issuecomment-5009921875",
       isBot: true,
     },
     {
       id: 5060362315,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-07-23T15:38:11Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/17#issuecomment-5060362315",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/17#issuecomment-5060362315",
       isBot: false,
     },
     {
@@ -1986,7 +1986,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🤖 Builder loop: starting on this now — extending the existing anti-repetition (variation + visual-signature) gate from the True Crime pipeline to the other factories' shared publish path, so every factory gets a template-similarity brake before publish. Will open a PR shortly.",
       createdAt: "2026-07-23T15:39:13Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/17#issuecomment-5060373317",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/17#issuecomment-5060373317",
       isBot: true,
     },
   ],
@@ -1997,7 +1997,7 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "🛠️ Builder starting on this now — hardening the defamation safety check (last-name/first-name/alias matching, and routing any un-listed named person with a guilt verb to review instead of auto-publishing) and adding a real unit-test suite around `gate.ts` and `defamationLint.ts`. Will open one PR shortly.",
       createdAt: "2026-07-16T06:27:38Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/45#issuecomment-4988875224",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/45#issuecomment-4988875224",
       isBot: true,
     },
     {
@@ -2006,16 +2006,16 @@ One thing worth flagging up front: I tested the exact failure against real ffmpe
       authorAvatar: "",
       body: "✅ Opened PR #47 for this. It hardens the defamation guard (surname/first-name matching + routing an un-listed named person to review instead of auto-publishing) and adds the compliance module's first test suites — 28 new checks. Full suite (244 tests) and the production build pass.",
       createdAt: "2026-07-16T06:46:27Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/45#issuecomment-4988994100",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/45#issuecomment-4988994100",
       isBot: true,
     },
     {
       id: 5096273036,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-07-27T20:09:41Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/45#issuecomment-5096273036",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/45#issuecomment-5096273036",
       isBot: false,
     },
     {
@@ -2031,7 +2031,7 @@ Scope, as approved:
 
 Will open one PR shortly.`,
       createdAt: "2026-07-27T20:25:35Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/45#issuecomment-5096426212",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/45#issuecomment-5096426212",
       isBot: true,
     },
   ],
@@ -2042,16 +2042,16 @@ Will open one PR shortly.`,
       authorAvatar: "",
       body: "🤖 Builder run starting on this issue. I'm implementing the **per-run hard stop** first — the promise on the \"create agent\" button (\"Orchestrator will abort the run if Claude + media costs exceed this amount\"). The monthly-ceiling dashboard alert (item #2, the larger \"M\" part) will be a follow-up so this PR stays small and easy to review. Will open a PR shortly.",
       createdAt: "2026-07-15T09:19:29Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/26#issuecomment-4978954856",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/26#issuecomment-4978954856",
       isBot: true,
     },
     {
       id: 5053878532,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: "Rebuilding: the previous PR conflicted with main and was closed; re-approved so the Builder recreates it cleanly.",
       createdAt: "2026-07-23T03:09:31Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/26#issuecomment-5053878532",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/26#issuecomment-5053878532",
       isBot: false,
     },
     {
@@ -2060,7 +2060,7 @@ Will open one PR shortly.`,
       authorAvatar: "",
       body: "🤖 Builder run starting on this issue (clean rebuild). Scope for this PR: the **per-run hard stop** (item #1) — track a run's Claude + media cost and abort with a clear \"hit your $X budget cap\" reason before it bills past the agent's cap. The monthly-ceiling dashboard alert (item #2) stays a follow-up so this PR is small and easy to review. Will open a PR shortly.",
       createdAt: "2026-07-23T03:57:05Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/26#issuecomment-5054158271",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/26#issuecomment-5054158271",
       isBot: true,
     },
   ],
@@ -2071,7 +2071,7 @@ Will open one PR shortly.`,
       authorAvatar: "",
       body: "🤖 Builder run starting on this now — applying the same `withTimeout` stall-guard the true-crime and history pipelines already use to the sports pipeline. Will open a PR shortly.",
       createdAt: "2026-07-22T14:36:53Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/96#issuecomment-5047529037",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/96#issuecomment-5047529037",
       isBot: true,
     },
   ],
@@ -2082,7 +2082,7 @@ Will open one PR shortly.`,
       authorAvatar: "",
       body: "🤖 Builder loop starting on this now — mirroring the YouTube 'reconnect needed' flow for TikTok. Will open a PR against it shortly.",
       createdAt: "2026-07-18T06:33:10Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/56#issuecomment-5010250220",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/56#issuecomment-5010250220",
       isBot: true,
     },
   ],
@@ -2093,7 +2093,7 @@ Will open one PR shortly.`,
       authorAvatar: "",
       body: "🤖 Builder run starting on this issue now — wiring the existing `refreshAllMetrics()` into the 60-second background tick (throttled to hourly) and surfacing a 'last refreshed' time on the Winners view. Opening a PR shortly.",
       createdAt: "2026-07-17T06:25:43Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/50#issuecomment-4999672856",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/50#issuecomment-4999672856",
       isBot: true,
     },
   ],
@@ -2104,20 +2104,20 @@ Will open one PR shortly.`,
       authorAvatar: "",
       body: "🛠️ Builder starting on this now — wiring the analytics 'learn from winners' feedback loop (write a per-agent winners digest into `Agent.memory` after each metrics refresh, feed it into the script/ideation stage, and surface it on the dashboard). Will open one PR shortly.",
       createdAt: "2026-07-16T03:50:48Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/43#issuecomment-4987964650",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/43#issuecomment-4987964650",
       isBot: true,
     },
   ],
   49: [
     {
       id: 4993547288,
-      author: "ApagPlayz",
+      author: "alessiopagliarulo",
       authorAvatar: "",
       body: `**Owner feedback for redraft:**
 
 package this with a huge fable level rehaul of the ui/ux desing sending me multiple drafts of what the screens can look like, condense tabs that can be grouped together.`,
       createdAt: "2026-07-16T15:15:12Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/49#issuecomment-4993547288",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/49#issuecomment-4993547288",
       isBot: false,
     },
     {
@@ -2133,7 +2133,7 @@ package this with a huge fable level rehaul of the ui/ux desing sending me multi
 It's a bigger job now (L). If you ever want just the TikTok fix shipped fast on its own, say the word — that part alone is a day's work.
 `,
       createdAt: "2026-07-16T15:17:34Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/49#issuecomment-4993570625",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/49#issuecomment-4993570625",
       isBot: true,
     },
     {
@@ -2142,7 +2142,7 @@ It's a bigger job now (L). If you ever want just the TikTok fix shipped fast on 
       authorAvatar: "",
       body: "Starting on this now (Builder run). Per your redraft note, the first shippable slice is exactly what you asked to see first: **the design drafts to pick from** — 3 different visual styles of each main screen, with the 7 tabs condensed into 3 (Home / Studio / Pipeline) + Settings, and the new TikTok connection screen shown in each. You'll be able to open them in your browser and click around before anything in the live app changes. The actual rebuild and the TikTok-posting code fix come in follow-up PRs once you pick a style — this keeps the change small and reversible.",
       createdAt: "2026-07-17T03:50:51Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/49#issuecomment-4998795868",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/49#issuecomment-4998795868",
       isBot: true,
     },
   ],
@@ -2153,7 +2153,7 @@ It's a bigger job now (L). If you ever want just the TikTok fix shipped fast on 
       authorAvatar: "",
       body: "🤖 Builder run starting on this now. I'm implementing the background-music bed so true-crime & history narration no longer plays over silence — wiring an actual audio track to the `musicIntensity` curve the pipeline already computes, on both the ffmpeg and Remotion render paths. Will open one PR shortly.",
       createdAt: "2026-07-17T10:55:32Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/35#issuecomment-5002437788",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/35#issuecomment-5002437788",
       isBot: true,
     },
     {
@@ -2162,7 +2162,7 @@ It's a bigger job now (L). If you ever want just the TikTok fix shipped fast on 
       authorAvatar: "",
       body: "✅ Done — opened PR #55. It plays a generated, monetization-safe music bed under the narration on both render paths, swelling to the dramatic peak using the musicIntensity curve the pipeline already computes. Fully fail-soft (any error → today's narration-only). All 237 tests pass, build + lint clean, and I verified the audio end-to-end (bed synthesises, mixes under the voice, louder at the climax). Caught & fixed one real bug along the way (a tremolo speed just under ffmpeg's allowed minimum that would've silently skipped the music).",
       createdAt: "2026-07-17T11:13:07Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/35#issuecomment-5002616975",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/35#issuecomment-5002616975",
       isBot: true,
     },
   ],
@@ -2173,7 +2173,7 @@ It's a bigger job now (L). If you ever want just the TikTok fix shipped fast on 
       authorAvatar: "",
       body: "🤖 Builder loop has started on this issue. Opening a PR shortly that (1) makes the slideshow fallback always cover the full narration and (2) adds a duration safety-check to the finalize gate so half-length videos are held for review instead of auto-published.",
       createdAt: "2026-07-21T18:46:27Z",
-      htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/94#issuecomment-5037789788",
+      htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/94#issuecomment-5037789788",
       isBot: true,
     },
   ],
@@ -2350,39 +2350,39 @@ const LEARNINGS_RETROS: RetroCommit[] = [
     message: "[retro] Record the 07-17 lesson; prune LEARNINGS under its 50-line limit (#64)",
     author: "claude[bot]",
     date: "2026-07-23T03:05:37Z",
-    url: `https://github.com/ApagPlayz/content-generation-platform/commit/${DEMO_SHAS.retroPruneLearnings}`,
+    url: `https://github.com/alessiopagliarulo/content-generation-platform/commit/${DEMO_SHAS.retroPruneLearnings}`,
   },
   {
     sha: DEMO_SHAS.builderOnApproval,
     shortSha: DEMO_SHAS.builderOnApproval.slice(0, 7),
     message: "Builder: start on approval, never build the same issue twice, read the comments (#33)",
-    author: "ApagPlayz",
+    author: "alessiopagliarulo",
     date: "2026-07-14T20:08:42Z",
-    url: `https://github.com/ApagPlayz/content-generation-platform/commit/${DEMO_SHAS.builderOnApproval}`,
+    url: `https://github.com/alessiopagliarulo/content-generation-platform/commit/${DEMO_SHAS.builderOnApproval}`,
   },
   {
     sha: DEMO_SHAS.auditorAllowBots,
     shortSha: DEMO_SHAS.auditorAllowBots.slice(0, 7),
     message: "Let the Auditor review the Builder's PRs (allowed_bots) (#24)",
-    author: "ApagPlayz",
+    author: "alessiopagliarulo",
     date: "2026-07-14T16:15:40Z",
-    url: `https://github.com/ApagPlayz/content-generation-platform/commit/${DEMO_SHAS.auditorAllowBots}`,
+    url: `https://github.com/alessiopagliarulo/content-generation-platform/commit/${DEMO_SHAS.auditorAllowBots}`,
   },
   {
     sha: DEMO_SHAS.subagentTurn,
     shortSha: DEMO_SHAS.subagentTurn.slice(0, 7),
     message: "Agents were ending their turn while their subagents were still running (#13)",
-    author: "ApagPlayz",
+    author: "alessiopagliarulo",
     date: "2026-07-14T15:00:52Z",
-    url: `https://github.com/ApagPlayz/content-generation-platform/commit/${DEMO_SHAS.subagentTurn}`,
+    url: `https://github.com/alessiopagliarulo/content-generation-platform/commit/${DEMO_SHAS.subagentTurn}`,
   },
   {
     sha: DEMO_SHAS.loopRunsContinuously,
     shortSha: DEMO_SHAS.loopRunsContinuously.slice(0, 7),
     message: "Make the loop actually run — fix the silent no-op, then run it continuously (#11)",
-    author: "ApagPlayz",
+    author: "alessiopagliarulo",
     date: "2026-07-14T11:48:45Z",
-    url: `https://github.com/ApagPlayz/content-generation-platform/commit/${DEMO_SHAS.loopRunsContinuously}`,
+    url: `https://github.com/alessiopagliarulo/content-generation-platform/commit/${DEMO_SHAS.loopRunsContinuously}`,
   },
 ];
 

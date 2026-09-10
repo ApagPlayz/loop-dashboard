@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   }
   if (!owner || !repo) {
     return NextResponse.json(
-      { error: "Enter a repository as owner/name (for example ApagPlayz/loop-dashboard)." },
+      { error: "Enter a repository as owner/name (for example alessiopagliarulo/loop-dashboard)." },
       { status: 400 },
     );
   }

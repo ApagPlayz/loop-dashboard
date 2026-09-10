@@ -20,7 +20,7 @@ import { isPublicViewer } from "./demo/viewer";
 /* Registry                                                            */
 /* ------------------------------------------------------------------ */
 
-export const DASHBOARD_REPO: RepoConfig = { owner: "ApagPlayz", repo: "loop-dashboard" };
+export const DASHBOARD_REPO: RepoConfig = { owner: "alessiopagliarulo", repo: "loop-dashboard" };
 export const REGISTRY_PATH = "config/projects.json";
 
 export type Project = {
@@ -49,7 +49,7 @@ export type Project = {
  */
 export const PILOT_PROJECT: Project = {
   key: "supply-chain-optimizer",
-  owner: "ApagPlayz",
+  owner: "alessiopagliarulo",
   repo: "supply-chain-optimizer",
   label: "Logistics Project",
   addedAt: "2026-07-16T15:16:21.328Z",

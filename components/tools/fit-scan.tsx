@@ -298,7 +298,7 @@ export default function FitScan() {
       startScan(m[1], m[2]);
       return;
     }
-    setError("Enter a repository as owner/name (for example ApagPlayz/loop-dashboard).");
+    setError("Enter a repository as owner/name (for example alessiopagliarulo/loop-dashboard).");
   }, [freeText, startScan]);
 
   const shown = result

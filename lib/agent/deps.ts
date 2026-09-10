@@ -22,7 +22,7 @@ import type {
 
 /** The repo this agent triages by default. */
 export const DEFAULT_REPO: RepoConfig = {
-  owner: "ApagPlayz",
+  owner: "alessiopagliarulo",
   repo: "content-generation-platform",
 };
 

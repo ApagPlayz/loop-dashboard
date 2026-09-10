@@ -311,7 +311,7 @@ describe("fixtures", () => {
   });
 
   it("mention only the two repositories the snapshot is allowed to disclose", () => {
-    // This assertion USED to be `not.toMatch(/ApagPlayz/)`, from when the demo
+    // This assertion USED to be `not.toMatch(/alessiopagliarulo/)`, from when the demo
     // was an invented project. The demo is now a frozen snapshot of the owner's
     // real loop, so his handle is expected — but only ever attached to the two
     // repos that are PUBLIC and that he asked to publish. Anything else under
@@ -320,7 +320,7 @@ describe("fixtures", () => {
     const allowed = new Set(["content-generation-platform", "supply-chain-optimizer"]);
     const serialised = DEMO_FIXTURES.map((f) => JSON.stringify(f.body(url))).join("\n");
     const named = new Set(
-      [...serialised.matchAll(/ApagPlayz\/([A-Za-z0-9._-]+)/g)].map((m) => m[1]),
+      [...serialised.matchAll(/alessiopagliarulo\/([A-Za-z0-9._-]+)/g)].map((m) => m[1]),
     );
     expect(named.size).toBeGreaterThan(0); // the snapshot really is real data
     for (const repo of named) expect(allowed).toContain(repo);

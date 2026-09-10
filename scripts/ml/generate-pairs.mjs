@@ -60,7 +60,7 @@ import {
   r4,
 } from "./_shared.mjs";
 
-const REPO = "ApagPlayz/content-generation-platform";
+const REPO = "alessiopagliarulo/content-generation-platform";
 
 function arg(name, def) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));

@@ -14,7 +14,7 @@
 #   Inline policy  loopDashboardDeployPermissions
 #
 # The role's trust policy is pinned to exactly one subject —
-# "repo:ApagPlayz/loop-dashboard:ref:refs/heads/main" — so a workflow on a
+# "repo:alessiopagliarulo/loop-dashboard:ref:refs/heads/main" — so a workflow on a
 # branch, a tag, a pull_request, or a fork cannot assume it. That is also why
 # this workflow only triggers on main: a run from anywhere else will fail at
 # the assume-role step by design, not by accident.

@@ -16,7 +16,7 @@ import type { DigestCategory, DigestItem, SourceStatus } from "./reporter-types"
 type Pulled = { status: SourceStatus; items: DigestItem[] };
 
 const UA =
-  "loop-dashboard-reporter/1.0 (+https://github.com/ApagPlayz/loop-dashboard)";
+  "loop-dashboard-reporter/1.0 (+https://github.com/alessiopagliarulo/loop-dashboard)";
 
 /* ------------------------------------------------------------------ */
 /* Small helpers                                                       */

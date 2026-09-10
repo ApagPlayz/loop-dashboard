@@ -12,7 +12,7 @@
  * ## All real
  *
  * Runs, run ids, job steps, commit shas, patches, issues and pull requests are
- * from github.com/ApagPlayz/content-generation-platform as of 4 September 2026.
+ * from github.com/alessiopagliarulo/content-generation-platform as of 4 September 2026.
  * The catalog rows are copied out of this repo's own
  * `config/tool-catalog.json`. The before/after numbers on the metrics-compare
  * panel are computed from that repo's committed
@@ -400,7 +400,7 @@ const INSTALL_RUNS: RunSummary[] = [
     createdAt: "2026-07-17T21:55:28Z",
     updatedAt: "2026-07-17T22:13:04Z",
     runStartedAt: "2026-07-17T21:55:28Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/29616269119",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/29616269119",
     event: "repository_dispatch",
     displayName: "Tool installer",
   },
@@ -413,7 +413,7 @@ const INSTALL_RUNS: RunSummary[] = [
     createdAt: "2026-07-17T21:55:07Z",
     updatedAt: "2026-07-17T22:09:26Z",
     runStartedAt: "2026-07-17T21:55:07Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/29616253072",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/29616253072",
     event: "repository_dispatch",
     displayName: "Tool installer",
   },
@@ -424,14 +424,14 @@ const INSTALL_PRS: ToolPr[] = [
     number: 60,
     title: "Add shared Memory (MCP server) to the loop — config + prepared wiring (needs #59)",
     branch: "claude/add-memory-mcp-server",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/60",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/60",
     createdAt: "2026-07-17T22:08:58Z",
   },
   {
     number: 62,
     title: "Add Playwright browser tool (MCP) to the autonomous loop",
     branch: "claude/add-playwright-mcp",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/pull/62",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/pull/62",
     createdAt: "2026-07-17T22:12:41Z",
   },
 ];
@@ -504,7 +504,7 @@ edit is only necessary if the \`.claude/settings.json\` allow-rule in the PR doe
 effect in claude-code-action.)
 </details>
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/61",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/61",
     createdAt: "2026-07-17T22:12:16Z",
   },
   {
@@ -554,7 +554,7 @@ Thanks! Once this is granted and you re-send the tool, your helpers will start r
 what you approve, what you reject, and where the app tends to break — so they stop repeating
 themselves.
 `,
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/issues/59",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/issues/59",
     createdAt: "2026-07-17T22:08:33Z",
   },
 ];
@@ -641,9 +641,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "ae799942b906126975fa51af80e6bfc87295f743",
         message: "Loop: Scout dedups against open PRs + approved ideas (pull-requests: read)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-23T03:10:33Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/ae799942b906126975fa51af80e6bfc87295f743",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/ae799942b906126975fa51af80e6bfc87295f743",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -652,9 +652,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "a5125580f8679805b50b7d06fc453e9cb2a3a939",
         message: "loop-config: replace hardcoded overnight cap-lift and unconditional self-pick with configurable .github/loop-config.json settings (default: approval-required, no time-of-day cap lift)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-20T13:57:52Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/a5125580f8679805b50b7d06fc453e9cb2a3a939",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/a5125580f8679805b50b7d06fc453e9cb2a3a939",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -663,9 +663,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "241011221ef5e044704d14d81c7f72bf626911e5",
         message: "Assign issues and PRs to the owner, or he never sees them (#22)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-14T16:05:52Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/241011221ef5e044704d14d81c7f72bf626911e5",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/241011221ef5e044704d14d81c7f72bf626911e5",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -680,9 +680,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "e02f1130fdd83b77620a3171ec993e35503a0307",
         message: "Loop: Builder claim-detection matches issue# in PR title + branch, not just body",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-23T03:10:39Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/e02f1130fdd83b77620a3171ec993e35503a0307",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/e02f1130fdd83b77620a3171ec993e35503a0307",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -691,9 +691,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "1f0a6863f23eef75f30323b307686485a471d03b",
         message: "loop-config: support prCap: \"unlimited\" (mirrors ideaQueueCap)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-21T17:00:04Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/1f0a6863f23eef75f30323b307686485a471d03b",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/1f0a6863f23eef75f30323b307686485a471d03b",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -702,9 +702,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "fa3473d284d6397d014bcc868b7326fbf01f3974",
         message: "loop-config: replace hardcoded overnight cap-lift and unconditional self-pick with configurable .github/loop-config.json settings (default: approval-required, no time-of-day cap lift)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-20T13:57:50Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/fa3473d284d6397d014bcc868b7326fbf01f3974",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/fa3473d284d6397d014bcc868b7326fbf01f3974",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -719,9 +719,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "211a9201fbb07a4bf4fee46ff37de50068bffc4c",
         message: "loop-config: re-trigger Auditor/Demo/Tests after an @mention pushes a follow-up fix to an existing PR (GITHUB_TOKEN pushes don't cascade pull_request:synchronize, so the old verdict was staying stale forever)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-20T14:53:27Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/211a9201fbb07a4bf4fee46ff37de50068bffc4c",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/211a9201fbb07a4bf4fee46ff37de50068bffc4c",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -730,9 +730,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "59c22f91ec6e5b26f111a6b1238093854751366a",
         message: "Let the Auditor review the Builder's PRs (allowed_bots) (#24)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-14T16:15:40Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/59c22f91ec6e5b26f111a6b1238093854751366a",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/59c22f91ec6e5b26f111a6b1238093854751366a",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -741,9 +741,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "b7c27d4cbb3fe0c2650d349fc25efaccbaadcf24",
         message: "Agents were ending their turn while their subagents were still running (#13)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-14T15:00:52Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/b7c27d4cbb3fe0c2650d349fc25efaccbaadcf24",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/b7c27d4cbb3fe0c2650d349fc25efaccbaadcf24",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -758,9 +758,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "56cf76af097c3e02148169bdbdb1dc071d6faaea",
         message: "Make the loop actually run — fix the silent no-op, then run it continuously (#11)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-14T11:48:45Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/56cf76af097c3e02148169bdbdb1dc071d6faaea",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/56cf76af097c3e02148169bdbdb1dc071d6faaea",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -769,9 +769,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "559657f5a3013ebb9f5052cd0cc63257b058e291",
         message: "Fix: allow agents to actually use gh/git (loop was silently no-op) (#10)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-13T16:04:02Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/559657f5a3013ebb9f5052cd0cc63257b058e291",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/559657f5a3013ebb9f5052cd0cc63257b058e291",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -780,9 +780,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "6e9b6bde3e5bedd95ac8298261e3fb44e0840d6d",
         message: "Autonomous improvement loop v2: audit, measure, and learn (#8)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-13T15:53:08Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/6e9b6bde3e5bedd95ac8298261e3fb44e0840d6d",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/6e9b6bde3e5bedd95ac8298261e3fb44e0840d6d",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -797,9 +797,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "91a814cbe0fbd4f0371b9ff738f451b6b60f4bec",
         message: "Security: gate the @mention agent behind a permission check",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-08-18T15:19:40Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/91a814cbe0fbd4f0371b9ff738f451b6b60f4bec",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/91a814cbe0fbd4f0371b9ff738f451b6b60f4bec",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -808,9 +808,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "a94abd9bd1bbcbddfc97442be3a5610d59a2683d",
         message: "loop-config: re-trigger Auditor/Demo/Tests after an @mention pushes a follow-up fix to an existing PR (GITHUB_TOKEN pushes don't cascade pull_request:synchronize, so the old verdict was staying stale forever)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-20T14:53:29Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/a94abd9bd1bbcbddfc97442be3a5610d59a2683d",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/a94abd9bd1bbcbddfc97442be3a5610d59a2683d",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -819,9 +819,9 @@ const INSTRUCTION_GROUPS: { file: string; name: string; commits: InstructionComm
       {
         sha: "0443cd32c0da3398e9559b48015cbbf2707e04b4",
         message: "Builder: start on approval, never build the same issue twice, read the comments (#33)",
-        author: "ApagPlayz",
+        author: "alessiopagliarulo",
         date: "2026-07-14T20:08:42Z",
-        htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/commit/0443cd32c0da3398e9559b48015cbbf2707e04b4",
+        htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/commit/0443cd32c0da3398e9559b48015cbbf2707e04b4",
         // No commit in this repo's workflow history was made through the
         // dashboard's own editor, so this is false everywhere. It is not a
         // placeholder — it is what the real route reports.
@@ -2503,7 +2503,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T19:44:48Z",
     updatedAt: "2026-09-04T19:46:02Z",
     runStartedAt: "2026-09-04T19:44:48Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33912732448",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33912732448",
     event: "schedule",
     displayName: "Claude — Builder (implements work, keeps your queue full)",
   },
@@ -2516,7 +2516,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T17:28:08Z",
     updatedAt: "2026-09-04T17:28:23Z",
     runStartedAt: "2026-09-04T17:28:08Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33900734875",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33900734875",
     event: "schedule",
     displayName: "Claude — Scout (finds work worth doing)",
   },
@@ -2529,7 +2529,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T17:19:31Z",
     updatedAt: "2026-09-04T17:20:28Z",
     runStartedAt: "2026-09-04T17:19:31Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33899958637",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33899958637",
     event: "schedule",
     displayName: "Claude — Builder (implements work, keeps your queue full)",
   },
@@ -2542,7 +2542,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T14:41:35Z",
     updatedAt: "2026-09-04T14:41:58Z",
     runStartedAt: "2026-09-04T14:41:35Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33885201689",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33885201689",
     event: "schedule",
     displayName: "Loop — Metrics",
   },
@@ -2555,7 +2555,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T13:55:08Z",
     updatedAt: "2026-09-04T13:56:34Z",
     runStartedAt: "2026-09-04T13:55:08Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33880731192",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33880731192",
     event: "schedule",
     displayName: "Claude — Builder (implements work, keeps your queue full)",
   },
@@ -2568,7 +2568,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T13:18:21Z",
     updatedAt: "2026-09-04T13:18:35Z",
     runStartedAt: "2026-09-04T13:18:21Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33877319005",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33877319005",
     event: "schedule",
     displayName: "Claude — Scout (finds work worth doing)",
   },
@@ -2581,7 +2581,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T09:47:59Z",
     updatedAt: "2026-09-04T09:49:04Z",
     runStartedAt: "2026-09-04T09:47:59Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33860117324",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33860117324",
     event: "schedule",
     displayName: "Claude — Builder (implements work, keeps your queue full)",
   },
@@ -2594,7 +2594,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T08:40:21Z",
     updatedAt: "2026-09-04T08:40:36Z",
     runStartedAt: "2026-09-04T08:40:21Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33854559992",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33854559992",
     event: "schedule",
     displayName: "Claude — Scout (finds work worth doing)",
   },
@@ -2607,7 +2607,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T05:19:43Z",
     updatedAt: "2026-09-04T05:20:50Z",
     runStartedAt: "2026-09-04T05:19:43Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33840078731",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33840078731",
     event: "schedule",
     displayName: "Claude — Builder (implements work, keeps your queue full)",
   },
@@ -2620,7 +2620,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T03:44:17Z",
     updatedAt: "2026-09-04T03:44:28Z",
     runStartedAt: "2026-09-04T03:44:17Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33834291216",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33834291216",
     event: "schedule",
     displayName: "Claude — Scout (finds work worth doing)",
   },
@@ -2633,7 +2633,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-04T00:36:40Z",
     updatedAt: "2026-09-04T00:38:02Z",
     runStartedAt: "2026-09-04T00:36:40Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33822491026",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33822491026",
     event: "schedule",
     displayName: "Claude — Builder (implements work, keeps your queue full)",
   },
@@ -2646,7 +2646,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-03T23:05:26Z",
     updatedAt: "2026-09-03T23:05:41Z",
     runStartedAt: "2026-09-03T23:05:26Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33816043859",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33816043859",
     event: "schedule",
     displayName: "Claude — Scout (finds work worth doing)",
   },
@@ -2659,7 +2659,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-03T22:41:11Z",
     updatedAt: "2026-09-03T22:42:21Z",
     runStartedAt: "2026-09-03T22:41:11Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33814216516",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33814216516",
     event: "schedule",
     displayName: "Claude — Builder (implements work, keeps your queue full)",
   },
@@ -2672,7 +2672,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-03T20:44:23Z",
     updatedAt: "2026-09-03T20:44:40Z",
     runStartedAt: "2026-09-03T20:44:23Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33804004615",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33804004615",
     event: "schedule",
     displayName: "Claude — Scout (finds work worth doing)",
   },
@@ -2685,7 +2685,7 @@ const GENERAL_RUNS: RunSummary[] = [
     createdAt: "2026-09-03T20:00:32Z",
     updatedAt: "2026-09-03T20:01:41Z",
     runStartedAt: "2026-09-03T20:00:32Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33799729772",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33799729772",
     event: "schedule",
     displayName: "Claude — Builder (implements work, keeps your queue full)",
   },
@@ -2705,7 +2705,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-08-31T00:15:42Z",
     updatedAt: "2026-08-31T00:15:42Z",
     runStartedAt: "2026-08-31T00:15:42Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/33344051342",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/33344051342",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },
@@ -2718,7 +2718,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-08-25T15:56:08Z",
     updatedAt: "2026-08-25T15:58:31Z",
     runStartedAt: "2026-08-25T15:56:08Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/32868858549",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/32868858549",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },
@@ -2731,7 +2731,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-08-02T23:00:34Z",
     updatedAt: "2026-09-01T23:01:43Z",
     runStartedAt: "2026-08-02T23:00:34Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30771334601",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30771334601",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },
@@ -2744,7 +2744,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-08-02T22:59:33Z",
     updatedAt: "2026-08-02T23:02:11Z",
     runStartedAt: "2026-08-02T22:59:33Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30771294922",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30771294922",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },
@@ -2757,7 +2757,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-08-02T22:47:41Z",
     updatedAt: "2026-08-02T22:50:10Z",
     runStartedAt: "2026-08-02T22:47:41Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30770881367",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30770881367",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },
@@ -2770,7 +2770,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-07-28T20:19:49Z",
     updatedAt: "2026-07-28T20:22:16Z",
     runStartedAt: "2026-07-28T20:19:49Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30395852303",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30395852303",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },
@@ -2783,7 +2783,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-07-28T18:31:52Z",
     updatedAt: "2026-07-28T18:34:36Z",
     runStartedAt: "2026-07-28T18:31:52Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30387848155",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30387848155",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },
@@ -2796,7 +2796,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-07-28T18:01:19Z",
     updatedAt: "2026-07-28T18:03:22Z",
     runStartedAt: "2026-07-28T18:01:19Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30385530717",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30385530717",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },
@@ -2809,7 +2809,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-07-27T20:44:35Z",
     updatedAt: "2026-07-27T20:48:05Z",
     runStartedAt: "2026-07-27T20:44:35Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30303876987",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30303876987",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },
@@ -2822,7 +2822,7 @@ const TEST_SUITE_HISTORY: RunSummary[] = [
     createdAt: "2026-07-23T22:50:30Z",
     updatedAt: "2026-07-23T22:54:02Z",
     runStartedAt: "2026-07-23T22:50:30Z",
-    htmlUrl: "https://github.com/ApagPlayz/content-generation-platform/actions/runs/30051264395",
+    htmlUrl: "https://github.com/alessiopagliarulo/content-generation-platform/actions/runs/30051264395",
     event: "pull_request",
     displayName: "Repo — Tests (plain CI, no agent)",
   },

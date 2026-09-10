@@ -37,7 +37,7 @@ const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..", "..");
 
-const DEFAULT_REPO = "ApagPlayz/content-generation-platform";
+const DEFAULT_REPO = "alessiopagliarulo/content-generation-platform";
 
 function arg(name, def) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
