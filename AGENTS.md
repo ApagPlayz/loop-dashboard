@@ -7,3 +7,18 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+# Done means seen working
+
+A change is **done** when you have seen it working in the running app. Typecheck, lint, build
+and tests passing is the floor, not the bar — four handoffs in a row shipped features nobody
+had ever rendered.
+
+- **Page or component:** open it in the running app with real data (the `run` skill, or a
+  Playwright screenshot) and look at it.
+- **API route:** call it against the running app and read the response.
+- **Workflow or script:** run it, or cite the run that exercised it.
+
+Every summary and handoff names what you opened and what you saw. Anything you could not see
+goes under **Not yet seen** as an open item, so the next session picks it up rather than
+inheriting it as finished.
