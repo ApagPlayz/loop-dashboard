@@ -22,3 +22,17 @@ had ever rendered.
 Every summary and handoff names what you opened and what you saw. Anything you could not see
 goes under **Not yet seen** as an open item, so the next session picks it up rather than
 inheriting it as finished.
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown under `.scratch/`, gitignored: this repo is public, so tickets stay on this machine. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), set as a `Status:` line in each ticket. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` at the root; decisions in `docs/design-decisions.md`. See `docs/agents/domain.md`.

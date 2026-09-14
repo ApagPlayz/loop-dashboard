@@ -71,6 +71,8 @@ next-env.d.ts
 # docs/design-decisions.md, docs/backlog.md — stays tracked.
 /CLAUDE.md
 /docs/handoffs/
+# Local tickets for the engineering skills (docs/agents/issue-tracker.md) — the repo is public.
+/.scratch/
 /docs/plans/
 /docs/drafts/
 /docs/resume-bullets.md
